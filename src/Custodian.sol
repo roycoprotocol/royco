@@ -12,6 +12,7 @@ contract Custodian is Owned(msg.sender) {
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
     using ECDSA for bytes;
+    using ECDSA for bytes32;
 
     constructor(address initialWalletFactory) {
         walletFactory = initialWalletFactory;
@@ -23,7 +24,7 @@ contract Custodian is Owned(msg.sender) {
     /// @dev Address of the factory deploying new weiroll wallets
     address public walletFactory;
     /// @dev Tracks user deposits into the the Custodian contract
-    mapping(address owner => mapping(ERC20 token => address balance)) public balances;
+    mapping(address owner => mapping(ERC20 token => uint256 balance)) public balances;
 
     /*//////////////////////////////////////////////////////////////
                                 UTILS
@@ -31,7 +32,7 @@ contract Custodian is Owned(msg.sender) {
 
     /// @notice Changing the Factory address will invalidate all signatures before it
     /// @param newWalletFactory The address creating weiroll wallets
-    function setNewWalletFactory(address newWalletFactory) onlyOwner {
+    function setNewWalletFactory(address newWalletFactory) onlyOwner public {
         walletFactory = newWalletFactory;
     }
 
@@ -52,7 +53,7 @@ contract Custodian is Owned(msg.sender) {
     /// @param amount The amount of tokens to deposit
     function withdrawFundsFromTheCustodian(ERC20 token, uint256 amount) public {
         balances[msg.sender][token] -= amount;
-        SafeTransferLib.transferFrom(token, msg.sender, amount);
+        SafeTransferLib.safeTransfer(token, msg.sender, amount);
     }
 
     /// @notice Function callable by the factory to fund a new weiroll wallet
@@ -60,10 +61,10 @@ contract Custodian is Owned(msg.sender) {
     /// @param amount The amount of tokens to fund the wallet with
     /// @param signature An ECDSA signature to verify the user permits depositing the funds
     function fundNewWallet(ERC20 token, address wallet, uint256 amount, bytes memory signature) public {
-        bytes32 hash = keccak256(abi.encodePacked(address(ERC20), wallet, amount, msg.sender));
+        bytes32 hash = keccak256(abi.encodePacked(address(token), wallet, amount, msg.sender));
         bytes32 signedHash = hash.toEthSignedMessageHash();
         address approved = ECDSA.recover(signedHash, signature);
-        if (approved != signer) {
+        if (approved != msg.sender) {
             revert NotApproved();
         }
 
