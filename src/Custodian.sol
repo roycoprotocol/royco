@@ -32,7 +32,7 @@ contract Custodian is Owned(msg.sender) {
 
     /// @notice Changing the Factory address will invalidate all signatures before it
     /// @param newWalletFactory The address creating weiroll wallets
-    function setNewWalletFactory(address newWalletFactory) onlyOwner public {
+    function setNewWalletFactory(address newWalletFactory) public onlyOwner {
         walletFactory = newWalletFactory;
     }
 
