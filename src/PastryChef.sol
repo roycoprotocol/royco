@@ -139,7 +139,7 @@ contract PastryChef is Owned(msg.sender) {
         }
     }
 
-    /// @param _amount The amount of principle opportunity tokesn to deposit
+    /// @param _amount The amount of principle opportunity tokens to deposit
     function deposit(uint256 _amount) public {
         UserInfo storage user = userInfo[msg.sender];
         rollOverEpoch();
@@ -168,7 +168,7 @@ contract PastryChef is Owned(msg.sender) {
         epochs[currentEpoch].totalDeposited += uint128(_amount);
     }
 
-    /// @param _amount The amount of principle opportunity tokesn to withdraw
+    /// @param _amount The amount of principle opportunity tokens to withdraw
     function withdraw(uint256 _amount) public {
         UserInfo storage user = userInfo[msg.sender];
         if (_amount > user.amount) {
