@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import "./WalletFactory.sol";
+
 struct Market {
     bytes32[] weirollCommands;
     bytes[] weirollState;
@@ -24,13 +26,21 @@ struct Order {
 // variable
 // ...
 
-contract Orderbook {
+contract Orderbook is WalletFactory {
+    constructor(address _walletImplementation) WalletFactory(_walletImplementation) {
+        
+    }
 // mapping(id => Order[]) public orders; // some storage for the orders, (would be red/black tree for onchain order matching)
 // function createMarket(bytes32[] weirollCommands, bytes[] weirollState) public {}
 // function createBid(market, price, expiration) public {}
 // function createAsk(market, price, expiration) public {}
 // function cancelOrder(market, order) public onlyMaker {}
-/* function fillOrder(market, order, quantity) public {
-        
-    } */
+// function fillOrder(market, order, quantity) public {}
+/* 
+
+function deployWallet(address owner, uint256 unlockTime) internal returns (address) {
+    return WalletFactory.deployClone(owner, unlockTime);
+}
+
+*/
 }
