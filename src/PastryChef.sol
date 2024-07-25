@@ -44,7 +44,7 @@ contract PastryChef is Owned(msg.sender) {
 
     error EpochNotStarted();
     error BalanceTooLow();
-    error CampapignStartsTooLate();
+    error CampaignStartsTooLate();
     /*//////////////////////////////////////////////////////////////
                                STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -210,7 +210,7 @@ contract PastryChef is Owned(msg.sender) {
     function createRewardCampaign(uint256 _startEpoch, uint256 _endEpoch, uint256 _amount, ERC20 _token) public {
         rollOverEpoch();
         if (_startEpoch < currentEpoch) {
-            revert CampapignStartsTooLate();
+            revert CampaignStartsTooLate();
         }
 
         // It might be better to ensure that `token != depositToken`
