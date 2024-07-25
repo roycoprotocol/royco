@@ -139,24 +139,32 @@ contract PastryChef is Owned(msg.sender) {
         }
     }
 
+    /// @notice Update the rewards for a user
+    /// @param _user The user to update rewards for
+    function updateUserRewards(address _user) public {
+        UserInfo storage user = userInfo[_user];
+
+        for (uint256 i = user.lastEpoch; i < currentEpoch;) {
+            updateEpochRewards(i);
+            Epoch storage _epoch = epochs[i];
+
+            uint256 rewardPointsAwarded = (user.amount * _epoch.accRewardsPerShare / WAD) - user.epochDebt[i];
+            epochRewardPoints[_user][i] += rewardPointsAwarded;
+            _epoch.totalRewards += uint128(rewardPointsAwarded);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /// @param _amount The amount of principle opportunity tokens to deposit
     function deposit(uint256 _amount) public {
         UserInfo storage user = userInfo[msg.sender];
         rollOverEpoch();
 
         if (user.amount > 0) {
-            for (uint256 i = user.lastEpoch; i < currentEpoch;) {
-                updateEpochRewards(i);
-                Epoch storage _epoch = epochs[i];
-
-                uint256 rewardPointsAwarded = (user.amount * _epoch.accRewardsPerShare / WAD) - user.epochDebt[i];
-                epochRewardPoints[msg.sender][i] += rewardPointsAwarded;
-                _epoch.totalRewards += uint128(rewardPointsAwarded);
-
-                unchecked {
-                    ++i;
-                }
-            }
+            updateUserRewards(msg.sender);
         }
 
         depositToken.safeTransferFrom(msg.sender, address(this), _amount);
@@ -177,18 +185,7 @@ contract PastryChef is Owned(msg.sender) {
 
         rollOverEpoch();
 
-        for (uint256 i = user.lastEpoch; i < currentEpoch;) {
-            updateEpochRewards(i);
-            Epoch storage _epoch = epochs[i];
-
-            uint256 rewardPointsAwarded = (user.amount * _epoch.accRewardsPerShare / WAD) - user.epochDebt[i];
-            epochRewardPoints[msg.sender][i] += rewardPointsAwarded;
-            _epoch.totalRewards += uint128(rewardPointsAwarded);
-
-            unchecked {
-                ++i;
-            }
-        }
+        updateUserRewards(msg.sender);
 
         user.amount -= uint128(_amount);
         user.epochDebt[currentEpoch] = (user.amount * epochs[currentEpoch].accRewardsPerShare) / WAD;
