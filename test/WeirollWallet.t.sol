@@ -16,15 +16,14 @@ contract WeirollWalletTest is DSTestPlus {
     }
 
     function testWalletCreation() public {
-        factory.createWallet(address(this), address(0), 0);
+        factory.createWallet(address(this), address(0));
         assert(address(factory).code.length > 0);
     }
 
     function testWalletVariablesSet() public {
-        Smartwallet wallet = Smartwallet(factory.createWallet(address(0x01), address(this), 256));
+        Smartwallet wallet = Smartwallet(factory.createWallet(address(0x01), address(this)));
         assertEq(wallet.getOwner(), address(0x01));
         assertEq(wallet.getOrderbook(), address(this));
-        assertEq(wallet.getUnlockTime(), 256);
     }
 }
 
@@ -32,7 +31,7 @@ contract WeirollWalletTest is DSTestPlus {
 contract ExampleFactory is WalletFactory {
     constructor() WalletFactory(address(new Smartwallet())) {}
 
-    function createWallet(address owner, address orderbook, uint256 unlockTime) public returns (address) {
-        return address(deployClone(owner, orderbook, unlockTime));
+    function createWallet(address owner, address orderbook) public returns (address) {
+        return address(deployClone(owner, orderbook));
     }
 }

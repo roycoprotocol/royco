@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 // import {ExampleClone} from "./ExampleClone.sol";
 import { ClonesWithImmutableArgs } from "../lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
-import {Smartwallet} from "./WeirollWalletImplementation.sol";
+import { Smartwallet } from "./WeirollWalletImplementation.sol";
 
 contract WalletFactory {
     using ClonesWithImmutableArgs for address;
@@ -23,11 +23,14 @@ contract WalletFactory {
     // @param unlockTime The nonce of the wallet
     function deployClone(
         address owner,
-        address orderbook,
-        uint256 unlockTime
-    ) internal returns (Smartwallet clone) {
-        // the second parameter is the address of the of the orderbook 
-        bytes memory data = abi.encodePacked(owner, orderbook, unlockTime);
+        address orderbook
+    )
+        // uint256 unlockTime
+        internal
+        returns (Smartwallet clone)
+    {
+        // the second parameter is the address of the of the orderbook
+        bytes memory data = abi.encodePacked(owner, orderbook);
         clone = Smartwallet(implementation.clone(data));
     }
 }

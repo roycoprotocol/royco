@@ -40,9 +40,9 @@ contract Smartwallet is Clone, VM {
         return _getArgAddress(20);
     }
 
-    function getUnlockTime() public pure returns (uint256) {
-        return _getArgUint256(40);
-    }
+    // function getUnlockTime() public pure returns (uint256) {
+    //     return _getArgUint256(40);
+    // }
 
     function executeWeiroll(bytes32[] calldata commands, bytes[] memory state) public payable onlyOrderbook notLocked returns (bytes[] memory) {
         return _execute(commands, state);
