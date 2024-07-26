@@ -14,6 +14,8 @@ contract Custodian is Owned(msg.sender) {
     using ECDSA for bytes;
     using ECDSA for bytes32;
 
+    error FundsOnHold();
+
     constructor(address initialWalletFactory) {
         walletFactory = initialWalletFactory;
     }
@@ -23,8 +25,17 @@ contract Custodian is Owned(msg.sender) {
     //////////////////////////////////////////////////////////////*/
     /// @dev Address of the factory deploying new weiroll wallets
     address public walletFactory;
+
+    struct DepositKey {
+      ERC20 token;
+      address owner;
+      address spender;
+    }
+
     /// @dev Tracks user deposits into the the Custodian contract
-    mapping(address owner => mapping(ERC20 token => uint256 balance)) public balances;
+    mapping(address DepositKey => uint256 balance) public balances;
+    /// @dev Tracks how much funds are locked by the spender
+    mapping(address DepositKey => uint256 balance) public holds;
 
     /*//////////////////////////////////////////////////////////////
                                 UTILS
@@ -44,35 +55,72 @@ contract Custodian is Owned(msg.sender) {
 
     /// @param token The ERC20 Token to deposit into the custodian
     /// @param amount The amount of tokens to deposit
-    function depositFundsIntoTheCustodian(ERC20 token, uint256 amount) public {
-        balances[msg.sender][token] += amount;
+    function depositFundsIntoTheCustodian(ERC20 token, uint256 amount, address spender) public {
+        DepositKey memory key = DepositKey({
+          token: token,
+          owner: msg.sender, 
+          spender: spender
+        });
+
+        balances[key] += amount;
         SafeTransferLib.safeTransferFrom(token, msg.sender, address(this), amount);
     }
 
+    /// @param token The ERC20 Token 
+    /// @param owner The depositor of the funds 
+    /// @param hold The amount of tokens to add the hold on
+    function placeHoldOnFunds(ERC20 token, address owner, uint256 hold) public {
+        DepositKey memory key = DepositKey({
+          token: token,
+          owner: owner, 
+          spender: msg.sender
+        });
+
+        holds[key] += hold;
+    }
+
+    /// @param token The ERC20 Token 
+    /// @param owner The depositor of the funds 
+    /// @param hold The amount of tokens to remove the hold from
+    function removeHoldOnFunds(ERC20 token, address owner, uint256 hold) public {
+        DepositKey memory key = DepositKey({
+          token: token,
+          owner: owner, 
+          spender: msg.sender
+        });
+
+        holds[key] -= hold;
+    }
+
+
     /// @param token The ERC20 Token to deposit into the custodian
     /// @param amount The amount of tokens to deposit
-    function withdrawFundsFromTheCustodian(ERC20 token, uint256 amount) public {
-        balances[msg.sender][token] -= amount;
+    function withdrawFundsFromTheCustodian(ERC20 token, uint256 amount, address spender) public {
+        DepositKey memory key = DepositKey({
+          token: token,
+          owner: msg.sender, 
+          spender: spender
+        });
+
+        balances[key] -= amount;
+        if (balances[key] < holds[key]) {
+          revert FundsOnHold();
+        }
         SafeTransferLib.safeTransfer(token, msg.sender, amount);
     }
 
-    /// @notice Function callable by the factory to fund a new weiroll wallet
     /// @param token The ERC20 to fund the wallet with
+    /// @param to The address to "spend" the funds to
+    /// @param from The users funds to spend
     /// @param amount The amount of tokens to fund the wallet with
-    /// @param signature An ECDSA signature to verify the user permits depositing the funds
-    function fundNewWallet(ERC20 token, address wallet, uint256 amount, bytes memory signature) public {
-        bytes32 hash = keccak256(abi.encodePacked(address(token), wallet, amount, msg.sender));
-        bytes32 signedHash = hash.toEthSignedMessageHash();
-        address approved = ECDSA.recover(signedHash, signature);
-        if (approved != msg.sender) {
-            revert NotApproved();
-        }
+    function spendFunds(ERC20 token, address to, address from, uint256 amount) public {
+      DepositKey memory key = DepositKey({
+        token: token,
+        owner: from, 
+        spender: msg.sender
+      });
 
-        if (msg.sender == walletFactory) {
-            revert WrongSender();
-        }
-
-        balances[msg.sender][token] -= amount;
-        SafeTransferLib.safeTransfer(token, wallet, amount);
+      balances[key] -= amount;
+      SafeTransferLib.safeTransfer(token, to, amount);
     }
 }

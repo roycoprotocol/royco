@@ -1,46 +1,163 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./WalletFactory.sol";
+// Interfaces 
+import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 
-struct Market {
-    bytes32[] weirollCommands;
-    bytes[] weirollState;
-}
-// ...
+// Libraries 
+import { ECDSA } from "lib/solady/src/utils/ECDSA.sol";
+import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 
-enum OrderType {
-    NOT_FOUND, // default value for uninitialized enum
-    BID,
-    ASK
-}
-
-struct Order {
-    OrderType orderType;
-    address maker;
-    uint32 expiration; // uint32 sufficent until Feb 2106, upgrade to uint64 if there's space in the packing
-    uint256 price;
-    uint256 quantity;
-}
-// uint256 fillAmount; // partial fills must be possible, can decide if "fillamounts" should be handled in a separate mapping vs in the order struct vs separate
-// variable
-// ...
+// Contracts
+import { Custodian } from "src/Custodian.sol";
+import { WalletFactory } from "src/WalletFactory.sol";
+import { WeirollWallet } from "src/WeirollWallet.sol";
+import { DssVestTransferrable } from "src/DssVest.sol";
 
 contract Orderbook is WalletFactory {
-    constructor(address _walletImplementation) WalletFactory(_walletImplementation) {
-        
+  using ECDSA for bytes32;
+  using ECDSA for bytes;
+  /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+  //////////////////////////////////////////////////////////////*/
+  constructor(address _impl, address _custodian) WalletFactory(_impl) {
+    custodian = Custodian(_custodian);
+  }
+
+
+  /*//////////////////////////////////////////////////////////////
+                            STORAGE
+  //////////////////////////////////////////////////////////////*/
+  enum Type {
+    StreamingLocked,
+    StreamingUnlocked,
+    LumpsumLocked,
+    LumpsumUnlocked
+  }
+
+  enum Side {
+    Ask, // Offering to Provide Incentives
+    Bid // Offering to LP Tokens
+  }
+
+  struct Market {
+    ERC20 token;
+    bytes32[] weirollCommands;
+    bytes[] weirollState;
+  }
+
+  uint96 public maxMarketId;
+
+  struct Order {
+    Side side;
+    Type _type;
+    ERC20 token;
+    uint96 duration;
+    uint128 amount;
+    uint128 incentiveAmount;
+    uint96 marketId;
+    address sender;
+    uint128 nonce;
+  }
+
+  mapping(address user => mapping(uint128 nonce => bool cancelled)) public cancelledNonces;
+  mapping(uint96 marketId => Market _market) public markets;
+
+  Custodian public custodian;
+
+  mapping(ERC20 token => DssVestTransferrable vesting) public vestingContracts;
+  /*//////////////////////////////////////////////////////////////
+                              INTERFACE
+  //////////////////////////////////////////////////////////////*/
+  error MarketMismatch();
+  error WrongSidesTaken();
+  error DurationMistach();
+  error OrderCancelled();
+  error TypeMismatch();
+
+  event NewOrder();
+  
+  event NonceCancelled(address user, uint256 nonce);
+
+  /*//////////////////////////////////////////////////////////////
+                            ORDERBOOK
+  //////////////////////////////////////////////////////////////*/
+
+  function cancelNonce(uint128 nonce) public {
+    cancelledNonces[msg.sender][nonce] = false;
+
+    emit NonceCancelled(msg.sender, nonce);
+  }
+
+  function submitOrder(Order calldata order, bytes memory sig) public {
+
+  }
+
+  function matchOrders(Order calldata bid, bytes memory bidSignature, Order calldata ask bytes memory askSignature) public returns (address newWallet){
+
+    // 1. Validate Orders are correct and truthful
+    bytes32 hash = keccak256(abi.encodePacked(msg.sender, name, ticker));
+    bytes32 signedHash = hash.toEthSignedMessageHash();
+    address approved = ECDSA.recover(signedHash, signature);
+    if (approved != signer) {
+      revert NotApproved();
     }
-// mapping(id => Order[]) public orders; // some storage for the orders, (would be red/black tree for onchain order matching)
-// function createMarket(bytes32[] weirollCommands, bytes[] weirollState) public {}
-// function createBid(market, price, expiration) public {}
-// function createAsk(market, price, expiration) public {}
-// function cancelOrder(market, order) public onlyMaker {}
-// function fillOrder(market, order, quantity) public {}
-/* 
+ 
 
-function deployWallet(address owner, uint256 unlockTime) internal returns (address) {
-    return WalletFactory.deployClone(owner, unlockTime);
-}
 
-*/
+    if (bid.marketId != ask.marketId) {
+      revert MarketMismatch();
+    }
+
+    if (bid.side != Side.Bid && ask.side != Side.Ask) {
+      revert WrongSidesTaken();
+    }
+
+    if (bid._type != ask._type) {
+      revert TypeMismatch();
+    }
+
+    if (bid.duration < ask.duration) {
+      revert DurationMistach();
+    }
+
+    if (!cancelledNonces[bid.sender][bid.nonce] || !cancelledNonces[ask.sender][ask.nonce]) {
+      revert OrderCancelled();
+    }
+
+    // 2. Fund and create a new wallet
+    Market memory _market = markets[bid.marketId];
+    newWallet = address(deployClone(bid.sender, address(this)));
+
+    // 2.1 Fund wallet
+    custodian.spendFunds(_market.token, newWallet, ask.sender, ask.amount);
+    // 2.2 Execute Script
+    WeirollWallet(newWallet).executeWeiroll(_market.weirollCommands, _market.weirollState);
+
+    // 3. Handle Rewards Logic
+    if (bid._type == Type.LumpsumUnlocked) {
+      // Pay out rewards right away
+      custodian.spendFunds(_market.token, ask.sender, bid.sender, bid.incentiveAmount);
+    } else if (bid._type == Type.LumpsumLocked) {
+      WeirollWallet(newWallet).lockWallet(bid.duration);
+      DssVestTransferrable vest = vestingContracts[bid.token];
+      if (address(vest) == address(0)) {
+        vest = new DssVestTransferrable(address(_market.token), address(this));
+        vestingContracts[bid.token] = vest;
+      }
+      vest.create(ask.sender, ask.incentiveAmount, block.timestamp, bid.duration, bid.duration, address(0));
+    } else if (bid._type == Type.StreamingUnlocked) {
+      // Deploy and fund a new pastry chef
+    } else if (bid._type == Type.StreamingLocked) {
+      WeirollWallet(newWallet).lockWallet(bid.duration);
+      
+      DssVestTransferrable vest = vestingContracts[bid.token];
+      if (address(vest) == address(0)) {
+        vest = new DssVestTransferrable(address(_market.token), address(this));
+        vestingContracts[bid.token] = vest;
+      }
+      
+      vest.create(ask.sender, ask.incentiveAmount, block.timestamp, bid.duration, 0, address(0));
+    }
+  }
 }

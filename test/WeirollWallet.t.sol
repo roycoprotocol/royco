@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 // Smart wallet contracts
-import {Smartwallet} from "src/WeirollWalletImplementation.sol";
-import {WalletFactory} from "src/WalletFactory.sol";
+import { WeirollWallet } from "src/WeirollWallet.sol";
+import { WalletFactory } from "src/WalletFactory.sol";
 
 // Testing contracts
-import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
+import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 
 contract WeirollWalletTest is DSTestPlus {
     ExampleFactory public factory;
@@ -21,7 +21,7 @@ contract WeirollWalletTest is DSTestPlus {
     }
 
     function testWalletVariablesSet() public {
-        Smartwallet wallet = Smartwallet(factory.createWallet(address(0x01), address(this)));
+        WeirollWallet wallet = WeirollWallet(factory.createWallet(address(0x01), address(this)));
         assertEq(wallet.getOwner(), address(0x01));
         assertEq(wallet.getOrderbook(), address(this));
     }
@@ -29,7 +29,7 @@ contract WeirollWalletTest is DSTestPlus {
 
 // Example Factory for deploying wallet implementation clowns
 contract ExampleFactory is WalletFactory {
-    constructor() WalletFactory(address(new Smartwallet())) {}
+    constructor() WalletFactory(address(new WeirollWallet())) { }
 
     function createWallet(address owner, address orderbook) public returns (address) {
         return address(deployClone(owner, orderbook));
