@@ -33,9 +33,9 @@ contract Custodian is Owned(msg.sender) {
     }
 
     /// @dev Tracks user deposits into the the Custodian contract
-    mapping(address DepositKey => uint256 balance) public balances;
+    mapping(bytes32 key => uint256 balance) public balances;
     /// @dev Tracks how much funds are locked by the spender
-    mapping(address DepositKey => uint256 balance) public holds;
+    mapping(bytes32 key => uint256 balance) public holds;
 
     /*//////////////////////////////////////////////////////////////
                                 UTILS
@@ -62,7 +62,7 @@ contract Custodian is Owned(msg.sender) {
           spender: spender
         });
 
-        balances[key] += amount;
+        balances[keccak256(abi.encode(key))] += amount;
         SafeTransferLib.safeTransferFrom(token, msg.sender, address(this), amount);
     }
 
@@ -76,7 +76,7 @@ contract Custodian is Owned(msg.sender) {
           spender: msg.sender
         });
 
-        holds[key] += hold;
+        holds[keccak256(abi.encode(key))] += hold;
     }
 
     /// @param token The ERC20 Token 
@@ -89,7 +89,7 @@ contract Custodian is Owned(msg.sender) {
           spender: msg.sender
         });
 
-        holds[key] -= hold;
+        holds[keccak256(abi.encode(key))] -= hold;
     }
 
 
@@ -102,8 +102,8 @@ contract Custodian is Owned(msg.sender) {
           spender: spender
         });
 
-        balances[key] -= amount;
-        if (balances[key] < holds[key]) {
+        balances[keccak256(abi.encode(key))] -= amount;
+        if (balances[keccak256(abi.encode(key))] < holds[keccak256(abi.encode(key))]) {
           revert FundsOnHold();
         }
         SafeTransferLib.safeTransfer(token, msg.sender, amount);
@@ -120,7 +120,7 @@ contract Custodian is Owned(msg.sender) {
         spender: msg.sender
       });
 
-      balances[key] -= amount;
+      balances[keccak256(abi.encode(key))] -= amount;
       SafeTransferLib.safeTransfer(token, to, amount);
     }
 }

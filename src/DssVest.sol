@@ -23,9 +23,6 @@ interface MintLike {
     function mint(address, uint256) external;
 }
 
-interface ChainlogLike {
-    function getAddress(bytes32) external view returns (address);
-}
 
 interface DaiJoinLike {
     function exit(address, uint256) external;
@@ -41,7 +38,7 @@ interface TokenLike {
     function transferFrom(address, address, uint256) external returns (bool);
 }
 
-contract DssVest {
+abstract contract DssVest {
     // --- Data ---
     mapping(address => uint256) public wards;
 
@@ -416,7 +413,7 @@ contract DssVestTransferrable is DssVest {
      *     @param _czar The owner of the tokens to be distributed
      *     @param _gem  The token to be distributed
      */
-    constructor(address _czar, address _gem) public DssVest() {
+    constructor(address _czar, address _gem) DssVest() {
         require(_czar != address(0), "DssVestTransferrable/Invalid-distributor-address");
         require(_gem != address(0), "DssVestTransferrable/Invalid-token-address");
         czar = _czar;

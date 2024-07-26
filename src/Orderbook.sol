@@ -24,6 +24,7 @@ contract Orderbook is WalletFactory {
     custodian = Custodian(_custodian);
   }
 
+  event OrderSubmitted(Order order, bytes signature);
 
   /*//////////////////////////////////////////////////////////////
                             STORAGE
@@ -74,6 +75,7 @@ contract Orderbook is WalletFactory {
   error DurationMistach();
   error OrderCancelled();
   error TypeMismatch();
+  error IncorrectSignature();
 
   event NewOrder();
   
@@ -90,20 +92,25 @@ contract Orderbook is WalletFactory {
   }
 
   function submitOrder(Order calldata order, bytes memory sig) public {
-
+    emit OrderSubmitted(order, sig);
   }
 
-  function matchOrders(Order calldata bid, bytes memory bidSignature, Order calldata ask bytes memory askSignature) public returns (address newWallet){
+  function matchOrders(Order calldata bid, bytes memory bidSignature, Order calldata ask, bytes memory askSignature) public returns (address newWallet){
 
     // 1. Validate Orders are correct and truthful
-    bytes32 hash = keccak256(abi.encodePacked(msg.sender, name, ticker));
+    bytes32 hash = keccak256(abi.encode(bid));
     bytes32 signedHash = hash.toEthSignedMessageHash();
-    address approved = ECDSA.recover(signedHash, signature);
-    if (approved != signer) {
-      revert NotApproved();
+    address approved = ECDSA.recover(signedHash, bidSignature);
+    if (approved != bid.sender) {
+      revert IncorrectSignature();
     }
- 
 
+    hash = keccak256(abi.encode(ask));
+    signedHash = hash.toEthSignedMessageHash();
+    approved = ECDSA.recover(signedHash, askSignature);
+    if (approved != ask.sender) {
+      revert IncorrectSignature();
+    }
 
     if (bid.marketId != ask.marketId) {
       revert MarketMismatch();
