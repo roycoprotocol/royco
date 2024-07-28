@@ -106,32 +106,65 @@ contract Order is Clone, VM {
     }
 
     /*//////////////////////////////////////////////////////////////
+                            CANCELLATION LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice The order has been cancelled.
+    bool public cancelled;
+
+    /// @notice Cancel the order.
+    /// @dev Only the owner of the order can cancel it.
+    function cancel(ERC20[] calldata tokens) public onlyMarket {
+        // Mark the order as cancelled.
+        cancelled = true;
+
+        // If the order is a Reward Order, return the tokens to the Reward Provider.
+        if (side() == Side.RewardOrder) {
+            for (uint256 i = 0; i < amounts.length; i++) {
+                ERC20 token = tokens[i];
+                token.transfer(owner(), amounts[i]);
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
                                EXECUTION LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /// @notice This function can only be called if the order is an Action Order.
     error ActionOrderOnly();
 
-    /// @notice Execute the Weiroll VM with the given commands.
-    /// @param commands The commands to be executed by the Weiroll VM.
-    /// @dev No state parameter is necessary because the proposed state is stored in the contract.
-    function executeWeiroll(bytes32[] calldata commands) public payable onlyMarket notLocked returns (bytes[] memory) {
-        // Only Action Orders can execute Weiroll commands.
-        if (side() == Side.RewardOrder) {
+    /// @notice This function can only be called if the order is an Action Order.
+    modifier onlyActionOrder() {
+        // Only Action Orders can call these functions.
+        if (side() != Side.ActionOrder) {
             revert ActionOrderOnly();
         }
 
+        // The order must not be cancelled.
+        require(!cancelled, "Order has been cancelled");
+
+        // Call function.
+        _;
+    }
+
+    /// @notice Execute the Weiroll VM with the given commands.
+    /// @param commands The commands to be executed by the Weiroll VM.
+    /// @dev No state parameter is necessary because the proposed state is stored in the contract.
+    function executeWeiroll(
+        bytes32[] calldata commands
+    ) public payable onlyMarket onlyActionOrder notLocked returns (bytes[] memory) {
+        // Execute the Weiroll VM.
         return _execute(commands, weirollState);
     }
 
     /// @notice Execute a generic call to another contract.
     /// note: SHOULD THIS FUNCTION BE ALLOWED IF THIS IS A REWARD ORDER?
-    function execute(address to, uint256 value, bytes memory data) public onlyOwner notLocked returns (bytes memory) {
-        // Only Action Orders can have this function called.
-        if (side() == Side.RewardOrder) {
-            revert ActionOrderOnly();
-        }
-
+    function execute(
+        address to,
+        uint256 value,
+        bytes memory data
+    ) public onlyOwner onlyActionOrder notLocked returns (bytes memory) {
         // Execute the call.
         (bool success, bytes memory result) = to.call{value: value}(data);
         if (!success) {
@@ -146,16 +179,25 @@ contract Order is Clone, VM {
     /// @notice This function can only be called if the order is an Reward Order.
     error RewardOrderOnly();
 
+    /// @notice This function can only be called if the order is an Action Order.
+    modifier onlyRewardOrder() {
+        // Only Action Orders can call these functions.
+        if (side() != Side.RewardOrder) {
+            revert RewardOrderOnly();
+        }
+
+        // The order must not be cancelled.
+        require(!cancelled, "Order has been cancelled");
+
+        // Call function.
+        _;
+    }
+
     /// @notice Distribute the rewards to the Reward Provider.
     /// @dev Only the Market contract can call this function.
     /// @param tokens The tokens to be distributed.
     /// @param recipient The address of the Action Provider receiving the rewards.
-    function distributeRewards(ERC20[] calldata tokens, address recipient) public onlyMarket notLocked {
-        // Only Reward Orders can distribute rewards.
-        if (side() == Side.ActionOrder) {
-            revert RewardOrderOnly();
-        }
-
+    function distributeRewards(ERC20[] calldata tokens, address recipient) public onlyMarket onlyRewardOrder notLocked {
         // Transfer the rewards to the Action .
         for (uint256 i = 0; i < amounts.length; i++) {
             ERC20 token = tokens[i];
