@@ -81,6 +81,62 @@ contract LumpSumMarket is Market, OrderFactory {
     }
 
     /*//////////////////////////////////////////////////////////////
+                          ORDER MATCHING LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Match an Action Order with a Reward Order.
+    /// @param rewardOrder Address of the Reward Order.
+    /// @param actionOrder Address of the Action Order.
+    /// @dev This function will fail if the orders belong to different markets so no need to check.
+    function matchOrders(Order rewardOrder, Order actionOrder) external {
+        // Ensure that the orders are matchable.
+        validateOrders(rewardOrder, actionOrder);
+
+        // Execute the weiroll commands.
+        // This should fail if the Action Order is not executed successfully.
+        actionOrder.executeWeiroll(weirollCommands);
+
+        // Transfer the tokens to the action order owner.
+        rewardOrder.distributeRewards(tokens, rewardOrder.owner());
+    }
+
+    /// @notice Ensure that two orders are matchable.
+    /// @param rewardOrder Address of the Reward Order.
+    /// @param actionOrder Address of the Action Order.
+    function validateOrders(Order rewardOrder, Order actionOrder) public view {
+        // Ensure that the orders are of the correct sides.
+        require(rewardOrder.side() == Order.Side.RewardOrder, "LumpSumMarket: reward order is not a Reward Order");
+        require(actionOrder.side() == Order.Side.ActionOrder, "LumpSumMarket: action order is not an Action Order");
+
+        // Store the length of the token amounts and weiroll state arrays.
+        uint256 tokenAmountsLength = rewardOrder.getAmounts().length;
+        uint256 weirollStateLength = rewardOrder.getWeirollState().length;
+
+        // Ensure that the token amounts and weiroll state arrays are of the same length.
+        require(tokenAmountsLength == actionOrder.getAmounts().length, "LumpSumMarket: token amounts length mismatch");
+        require(
+            weirollStateLength == actionOrder.getWeirollState().length,
+            "LumpSumMarket: weiroll state length mismatch"
+        );
+
+        // Ensure that the values of the token amounts and weiroll state arrays are the same.
+        for (uint256 i = 0; i < tokenAmountsLength; i++) {
+            require(rewardOrder.amounts(i) == actionOrder.amounts(i), "LumpSumMarket: token amounts mismatch");
+        }
+        for (uint256 i = 0; i < weirollStateLength; i++) {
+            require(
+                compareBytes(rewardOrder.weirollState(i), actionOrder.weirollState(i)),
+                "LumpSumMarket: weiroll state mismatch"
+            );
+        }
+    }
+
+    /// @notice Compare two bytes arrays.
+    function compareBytes(bytes memory a, bytes memory b) internal pure returns (bool) {
+        return keccak256(a) == keccak256(b);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                         ORDER CANCELATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
