@@ -66,6 +66,16 @@ contract Order is Clone, VM {
         weirollState = _weirollState;
     }
 
+    /// @notice Get amounts array.
+    function getAmounts() public view returns (uint256[] memory) {
+        return amounts;
+    }
+
+    /// @notice Get weirollState array.
+    function getWeirollState() public view returns (bytes[] memory) {
+        return weirollState;
+    }
+
     /*//////////////////////////////////////////////////////////////
                                STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
