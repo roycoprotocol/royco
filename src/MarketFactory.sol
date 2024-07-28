@@ -10,10 +10,11 @@ import {MarketType} from "./interfaces/IMarket.sol";
 /// @notice Factory for creating new markets
 /// @dev This contract is responsible for creating new markets and setting up the initial state of the market.
 contract MarketFactory {
+    using ClonesWithImmutableArgs for address;
+
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    using ClonesWithImmutableArgs for address;
 
     /// @dev The address of the LumpSumMarket implementation contract
     address public immutable LUMP_SUM_IMPLEMENTATION;
