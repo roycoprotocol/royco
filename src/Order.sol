@@ -18,7 +18,7 @@ contract Order is Clone, VM {
 
     /// @notice Only the owner of the contract can call the function
     modifier onlyOwner() {
-        if (msg.sender != getOwner()) {
+        if (msg.sender != owner()) {
             revert NotOwner();
         }
         _;
@@ -26,7 +26,7 @@ contract Order is Clone, VM {
 
     /// @notice Only the orderbook contract can call the function
     modifier onlyMarket() {
-        if (msg.sender != getMarket()) {
+        if (msg.sender != market()) {
             revert NotMarket();
         }
         _;
@@ -53,17 +53,17 @@ contract Order is Clone, VM {
     }
 
     /// @notice The address of the order creator (owner)
-    function getOwner() public pure returns (address) {
+    function owner() public pure returns (address) {
         return _getArgAddress(0);
     }
 
     /// @notice The address of the Market contract.
-    function getMarket() public pure returns (address) {
+    function market() public pure returns (address) {
         return _getArgAddress(20);
     }
 
     /// @notice The address of the Market contract.
-    function getSide() public pure returns (Side) {
+    function side() public pure returns (Side) {
         return Side(_getArgUint256(40));
     }
 
