@@ -37,4 +37,9 @@ contract LumpSumMarketTest is DSTestPlus {
         // Market ID should be 0
         assertEq(lumpSumMarket.getMarketId(), 0);
     }
+
+    function testMarketType() public {
+        // Market type should be Streaming
+        assertEq(uint256(lumpSumMarket.getMarketType()), uint256(MarketType.LUMP_SUM));
+    }
 }
