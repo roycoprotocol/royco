@@ -2,8 +2,11 @@
 pragma solidity ^0.8.0;
 
 import {ClonesWithImmutableArgs} from "../lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
+import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 
 import {MarketType} from "./markets/interfaces/Market.sol";
+import {LumpSumMarket} from "./markets/LumpSumMarket.sol";
+import {StreamingMarket} from "./markets/StreamingMarket.sol";
 
 /// @title Market Factory
 /// @author Royco
@@ -43,13 +46,19 @@ contract MarketFactory {
     event MarketDeployed(MarketType indexed marketType, address indexed marketAddress, uint256 indexed marketId);
 
     /// @dev Deploy a new LumpSumMarket
-    function deployLumpSumMarket() external returns (address clone) {
+    function deployLumpSumMarket(
+        ERC20[] calldata tokens,
+        bytes32[] calldata weirollCommands
+    ) external returns (address clone) {
         // Encode the marketId to be stored within the clone bytecode.
         bytes memory data = abi.encodePacked(marketId);
         clone = LUMP_SUM_IMPLEMENTATION.clone(data);
 
         // Increment the marketID.
         marketId++;
+
+        // // Initialize the market.
+        LumpSumMarket(clone).initialize(ORDER_IMPLEMENTATION, tokens, weirollCommands);
 
         // Emit the event.
         emit MarketDeployed(MarketType.LUMP_SUM, clone, marketId);
