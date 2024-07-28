@@ -9,6 +9,7 @@ import {Order} from "../src/Order.sol";
 
 // Testing contracts
 import {DSTestPlus} from "../lib/solmate/src/test/utils/DSTestPlus.sol";
+import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 
 /// @title MarketFactoryTest
 /// @author Royco
@@ -29,8 +30,8 @@ contract LumpSumMarketTest is DSTestPlus {
         // The streaming market implementation address is not needed for this test so we pass the same address twice.
         marketFactory = new MarketFactory(marketImplementation, marketImplementation, address(new Order()));
 
-        // Deploy two lump sum markets. The first one will be used to increase the market ID.
-        lumpSumMarket = LumpSumMarket(marketFactory.deployLumpSumMarket());
+        // Deploy a LumpSum Market.
+        lumpSumMarket = LumpSumMarket(marketFactory.deployLumpSumMarket(new ERC20[](0), new bytes32[](0)));
     }
 
     function testMarketId() public {
