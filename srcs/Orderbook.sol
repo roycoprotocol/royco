@@ -9,10 +9,10 @@ import { ECDSA } from "lib/solady/src/utils/ECDSA.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 
 // Contracts
-import { Custodian } from "src/Custodian.sol";
-import { WalletFactory } from "src/WalletFactory.sol";
-import { WeirollWallet } from "src/WeirollWallet.sol";
-import { DssVestTransferrable } from "src/DssVest.sol";
+import { Custodian } from "srcs/Custodian.sol";
+import { WalletFactory } from "srcs/WalletFactory.sol";
+import { WeirollWallet } from "srcs/WeirollWallet.sol";
+import { DssVestTransferrable } from "srcs/DssVest.sol";
 
 contract Orderbook is WalletFactory {
   using ECDSA for bytes32;
@@ -61,12 +61,12 @@ contract Orderbook is WalletFactory {
     uint128 nonce;
   }
 
-  mapping(address user => mapping(uint128 nonce => bool cancelled)) public cancelledNonces;
-  mapping(uint96 marketId => Market _market) public markets;
+  mapping(address => mapping(uint128 => bool)) public cancelledNonces;
+  mapping(uint96 => Market) public markets;
 
   Custodian public custodian;
 
-  mapping(ERC20 token => DssVestTransferrable vesting) public vestingContracts;
+  mapping(ERC20 => DssVestTransferrable) public vestingContracts;
   /*//////////////////////////////////////////////////////////////
                               INTERFACE
   //////////////////////////////////////////////////////////////*/

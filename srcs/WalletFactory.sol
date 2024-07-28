@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { ClonesWithImmutableArgs } from "../lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
-import { WeirollWallet } from "./WeirollWallet.sol";
+import {ClonesWithImmutableArgs} from "../lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
+import {WeirollWallet} from "./WeirollWallet.sol";
 
 contract WalletFactory {
     using ClonesWithImmutableArgs for address;
@@ -24,9 +24,11 @@ contract WalletFactory {
         address owner,
         address orderbook
     )
-        // uint256 unlockTime
         internal
-        returns (WeirollWallet clone)
+        returns (
+            // uint256 unlockTime
+            WeirollWallet clone
+        )
     {
         // the second parameter is the address of the of the orderbook
         bytes memory data = abi.encodePacked(owner, orderbook);
