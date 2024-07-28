@@ -103,6 +103,7 @@ contract LumpSumMarket is Market, OrderFactory {
     /// @notice Ensure that two orders are matchable.
     /// @param rewardOrder Address of the Reward Order.
     /// @param actionOrder Address of the Action Order.
+    /// TODO: THE CRIETERIA FOR MATCHING ORDERS NEEDS TO BE DEFINED.
     function validateOrders(Order rewardOrder, Order actionOrder) public view {
         // Ensure that the orders are of the correct sides.
         require(rewardOrder.side() == Order.Side.RewardOrder, "LumpSumMarket: reward order is not a Reward Order");
