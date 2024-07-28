@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import {MarketFactory} from "../src/MarketFactory.sol";
 import {LumpSumMarket} from "../src/markets/LumpSumMarket.sol";
 import {MarketType} from "../src/markets/interfaces/Market.sol";
+import {Order} from "../src/Order.sol";
 
 // Testing contracts
 import {DSTestPlus} from "../lib/solmate/src/test/utils/DSTestPlus.sol";
@@ -26,7 +27,7 @@ contract LumpSumMarketTest is DSTestPlus {
 
         // Deploy MarketFactory
         // The streaming market implementation address is not needed for this test so we pass the same address twice.
-        marketFactory = new MarketFactory(marketImplementation, marketImplementation);
+        marketFactory = new MarketFactory(marketImplementation, marketImplementation, address(new Order()));
 
         // Deploy two lump sum markets. The first one will be used to increase the market ID.
         lumpSumMarket = LumpSumMarket(marketFactory.deployLumpSumMarket());

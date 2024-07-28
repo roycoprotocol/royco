@@ -29,8 +29,9 @@ contract LumpSumMarket is Market, OrderFactory {
         ERC20[] calldata _tokens,
         bytes32[] calldata _weirollCommands
     ) external {
+        // TODO: The order implementation contract can be passed as an immutable argument.
+        orderImplementation = _orderImplementation;
         tokens = _tokens;
         weirollCommands = _weirollCommands;
-        orderImplementation = _orderImplementation;
     }
 }

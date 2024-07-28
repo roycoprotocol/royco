@@ -22,9 +22,13 @@ contract MarketFactory {
     /// @dev The address of the StreamingMarket implementation contract
     address public immutable STREAMING_IMPLEMENTATION;
 
-    constructor(address lumpSumImplementation_, address streamingImplementation_) {
+    /// @dev The address of the Order implementation contract
+    address public immutable ORDER_IMPLEMENTATION;
+
+    constructor(address lumpSumImplementation_, address streamingImplementation_, address orderImplementation_) {
         LUMP_SUM_IMPLEMENTATION = lumpSumImplementation_;
         STREAMING_IMPLEMENTATION = streamingImplementation_;
+        ORDER_IMPLEMENTATION = orderImplementation_;
     }
 
     /*//////////////////////////////////////////////////////////////

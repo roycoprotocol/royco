@@ -18,9 +18,9 @@ contract OrderFactory {
 
     /// @notice Deploy a proxy for the order implementation contract
     // todo: MORE NEEDS TO BE DONE HERE FOR DIFFERENTIATING BETWEEN ACTION ORDERS AND REWARD ORDERS
-    function deployClone(address market, address creator, uint256 side) internal returns (address clone) {
+    function deployClone(address owner, address market, uint256 side) internal returns (address clone) {
         // Pack the data to be passed to the implementation contract.
-        bytes memory data = abi.encodePacked(market, creator, side);
+        bytes memory data = abi.encodePacked(owner, market, side);
 
         // Deploy the clone.
         clone = orderImplementation.clone(data);

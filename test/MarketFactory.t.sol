@@ -25,7 +25,8 @@ contract MarketFactoryTest is DSTestPlus {
         lumpSumMarketImplementation = address(new LumpSumMarket());
 
         // Deploy MarketFactory
-        marketFactory = new MarketFactory(streamingMarketImplementation, lumpSumMarketImplementation);
+        // Order implementation address is not needed for this test so we pass the zero address.
+        marketFactory = new MarketFactory(streamingMarketImplementation, lumpSumMarketImplementation, address(0));
     }
 
     function testStreamingMarketCreation() public {
