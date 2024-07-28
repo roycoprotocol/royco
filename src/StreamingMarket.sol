@@ -5,6 +5,6 @@ import {IMarket, MarketType} from "./interfaces/IMarket.sol";
 
 contract StreamingMarket is IMarket {
     function getMarketType() external pure override returns (MarketType) {
-        return MarketType.LUMP_SUM;
+        return MarketType.STREAMING;
     }
 }
