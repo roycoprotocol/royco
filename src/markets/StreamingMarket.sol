@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {IMarket, MarketType} from "./interfaces/IMarket.sol";
+import {Market, MarketType} from "./interfaces/Market.sol";
 
-contract LumpSumMarket is IMarket {
+contract StreamingMarket is Market {
     function getMarketType() external pure override returns (MarketType) {
-        return MarketType.LUMP_SUM;
+        return MarketType.STREAMING;
     }
 }

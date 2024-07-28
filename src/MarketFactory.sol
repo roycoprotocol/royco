@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {ClonesWithImmutableArgs} from "../lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 
-import {MarketType} from "./interfaces/IMarket.sol";
+import {MarketType} from "./markets/interfaces/Market.sol";
 
 /// @title Market Factory
 /// @author Royco

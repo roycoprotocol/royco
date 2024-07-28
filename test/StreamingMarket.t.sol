@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 // MarketFactory and Market Contracts
 import {MarketFactory} from "../src/MarketFactory.sol";
-import {StreamingMarket} from "../src/StreamingMarket.sol";
-import {MarketType} from "../src/interfaces/IMarket.sol";
+import {StreamingMarket} from "../src/markets/StreamingMarket.sol";
+import {MarketType} from "../src/markets/interfaces/Market.sol";
 
 // Testing contracts
 import {DSTestPlus} from "../lib/solmate/src/test/utils/DSTestPlus.sol";
