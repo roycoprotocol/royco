@@ -29,18 +29,6 @@ contract Orderbook is WalletFactory {
   /*//////////////////////////////////////////////////////////////
                             STORAGE
   //////////////////////////////////////////////////////////////*/
-  enum Type {
-    StreamingLocked,
-    StreamingUnlocked,
-    LumpsumLocked,
-    LumpsumUnlocked
-  }
-
-  enum Side {
-    Ask, // Offering to Provide Incentives
-    Bid // Offering to LP Tokens
-  }
-
   struct Market {
     ERC20 token;
     bytes32[] weirollCommands;

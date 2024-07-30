@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
-import { EnumerableSetLib } from "lib/solady/src/utils/EnumerableSetLib.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 
 /// PastryChef is a bit like MasterChef, but he has more variety. He is a fair chef
