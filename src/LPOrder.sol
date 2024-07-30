@@ -10,7 +10,7 @@ import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 /// @author Royco
 /// @notice LPOrder implementation contract.
 ///   Implements a simple LP order to supply an asset for a given action
-contract LPOrder is Clone, VM, Owned(msg.sender) {
+contract LPOrder is Clone, VM {
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
@@ -27,7 +27,7 @@ contract LPOrder is Clone, VM, Owned(msg.sender) {
     }
 
     /// @notice Only the orderbook contract can call the function
-    modifier onlyMarket() {
+    modifier onlyOrderbook() {
         if (msg.sender != market()) {
             revert NotMarket();
         }
@@ -43,18 +43,18 @@ contract LPOrder is Clone, VM, Owned(msg.sender) {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              CONSTRUCTOR
+                            INITIALIZATION
     //////////////////////////////////////////////////////////////*/
     ERC20 immutable public depositToken;
     bool public executed;
 
-    function fundOrder() external {
-
+    function fundSweepToNewOrder(address newAddress, uint256 amountToSweep) onlyOrderbook external {
+      _depositToken.transfer(newAddress, amountToSweep);
     }
 
     function initialize(
       uint256[] calldata markets
-    ) external {
+    ) onlyOrderbook external {
       ERC20 _depositToken = depositToken();
       _depositToken.transferFrom(owner(), address(this), amount());
 
@@ -67,11 +67,14 @@ contract LPOrder is Clone, VM, Owned(msg.sender) {
     /*//////////////////////////////////////////////////////////////
                                STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
-    mapping(uint256 marketId => bool) public supportedMarkets;   
-
+    
     /// @notice The address of the order creator (owner)
     function owner() public pure returns (address) {
         return _getArgAddress(0);
+    }
+    
+    function orderbook() public pure returns (address) {
+      return _getArgAddress(60);
     }
 
     function depositToken() public pure returns (ERC20) {
@@ -82,6 +85,10 @@ contract LPOrder is Clone, VM, Owned(msg.sender) {
       return _getArgUint256(40);
     } 
 
+    mapping(uint256 marketId => bool) public supportedMarkets;   
+
+    address incentiveProvider;
+    addres 
     /*//////////////////////////////////////////////////////////////
                                LOCKING LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -90,7 +97,7 @@ contract LPOrder is Clone, VM, Owned(msg.sender) {
     uint256 public lockedUntil;
 
     /// @notice Lock the wallet until a certain time.
-    function lockWallet(uint256 unlockTime) public onlyMarket {
+    function lockWallet(uint256 unlockTime) public onlyOrderbook {
         lockedUntil = unlockTime;
     }
 
@@ -103,7 +110,7 @@ contract LPOrder is Clone, VM, Owned(msg.sender) {
 
     /// @notice Cancel the order.
     /// @dev Only the owner of the order can cancel it.
-    function cancel(ERC20[] calldata tokens) public onlyMarket {
+    function cancel(ERC20[] calldata tokens) public onlyOrderbook {
         // Mark the order as cancelled.
         cancelled = true;
     }
@@ -119,7 +126,7 @@ contract LPOrder is Clone, VM, Owned(msg.sender) {
     function executeWeiroll(
         bytes32[] calldata commands,
         bytes[] calldata state
-    ) public payable onlyMarket notLocked returns (bytes[] memory) {
+    ) public payable onlyOrderbook notLocked returns (bytes[] memory) {
         if (executed) {
           revert AlreadyRan();
         }
