@@ -20,7 +20,7 @@ contract Points {
 
     uint8 public immutable decimals;
 
-    constructor(string calldata _name, string calldata _symbol) {
+    constructor(string memory _name, string memory _symbol) {
       name = _name;
       symbol = _symbol;
       decimals = 18;

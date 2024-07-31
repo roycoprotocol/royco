@@ -35,7 +35,7 @@ contract Orderbook {
         address sender;
         uint96 duration;
         uint128 amount;
-        uint128 incentiveAmount;
+        uint128 incentiveAmountPerToken;
         uint128 marketId;
     }
 
@@ -115,11 +115,11 @@ contract Orderbook {
         emit OrderSubmitted(address(clone), msg.sender, allowedMarkets);
     }
 
-    function createIPOrder(uint96 _duration, uint128 _amount, uint128 _incentiveAmount, uint128 _marketId) external returns (uint256 IPOrderId) {
+    function createIPOrder(uint96 _duration, uint128 _amount, uint128 _incentiveAmountPerToken, uint128 _marketId) external returns (uint256 IPOrderId) {
         Market memory _market = markets[_marketId];
-        _market.primaryRewardToken.safeTransferFrom(msg.sender, address(this), _incentiveAmount);
+        _market.primaryRewardToken.safeTransferFrom(msg.sender, address(this), uint256(_amount) * uint256(_incentiveAmountPerToken) / 1e18);
 
-        IPOrder memory order = IPOrder({ sender: msg.sender, duration: _duration, amount: _amount, incentiveAmount: _incentiveAmount, marketId: _marketId });
+        IPOrder memory order = IPOrder({ sender: msg.sender, duration: _duration, amount: _amount, incentiveAmountPerToken: _incentiveAmountPerToken, marketId: _marketId });
 
         IPOrderId = maxIPOrderId++;
         IpOrders[IPOrderId] = order;
@@ -152,7 +152,7 @@ contract Orderbook {
 
             LPOrder clone = LPOrder(
                 ORDER_IMPLEMENTATION.clone(
-                    abi.encode(_LpOrder.owner(), _LpOrder.depositToken(), delta, address(this), _LpOrder.maxDuration(), _LpOrder.desiredIncentives)
+                    abi.encode(_LpOrder.owner(), _LpOrder.depositToken(), delta, address(this), _LpOrder.maxDuration(), _LpOrder.desiredIncentives())
                 )
             );
 
@@ -178,13 +178,13 @@ contract Orderbook {
             _LpOrder.lockWallet(block.timestamp + IpOrder.duration);
         }
 
-        OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmount;
+        OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmountPerToken * lpOrderAmount;
     }
 
     function validateOrder(IPOrder memory IpOrder, LPOrder lpOrder) public view {
         require(lpOrder.supportedMarkets(IpOrder.marketId), "Royco: Market Mismatch");
         require(lpOrder.maxDuration() >= IpOrder.duration, "Royco: Duration Mismatch");
-        require(lpOrder.desiredIncentives() >= IpOrder.incentiveAmount, "Royco: Not Enough Incentives");
+        require(lpOrder.desiredIncentives() >= IpOrder.incentiveAmountPerToken, "Royco: Not Enough Incentives");
     }
 
     /// @param token The Token to Claim Rewards In
