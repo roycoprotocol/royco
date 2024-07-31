@@ -91,6 +91,68 @@ contract Orderbook {
     }
 
     /*//////////////////////////////////////////////////////////////
+                                VESTING
+    //////////////////////////////////////////////////////////////*/
+    struct VestingSchedule {
+      ERC20 rewardToken
+      address beneficiary;
+      uint64 startTime;
+      uint64 duration;
+      uint128 totalAmount;
+      uint128 releasedAmount;
+    }
+
+    uint256 private nextTicketId = 1;
+    mapping(uint256 ticket => VestingSchedule) public vestingSchedules;
+ 
+    function createVestingTicket(address _beneficiary, uint256 _totalAmount, uint256 _duration, ERC20 _rewardToken) internal returns (uint256) {
+      require(_beneficiary != address(0), "Invalid beneficiary address");
+      require(_totalAmount > 0 && _totalAmount <= type(uint128).max, "Invalid total amount");
+      require(_duration > 0 && _duration <= type(uint64).max, "Invalid duration");
+
+      uint256 newTicketId = _nextTicketId++;
+
+      vestingSchedules[newTicketId] = VestingSchedule({
+        rewardToken: _rewardToken,
+        beneficiary: _beneficiary,
+        startTime: uint64(block.timestamp),
+        duration: uint64(_duration),
+        totalAmount: uint128(_totalAmount),
+        releasedAmount: 0
+      });
+
+      emit VestingScheduleCreated(newTicketId, _beneficiary, _totalAmount, block.timestamp, _duration);
+
+      return newTicketId;
+    }
+
+    function releaseVestedTokens(uint256 _ticketId) external returns (uint256) {
+      VestingSchedule storage schedule = vestingSchedules[_ticketId];
+      require(schedule.beneficiary == msg.sender, "Only the beneficiary can release tokens");
+
+      uint256 startTime = schedule.startTime;
+      uint256 duration = schedule.duration;
+      uint256 totalAmount = schedule.totalAmount;
+      uint256 releasedAmount = schedule.releasedAmount;
+
+      uint256 vestedAmount;
+      if (block.timestamp < startTime) {
+        vestedAmount = 0;
+      } else if (block.timestamp >= startTime + duration) {
+        vestedAmount = totalAmount;
+      } else {
+        vestedAmount = (totalAmount * (block.timestamp - startTime)) / duration;
+      }
+
+      uint256 releaseableAmount = vestedAmount - releasedAmount;
+      schedule.releasedAmount = uint128(releasedAmount + releaseableAmount);
+
+      rewardToken.safeTransfer(schedule.beneficiary, releaseableAmount);
+
+      emit TokensReleased(_ticketId, schedule.beneficiary, releaseableAmount);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                                ORDERS
     //////////////////////////////////////////////////////////////*/
     function createLPOrder(
@@ -133,7 +195,7 @@ contract Orderbook {
         uint256[] calldata allowedMarkets,
         uint256 IPOrderId
     ) external {
-      (LPOrder clone, uint256 LPOrderId) = createLPOrder(depositToken, tokenAmount, maxDuration, desiredIncentives, allowedMarkets);
+      ( , uint256 LPOrderId) = createLPOrder(depositToken, tokenAmount, maxDuration, desiredIncentives, allowedMarkets);
       matchOrders(IPOrderId, LPOrderId);
     }
 
@@ -142,9 +204,9 @@ contract Orderbook {
       uint128 _amount, 
       uint128 _incentiveAmountPerToken, 
       uint128 _marketId,
-      uint256 LPOrderId,
+      uint256 LPOrderId
     ) external {
-      uint256 IPOrderId = createIPOrder(_duration, _amount, _incentiveAmountPerToken, _marketId, LPOrderId);
+      uint256 IPOrderId = createIPOrder(_duration, _amount, _incentiveAmountPerToken, _marketId);
       matchOrders(IPOrderId, LPOrderId);
     }
 

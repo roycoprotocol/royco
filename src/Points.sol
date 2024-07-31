@@ -26,7 +26,8 @@ contract Points {
       decimals = 18;
     }
 
-    function transfer(address to, uint256 amount) public virtual returns (bool) {
+    function transfer(address to, uint256 amount) public virtual returns (bool success) {
+        success = true;
         emit Transfer(msg.sender, to, amount);
     }
 }
