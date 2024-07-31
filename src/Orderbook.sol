@@ -94,7 +94,7 @@ contract Orderbook {
                                 VESTING
     //////////////////////////////////////////////////////////////*/
     struct VestingSchedule {
-      ERC20 rewardToken
+      ERC20 rewardToken;
       address beneficiary;
       uint64 startTime;
       uint64 duration;
@@ -104,13 +104,16 @@ contract Orderbook {
 
     uint256 private nextTicketId = 1;
     mapping(uint256 ticket => VestingSchedule) public vestingSchedules;
- 
+
+    event VestingScheduleCreated(uint256 indexed ticketId, address indexed beneficiary, uint256 totalAmount, uint256 startTime, uint256 duration);
+    event TokensReleased(uint256 indexed ticketId, address indexed beneficiary, uint256 amount);
+
     function createVestingTicket(address _beneficiary, uint256 _totalAmount, uint256 _duration, ERC20 _rewardToken) internal returns (uint256) {
       require(_beneficiary != address(0), "Invalid beneficiary address");
       require(_totalAmount > 0 && _totalAmount <= type(uint128).max, "Invalid total amount");
       require(_duration > 0 && _duration <= type(uint64).max, "Invalid duration");
 
-      uint256 newTicketId = _nextTicketId++;
+      uint256 newTicketId = nextTicketId++;
 
       vestingSchedules[newTicketId] = VestingSchedule({
         rewardToken: _rewardToken,
@@ -126,7 +129,7 @@ contract Orderbook {
       return newTicketId;
     }
 
-    function releaseVestedTokens(uint256 _ticketId) external returns (uint256) {
+    function releaseVestedTokens(uint256 _ticketId) external {
       VestingSchedule storage schedule = vestingSchedules[_ticketId];
       require(schedule.beneficiary == msg.sender, "Only the beneficiary can release tokens");
 
@@ -147,7 +150,7 @@ contract Orderbook {
       uint256 releaseableAmount = vestedAmount - releasedAmount;
       schedule.releasedAmount = uint128(releasedAmount + releaseableAmount);
 
-      rewardToken.safeTransfer(schedule.beneficiary, releaseableAmount);
+      schedule.rewardToken.safeTransfer(schedule.beneficiary, releaseableAmount);
 
       emit TokensReleased(_ticketId, schedule.beneficiary, releaseableAmount);
     }
@@ -260,10 +263,15 @@ contract Orderbook {
 
         // Lock the wallet for the time if neccessary
         if (_market._type != MarketType.Streaming) {
-            _LpOrder.lockWallet(block.timestamp + IpOrder.duration);
+          _LpOrder.lockWallet(block.timestamp + IpOrder.duration);
+          if (market._type == Market.BL_Vesting) {
+            OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmountPerToken * lpOrderAmount;
+          } else {
+            _market.primaryRewardToken.safeTransfer(order.owner(), lpOrder.incentiveAmountPerToken * lpOrderAmount);
+          }
+        } else {
+          createVestingTicket(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount, IpOrder.duration, _market.primaryRewardToken);
         }
-
-        OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmountPerToken * lpOrderAmount;
     }
 
     function validateOrder(IPOrder memory IpOrder, LPOrder lpOrder) public view {
