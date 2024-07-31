@@ -264,10 +264,10 @@ contract Orderbook {
         // Lock the wallet for the time if neccessary
         if (_market._type != MarketType.Streaming) {
           _LpOrder.lockWallet(block.timestamp + IpOrder.duration);
-          if (market._type == Market.BL_Vesting) {
+          if (_market._type == MarketType.BL_Vesting) {
             OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmountPerToken * lpOrderAmount;
           } else {
-            _market.primaryRewardToken.safeTransfer(order.owner(), lpOrder.incentiveAmountPerToken * lpOrderAmount);
+            _market.primaryRewardToken.safeTransfer(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount);
           }
         } else {
           createVestingTicket(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount, IpOrder.duration, _market.primaryRewardToken);
