@@ -117,15 +117,19 @@ contract PastryChef is Owned(msg.sender) {
         }
 
         uint256 lastRewardedSecond = _epoch.epochEnds > block.timestamp ? _epoch.epochEnds : block.timestamp;
-        // In the line below, you are dividing by the total amount of deposit tokens in the contract, which already gives you the share of the rewards per deposit token. Probably an error.
+        // In the line below, you are dividing by the total amount of deposit tokens in the contract, which already gives you the share of the rewards per
+        // deposit token. Probably an error.
         uint256 newRewards = ((lastRewardedSecond - _epoch.lastUpdated) * REWARD_POINTS_PER_SECOND) / depositToken.balanceOf(address(this));
         _epoch.lastUpdated = uint64(block.timestamp);
-        _epoch.accRewardsPerShare += uint128(newRewards * WAD / _epoch.totalDeposited); // Here you are using `_epoch.totalDeposited` because you could be running this function a few deposits after the epoch ended. If you update epochs on rollover you could use `depositToken.balanceOf(address(this))` instead.
+        _epoch.accRewardsPerShare += uint128(newRewards * WAD / _epoch.totalDeposited); // Here you are using `_epoch.totalDeposited` because you could be
+            // running this function a few deposits after the epoch ended. If you update epochs on rollover you could use
+            // `depositToken.balanceOf(address(this))` instead.
     }
 
     /// @notice End the current Epoch and start the next one
     function rollOverEpoch() public {
-        while (epochs[currentEpoch].epochEnds <= block.timestamp) { // The loop is because there might be empty epochs between deposits, good.
+        while (epochs[currentEpoch].epochEnds <= block.timestamp) {
+            // The loop is because there might be empty epochs between deposits, good.
             Epoch storage oldEpoch = epochs[currentEpoch];
             // Here you can call updateEpochRewards(oldEpoch) to make sure that all epochs are always updated
             currentEpoch++;
@@ -151,7 +155,8 @@ contract PastryChef is Owned(msg.sender) {
             updateEpochRewards(i);
             Epoch storage _epoch = epochs[i];
 
-            // Why not using the tried and tested unipool formula? For each user, you store the accumulated reward points, the current _epoch.accRewardsPerShare, and the current timestamp.
+            // Why not using the tried and tested unipool formula? For each user, you store the accumulated reward points, the current
+            // _epoch.accRewardsPerShare, and the current timestamp.
             uint256 rewardPointsAwarded = (user.amount * _epoch.accRewardsPerShare / WAD) - user.epochDebt[i]; // I really don't know what user.epochDebt is
             epochRewardPoints[_user][i] += rewardPointsAwarded;
             _epoch.totalRewards += uint128(rewardPointsAwarded);
@@ -223,7 +228,8 @@ contract PastryChef is Owned(msg.sender) {
     }
 
     /// @param rewardId The rewardId of the campaign to claim rewards for
-    function claimRewards(uint256 rewardId) public { // You probably want to add a function to claim rewards for a specific epoch
+    function claimRewards(uint256 rewardId) public {
+        // You probably want to add a function to claim rewards for a specific epoch
         rollOverEpoch();
         Reward storage _reward = rewards[rewardId];
 
@@ -234,7 +240,8 @@ contract PastryChef is Owned(msg.sender) {
             Epoch memory _epoch = epochs[i];
             uint256 rewardPoints = epochRewardPoints[msg.sender][i];
             rewardsOwed += (_reward.amount * rewardPoints) / _epoch.totalRewards; // You need to divide `_reward.amount` by the number of epochs in the campaign
-            epochRewardPoints[msg.sender][i] = 0; // You can't reset the reward points for the user here, as they should be used for each rewardId. Instead, you need to track for which rewardId and epoch the points have been used.
+            epochRewardPoints[msg.sender][i] = 0; // You can't reset the reward points for the user here, as they should be used for each rewardId. Instead, you
+                // need to track for which rewardId and epoch the points have been used.
 
             unchecked {
                 ++i;

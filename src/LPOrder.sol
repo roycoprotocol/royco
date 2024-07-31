@@ -53,7 +53,7 @@ contract LPOrder is Clone, VM {
     uint256[] private _allowedMarkets;
 
     function allowedMarkets() public view returns (uint256[] memory) {
-      return _allowedMarkets;
+        return _allowedMarkets;
     }
 
     /// @param markets The markets for which this order is valid

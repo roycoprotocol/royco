@@ -8,40 +8,30 @@ import { LPOrder } from "src/LPOrder.sol";
 import { Orderbook } from "src/Orderbook.sol";
 
 contract RoycoBaseTest is Test {
-  Orderbook public book;
-  LPOrder public order = new LPOrder();
+    Orderbook public book;
+    LPOrder public order = new LPOrder();
 
-  MockERC20 public rewardToken = new MockERC20("Reward Token", "REWARD");
-  MockERC20 public depositToken = new MockERC20("Deposit Token", "DEPOSIT");
+    MockERC20 public rewardToken = new MockERC20("Reward Token", "REWARD");
+    MockERC20 public depositToken = new MockERC20("Deposit Token", "DEPOSIT");
 
-  function setUp() public {
-    book = new Orderbook(address(order));
-  }
+    function setUp() public {
+        book = new Orderbook(address(order));
+    }
 
-  function testCanCreateMarket() public {
-    // bytes32[] literal
-    bytes32[] memory commands = new bytes32[](1);
-    // bytes[] literal
-    bytes[] memory state = new bytes[](1);
+    function testCanCreateMarket() public {
+        // bytes32[] literal
+        bytes32[] memory commands = new bytes32[](1);
+        // bytes[] literal
+        bytes[] memory state = new bytes[](1);
 
-    Orderbook.Recipe memory enter = Orderbook.Recipe({
-      weirollCommands: commands,
-      weirollState: state
-    });
+        Orderbook.Recipe memory enter = Orderbook.Recipe({ weirollCommands: commands, weirollState: state });
 
-    Orderbook.Recipe memory exit = Orderbook.Recipe({
-      weirollCommands: commands,
-      weirollState: state
-    });
+        Orderbook.Recipe memory exit = Orderbook.Recipe({ weirollCommands: commands, weirollState: state });
 
-    book.createMarket(depositToken, rewardToken, Orderbook.MarketType.FL_Vesting, enter, exit);
-  }
+        book.createMarket(depositToken, rewardToken, Orderbook.MarketType.FL_Vesting, enter, exit);
+    }
 
-  function testPostLPAsk() public {
+    function testPostLPAsk() public { }
 
-  }
-  
-  function testPostIPAsk() public {
-
-  }
+    function testPostIPAsk() public { }
 }

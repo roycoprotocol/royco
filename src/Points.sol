@@ -21,9 +21,9 @@ contract Points {
     uint8 public immutable decimals;
 
     constructor(string memory _name, string memory _symbol) {
-      name = _name;
-      symbol = _symbol;
-      decimals = 18;
+        name = _name;
+        symbol = _symbol;
+        decimals = 18;
     }
 
     function transfer(address to, uint256 amount) public virtual returns (bool success) {

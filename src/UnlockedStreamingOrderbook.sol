@@ -7,7 +7,7 @@ import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/Clon
 
 import { LPOrder } from "src/LPOrder.sol";
 
-contract Orderbook {
+contract UnlockedStreamingOrderbook {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for ERC20;
 
@@ -19,6 +19,7 @@ contract Orderbook {
     /*//////////////////////////////////////////////////////////////
                              INTERFACE
     //////////////////////////////////////////////////////////////*/
+
     event OrderSubmitted(address order, address creator, uint256[] markets);
 
     /*//////////////////////////////////////////////////////////////
@@ -47,18 +48,10 @@ contract Orderbook {
     /*//////////////////////////////////////////////////////////////
                            MARKET ACTIONS
     //////////////////////////////////////////////////////////////*/
-    function createMarket(
-        ERC20 _depositToken,
-        Recipe calldata enterMarket,
-        Recipe calldata exitMarket
-    )
-        public
-        returns (uint256 marketId)
-    {
+    function createMarket(ERC20 _depositToken, Recipe calldata enterMarket, Recipe calldata exitMarket) public returns (uint256 marketId) {
         marketId = maxMarketId++;
 
-        markets[marketId] =
-            Market({ depositToken: _depositToken, enter: enterMarket, exit: exitMarket }); 
+        markets[marketId] = Market({ depositToken: _depositToken, enter: enterMarket, exit: exitMarket });
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -66,5 +59,4 @@ contract Orderbook {
     //////////////////////////////////////////////////////////////*/
 
     // ...
-
 }
