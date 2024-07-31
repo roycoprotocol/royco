@@ -39,17 +39,18 @@ contract PastryChef is Owned(msg.sender) {
 
     /// @dev The ERC4626 Representing a deposit in the underlying yield opportuntiy
     ///     being incentivized
-    ERC4626 public depositToken;
+    // You are missing the contructor that assigns depositToken.
+    ERC4626 public depositToken; // This doesn't need to be an ERC4626, it can be an ERC20
 
     error EpochNotStarted();
     error BalanceTooLow();
-    error CampapignStartsTooLate();
+    error CampaignStartsTooLate();
     /*//////////////////////////////////////////////////////////////
                                STORAGE
     //////////////////////////////////////////////////////////////*/
     /// @dev MakerDAO Constant for a 1e18 Decimal Scale
 
-    uint256 constant WAD = 1e18;
+    uint256 constant WAD = 1e18; // You can be more specific here and call this PRECISION, since you use it to increase the precision of `accRewardsPerShare`
 
     /// @custom:field amount The amount of LP tokens deposited
     /// @custom:field lastEpoch The lastEpoch we've updated this users rewards at
@@ -58,7 +59,7 @@ contract PastryChef is Owned(msg.sender) {
     struct UserInfo {
         uint128 amount;
         uint128 lastEpoch;
-        mapping(uint256 epoch => uint256 rewardDebt) epochDebt;
+        mapping(uint256 epoch => uint256 rewardDebt) epochDebt; // I'm not sure what this is
     }
 
     /// @custom:field totalDeposited The total amount of LP tokens deposited within a given epoch
@@ -67,7 +68,7 @@ contract PastryChef is Owned(msg.sender) {
     /// @custom:field lastUpdated The last time we updated when the reward info for this epoch
     /// @custom:field epochEnds The timestamp when the epoch is over
     struct Epoch {
-        uint128 totalDeposited;
+        uint128 totalDeposited; // You might not need this
         uint128 totalRewards;
         uint128 accRewardsPerShare;
         uint64 lastUpdated;
@@ -116,19 +117,21 @@ contract PastryChef is Owned(msg.sender) {
         }
 
         uint256 lastRewardedSecond = _epoch.epochEnds > block.timestamp ? _epoch.epochEnds : block.timestamp;
+        // In the line below, you are dividing by the total amount of deposit tokens in the contract, which already gives you the share of the rewards per deposit token. Probably an error.
         uint256 newRewards = ((lastRewardedSecond - _epoch.lastUpdated) * REWARD_POINTS_PER_SECOND) / depositToken.balanceOf(address(this));
         _epoch.lastUpdated = uint64(block.timestamp);
-        _epoch.accRewardsPerShare += uint128(newRewards * WAD / _epoch.totalDeposited);
+        _epoch.accRewardsPerShare += uint128(newRewards * WAD / _epoch.totalDeposited); // Here you are using `_epoch.totalDeposited` because you could be running this function a few deposits after the epoch ended. If you update epochs on rollover you could use `depositToken.balanceOf(address(this))` instead.
     }
 
     /// @notice End the current Epoch and start the next one
     function rollOverEpoch() public {
-        while (epochs[currentEpoch].epochEnds <= block.timestamp) {
+        while (epochs[currentEpoch].epochEnds <= block.timestamp) { // The loop is because there might be empty epochs between deposits, good.
             Epoch storage oldEpoch = epochs[currentEpoch];
+            // Here you can call updateEpochRewards(oldEpoch) to make sure that all epochs are always updated
             currentEpoch++;
 
             epochs[currentEpoch] = Epoch({
-                totalDeposited: oldEpoch.totalDeposited,
+                totalDeposited: oldEpoch.totalDeposited, // You might not need this
                 accRewardsPerShare: 0,
                 totalRewards: 0,
                 lastUpdated: oldEpoch.epochEnds,
@@ -139,36 +142,45 @@ contract PastryChef is Owned(msg.sender) {
         }
     }
 
-    /// @param _amount The amount of principle opportunity tokesn to deposit
+    /// @notice Update the rewards for a user
+    /// @param _user The user to update rewards for
+    function updateUserRewards(address _user) public {
+        UserInfo storage user = userInfo[_user];
+
+        for (uint256 i = user.lastEpoch; i < currentEpoch;) {
+            updateEpochRewards(i);
+            Epoch storage _epoch = epochs[i];
+
+            // Why not using the tried and tested unipool formula? For each user, you store the accumulated reward points, the current _epoch.accRewardsPerShare, and the current timestamp.
+            uint256 rewardPointsAwarded = (user.amount * _epoch.accRewardsPerShare / WAD) - user.epochDebt[i]; // I really don't know what user.epochDebt is
+            epochRewardPoints[_user][i] += rewardPointsAwarded;
+            _epoch.totalRewards += uint128(rewardPointsAwarded);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @param _amount The amount of principle opportunity tokens to deposit
     function deposit(uint256 _amount) public {
         UserInfo storage user = userInfo[msg.sender];
         rollOverEpoch();
 
         if (user.amount > 0) {
-            for (uint256 i = user.lastEpoch; i < currentEpoch;) {
-                updateEpochRewards(i);
-                Epoch storage _epoch = epochs[i];
-
-                uint256 rewardPointsAwarded = (user.amount * _epoch.accRewardsPerShare / WAD) - user.epochDebt[i];
-                epochRewardPoints[msg.sender][i] += rewardPointsAwarded;
-                _epoch.totalRewards += uint128(rewardPointsAwarded);
-
-                unchecked {
-                    ++i;
-                }
-            }
+            updateUserRewards(msg.sender);
         }
 
         depositToken.safeTransferFrom(msg.sender, address(this), _amount);
 
         user.amount += uint128(_amount);
         user.lastEpoch = uint128(currentEpoch);
-        user.epochDebt[currentEpoch] = (user.amount * epochs[currentEpoch].accRewardsPerShare) / WAD;
+        user.epochDebt[currentEpoch] = (user.amount * epochs[currentEpoch].accRewardsPerShare) / WAD; // I still don't get it
 
         epochs[currentEpoch].totalDeposited += uint128(_amount);
     }
 
-    /// @param _amount The amount of principle opportunity tokesn to withdraw
+    /// @param _amount The amount of principle opportunity tokens to withdraw
     function withdraw(uint256 _amount) public {
         UserInfo storage user = userInfo[msg.sender];
         if (_amount > user.amount) {
@@ -177,18 +189,7 @@ contract PastryChef is Owned(msg.sender) {
 
         rollOverEpoch();
 
-        for (uint256 i = user.lastEpoch; i < currentEpoch;) {
-            updateEpochRewards(i);
-            Epoch storage _epoch = epochs[i];
-
-            uint256 rewardPointsAwarded = (user.amount * _epoch.accRewardsPerShare / WAD) - user.epochDebt[i];
-            epochRewardPoints[msg.sender][i] += rewardPointsAwarded;
-            _epoch.totalRewards += uint128(rewardPointsAwarded);
-
-            unchecked {
-                ++i;
-            }
-        }
+        updateUserRewards(msg.sender);
 
         user.amount -= uint128(_amount);
         user.epochDebt[currentEpoch] = (user.amount * epochs[currentEpoch].accRewardsPerShare) / WAD;
@@ -209,9 +210,10 @@ contract PastryChef is Owned(msg.sender) {
     function createRewardCampaign(uint256 _startEpoch, uint256 _endEpoch, uint256 _amount, ERC20 _token) public {
         rollOverEpoch();
         if (_startEpoch < currentEpoch) {
-            revert CampapignStartsTooLate();
+            revert CampaignStartsTooLate();
         }
 
+        // It might be better to ensure that `token != depositToken`
         Reward memory newReward = Reward({ token: _token, amount: _amount, startEpoch: _startEpoch, endEpoch: _endEpoch });
 
         _token.safeTransferFrom(msg.sender, address(this), _amount);
@@ -221,7 +223,7 @@ contract PastryChef is Owned(msg.sender) {
     }
 
     /// @param rewardId The rewardId of the campaign to claim rewards for
-    function claimRewards(uint256 rewardId) public {
+    function claimRewards(uint256 rewardId) public { // You probably want to add a function to claim rewards for a specific epoch
         rollOverEpoch();
         Reward storage _reward = rewards[rewardId];
 
@@ -231,8 +233,8 @@ contract PastryChef is Owned(msg.sender) {
         for (uint256 i = _reward.startEpoch; i < endEpoch;) {
             Epoch memory _epoch = epochs[i];
             uint256 rewardPoints = epochRewardPoints[msg.sender][i];
-            rewardsOwed += (_reward.amount * rewardPoints) / _epoch.totalRewards;
-            epochRewardPoints[msg.sender][i] = 0;
+            rewardsOwed += (_reward.amount * rewardPoints) / _epoch.totalRewards; // You need to divide `_reward.amount` by the number of epochs in the campaign
+            epochRewardPoints[msg.sender][i] = 0; // You can't reset the reward points for the user here, as they should be used for each rewardId. Instead, you need to track for which rewardId and epoch the points have been used.
 
             unchecked {
                 ++i;
