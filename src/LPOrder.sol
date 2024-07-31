@@ -50,16 +50,24 @@ contract LPOrder is Clone, VM {
     //////////////////////////////////////////////////////////////*/
     /// @dev Whether or not this order has been executed
     bool public executed;
+    uint256[] public allowedMarkets;
 
     /// @param markets The markets for which this order is valid
     function initialize(uint256[] calldata markets) external onlyOrderbook {
-        ERC20 _depositToken = depositToken();
-        _depositToken.transferFrom(owner(), address(this), amount());
-
+        allowedMarkets = markets;
         /// Allowlist all markets
-        for (uint256 i; i < markets.length; i++) {
+        for (uint256 i; i < markets.length;) {
             supportedMarkets[i] = true;
+
+            unchecked {
+                ++i;
+            }
         }
+    }
+
+    /// @param _marketId The market which the order was filled into
+    function fillOrder(uint256 _marketId) external onlyOrderbook {
+        marketId = _marketId;
     }
 
     /// @param newAddress The new address to sweep funds to
@@ -72,6 +80,8 @@ contract LPOrder is Clone, VM {
     /*//////////////////////////////////////////////////////////////
                                STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
+
+    uint256 public marketId;
 
     /// @notice The address of the order creator (owner)
     function owner() public pure returns (address) {
@@ -98,6 +108,10 @@ contract LPOrder is Clone, VM {
         return _getArgUint256(92);
     }
 
+    function desiredIncentives() public pure returns (uint256) {
+        return _getArgUint256(124);
+    }
+
     /// @notice Whether or not a market is supported by this order
     mapping(uint256 marketId => bool) public supportedMarkets;
     /*//////////////////////////////////////////////////////////////
@@ -120,7 +134,7 @@ contract LPOrder is Clone, VM {
     bool public cancelled;
 
     /// @notice Cancel the order.
-    /// @dev Only the owner of the order can cancel it.
+    ///   We only support cancelling through the OrderBook in order to ensure all funds are exited properly
     function cancel() public onlyOrderbook {
         // Mark the order as cancelled.
         cancelled = true;
@@ -132,7 +146,7 @@ contract LPOrder is Clone, VM {
     /// @notice Execute the Weiroll VM with the given commands.
     /// @param commands The commands to be executed by the Weiroll VM.
     /// @dev No state parameter is necessary because the proposed state is stored in the contract.
-    function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOrderbook notLocked returns (bytes[] memory) {
+    function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOrderbook returns (bytes[] memory) {
         require(!executed, "Royco: AlreadyRan");
 
         executed = true;

@@ -56,12 +56,12 @@ contract Orderbook {
         ERC20 depositToken;
         ERC20 primaryRewardToken;
         MarketType _type;
-        Aloha enter;
-        Aloha exit;
+        Recipe enter;
+        Recipe exit;
     }
 
     /// @dev Its for both enter/exit so the named fit
-    struct Aloha {
+    struct Recipe {
         bytes32[] weirollCommands;
         bytes[] weirollState;
     }
@@ -78,8 +78,8 @@ contract Orderbook {
         ERC20 _depositToken,
         ERC20 _primaryRewardToken,
         MarketType marketType,
-        Aloha calldata enterMarket,
-        Aloha calldata exitMarket
+        Recipe calldata enterMarket,
+        Recipe calldata exitMarket
     )
         public
         returns (uint256 marketId)
@@ -87,7 +87,7 @@ contract Orderbook {
         marketId = maxMarketId++;
 
         markets[marketId] =
-            Market({ depositToken: _depositToken, primaryRewardToken: _primaryRewardToken, _type: marketType, enter: enterMarket, exit: enterMarket });
+            Market({ depositToken: _depositToken, primaryRewardToken: _primaryRewardToken, _type: marketType, enter: enterMarket, exit: exitMarket });
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -97,14 +97,17 @@ contract Orderbook {
         ERC20 depositToken,
         uint256 tokenAmount,
         uint96 maxDuration,
+        uint256 desiredIncentives,
         uint256[] calldata allowedMarkets
     )
         external
         returns (LPOrder clone, uint256 orderId)
     {
-        clone = LPOrder(ORDER_IMPLEMENTATION.clone(abi.encode(msg.sender, address(depositToken), tokenAmount, address(this), maxDuration)));
+        clone = LPOrder(ORDER_IMPLEMENTATION.clone(abi.encode(msg.sender, address(depositToken), tokenAmount, address(this), maxDuration, desiredIncentives)));
 
         orderId = maxLPOrderId++;
+
+        depositToken.safeTransferFrom(msg.sender, address(clone), tokenAmount);
         clone.initialize(allowedMarkets);
 
         LpOrders[orderId] = clone;
@@ -122,9 +125,48 @@ contract Orderbook {
         IpOrders[IPOrderId] = order;
     }
 
+    function cancelLPOrder(LPOrder order) external {
+        require(msg.sender == order.owner(), "Royco: Not Owner");
+
+        uint256 marketId = order.marketId();
+        Market memory _market = markets[marketId];
+
+        // 0 Out of incentives
+        OrderRewardsOwed[_market.primaryRewardToken][order] = 0;
+        // Exit the position
+        order.executeWeiroll(_market.exit.weirollCommands, _market.exit.weirollState);
+        order.cancel();
+    }
+
     function matchOrders(uint256 IPOrderId, uint256 LPOrderId) public {
-        IPOrder memory IpOrder = IpOrders[IPOrderId];
+        IPOrder storage IpOrder = IpOrders[IPOrderId];
         LPOrder _LpOrder = LpOrders[LPOrderId];
+
+        uint256 lpOrderAmount = _LpOrder.amount();
+
+        if (IpOrder.amount > lpOrderAmount) {
+            IpOrder.amount = lpOrderAmount;
+            IpOrder.amount -= lpOrderAmount;
+        } else {
+            uint256 delta = lpOrderAmount - IpOrder.amount;
+
+            LPOrder clone = LPOrder(
+                ORDER_IMPLEMENTATION.clone(
+                    abi.encode(_LpOrder.owner(), _LpOrder.depositToken(), delta, address(this), _LpOrder.maxDuration(), _LpOrder.desiredIncentives)
+                )
+            );
+
+            uint256 orderId = maxLPOrderId++;
+            uint256[] memory allowedMarkets = _LpOrder.allowedMarkets();
+            clone.initialize(allowedMarkets);
+            _LpOrder.fundSweepToNewOrder(address(clone), delta);
+
+            LpOrders[orderId] = clone;
+
+            emit OrderSubmitted(address(clone), msg.sender, allowedMarkets);
+        }
+
+        validateOrder(IpOrder, _LpOrder);
 
         Market memory _market = markets[IpOrder.marketId];
 
@@ -141,7 +183,8 @@ contract Orderbook {
 
     function validateOrder(IPOrder memory IpOrder, LPOrder lpOrder) public view {
         require(lpOrder.supportedMarkets(IpOrder.marketId), "Royco: Market Mismatch");
-        require(lpOrder.maxDuration() > IpOrder.duration, "Royco: Duration Mismatch");
+        require(lpOrder.maxDuration() >= IpOrder.duration, "Royco: Duration Mismatch");
+        require(lpOrder.desiredIncentives() >= IpOrder.incentiveAmount, "Royco: Not Enough Incentives");
     }
 
     /// @param token The Token to Claim Rewards In
