@@ -50,11 +50,15 @@ contract LPOrder is Clone, VM {
     //////////////////////////////////////////////////////////////*/
     /// @dev Whether or not this order has been executed
     bool public executed;
-    uint256[] public allowedMarkets;
+    uint256[] private _allowedMarkets;
+
+    function allowedMarkets() public view returns (uint256[] memory) {
+      return _allowedMarkets;
+    }
 
     /// @param markets The markets for which this order is valid
     function initialize(uint256[] calldata markets) external onlyOrderbook {
-        allowedMarkets = markets;
+        _allowedMarkets = markets;
         /// Allowlist all markets
         for (uint256 i; i < markets.length;) {
             supportedMarkets[i] = true;

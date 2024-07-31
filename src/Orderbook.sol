@@ -145,8 +145,8 @@ contract Orderbook {
         uint256 lpOrderAmount = _LpOrder.amount();
 
         if (IpOrder.amount > lpOrderAmount) {
-            IpOrder.amount = lpOrderAmount;
-            IpOrder.amount -= lpOrderAmount;
+            IpOrder.amount = uint128(lpOrderAmount);
+            IpOrder.amount -= uint128(lpOrderAmount);
         } else {
             uint256 delta = lpOrderAmount - IpOrder.amount;
 
