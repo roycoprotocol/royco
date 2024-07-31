@@ -1,170 +1,200 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-// Interfaces 
+// Interfaces
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 
-// Libraries 
+// Libraries
 import { ECDSA } from "lib/solady/src/utils/ECDSA.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "lib/solady/src/utils/FixedPointMathLib.sol";
+import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 
 // Contracts
-import { Custodian } from "src/Custodian.sol";
-import { WalletFactory } from "src/WalletFactory.sol";
-import { WeirollWallet } from "src/WeirollWallet.sol";
-import { DssVestTransferrable } from "src/DssVest.sol";
+import { LPOrder } from "src/LPOrder.sol";
 
-contract Orderbook is WalletFactory {
-  using ECDSA for bytes32;
-  using ECDSA for bytes;
-  /*//////////////////////////////////////////////////////////////
-                            CONSTRUCTOR
-  //////////////////////////////////////////////////////////////*/
-  constructor(address _impl, address _custodian) WalletFactory(_impl) {
-    custodian = Custodian(_custodian);
-  }
+contract Orderbook {
+    using ClonesWithImmutableArgs for address;
+    using SafeTransferLib for ERC20;
 
-  event OrderSubmitted(Order order, bytes signature);
+    address public immutable ORDER_IMPLEMENTATION;
 
-  /*//////////////////////////////////////////////////////////////
-                            STORAGE
-  //////////////////////////////////////////////////////////////*/
-  enum Type {
-    StreamingLocked,
-    StreamingUnlocked,
-    LumpsumLocked,
-    LumpsumUnlocked
-  }
-
-  enum Side {
-    Ask, // Offering to Provide Incentives
-    Bid // Offering to LP Tokens
-  }
-
-  struct Market {
-    ERC20 token;
-    bytes32[] weirollCommands;
-    bytes[] weirollState;
-  }
-
-  uint96 public maxMarketId;
-
-  struct Order {
-    Side side;
-    Type _type;
-    ERC20 token;
-    uint96 duration;
-    uint128 amount;
-    uint128 incentiveAmount;
-    uint96 marketId;
-    address sender;
-    uint128 nonce;
-  }
-
-  mapping(address user => mapping(uint128 nonce => bool cancelled)) public cancelledNonces;
-  mapping(uint96 marketId => Market _market) public markets;
-
-  Custodian public custodian;
-
-  mapping(ERC20 token => DssVestTransferrable vesting) public vestingContracts;
-  /*//////////////////////////////////////////////////////////////
-                              INTERFACE
-  //////////////////////////////////////////////////////////////*/
-  error MarketMismatch();
-  error WrongSidesTaken();
-  error DurationMistach();
-  error OrderCancelled();
-  error TypeMismatch();
-  error IncorrectSignature();
-
-  event NewOrder();
-  
-  event NonceCancelled(address user, uint256 nonce);
-
-  /*//////////////////////////////////////////////////////////////
-                            ORDERBOOK
-  //////////////////////////////////////////////////////////////*/
-
-  function cancelNonce(uint128 nonce) public {
-    cancelledNonces[msg.sender][nonce] = false;
-
-    emit NonceCancelled(msg.sender, nonce);
-  }
-
-  function submitOrder(Order calldata order, bytes memory sig) public {
-    emit OrderSubmitted(order, sig);
-  }
-
-  function matchOrders(Order calldata bid, bytes memory bidSignature, Order calldata ask, bytes memory askSignature) public returns (address newWallet){
-
-    // 1. Validate Orders are correct and truthful
-    bytes32 hash = keccak256(abi.encode(bid));
-    bytes32 signedHash = hash.toEthSignedMessageHash();
-    address approved = ECDSA.recover(signedHash, bidSignature);
-    if (approved != bid.sender) {
-      revert IncorrectSignature();
+    constructor(address orderbook_impl) {
+        ORDER_IMPLEMENTATION = orderbook_impl;
     }
 
-    hash = keccak256(abi.encode(ask));
-    signedHash = hash.toEthSignedMessageHash();
-    approved = ECDSA.recover(signedHash, askSignature);
-    if (approved != ask.sender) {
-      revert IncorrectSignature();
+    /*//////////////////////////////////////////////////////////////
+                             INTERFACE
+    //////////////////////////////////////////////////////////////*/
+    event OrderSubmitted(address order, address creator, uint256[] markets);
+
+    /*//////////////////////////////////////////////////////////////
+                              STORAGE
+    //////////////////////////////////////////////////////////////*/
+    struct IPOrder {
+        address sender;
+        uint96 duration;
+        uint128 amount;
+        uint128 incentiveAmountPerToken;
+        uint128 marketId;
     }
 
-    if (bid.marketId != ask.marketId) {
-      revert MarketMismatch();
+    uint256 public maxIPOrderId;
+    mapping(uint256 IPOrderId => IPOrder) public IpOrders;
+
+    uint256 public maxLPOrderId;
+    mapping(uint256 LPOrderId => LPOrder) public LpOrders;
+
+    enum MarketType {
+        FL_Vesting, // Front-loaded Vesting
+        BL_Vesting, // Back-loaded Vesting
+        Streaming,
+        Forfeitable_Vested
     }
 
-    if (bid.side != Side.Bid && ask.side != Side.Ask) {
-      revert WrongSidesTaken();
+    struct Market {
+        ERC20 depositToken;
+        ERC20 primaryRewardToken;
+        MarketType _type;
+        Recipe enter;
+        Recipe exit;
     }
 
-    if (bid._type != ask._type) {
-      revert TypeMismatch();
+    /// @dev Its for both enter/exit so the named fit
+    struct Recipe {
+        bytes32[] weirollCommands;
+        bytes[] weirollState;
     }
 
-    if (bid.duration < ask.duration) {
-      revert DurationMistach();
+    uint256 public maxMarketId;
+    mapping(uint256 marketId => Market _market) public markets;
+
+    mapping(ERC20 rewardToken => mapping(LPOrder order => uint256 rewardsOwed)) public OrderRewardsOwed;
+
+    /*//////////////////////////////////////////////////////////////
+                           MARKET ACTIONS
+    //////////////////////////////////////////////////////////////*/
+    function createMarket(
+        ERC20 _depositToken,
+        ERC20 _primaryRewardToken,
+        MarketType marketType,
+        Recipe calldata enterMarket,
+        Recipe calldata exitMarket
+    )
+        public
+        returns (uint256 marketId)
+    {
+        marketId = maxMarketId++;
+
+        markets[marketId] =
+            Market({ depositToken: _depositToken, primaryRewardToken: _primaryRewardToken, _type: marketType, enter: enterMarket, exit: exitMarket });
     }
 
-    if (!cancelledNonces[bid.sender][bid.nonce] || !cancelledNonces[ask.sender][ask.nonce]) {
-      revert OrderCancelled();
+    /*//////////////////////////////////////////////////////////////
+                               ORDERS
+    //////////////////////////////////////////////////////////////*/
+    function createLPOrder(
+        ERC20 depositToken,
+        uint256 tokenAmount,
+        uint96 maxDuration,
+        uint256 desiredIncentives,
+        uint256[] calldata allowedMarkets
+    )
+        external
+        returns (LPOrder clone, uint256 orderId)
+    {
+        clone = LPOrder(ORDER_IMPLEMENTATION.clone(abi.encode(msg.sender, address(depositToken), tokenAmount, address(this), maxDuration, desiredIncentives)));
+
+        orderId = maxLPOrderId++;
+
+        depositToken.safeTransferFrom(msg.sender, address(clone), tokenAmount);
+        clone.initialize(allowedMarkets);
+
+        LpOrders[orderId] = clone;
+
+        emit OrderSubmitted(address(clone), msg.sender, allowedMarkets);
     }
 
-    // 2. Fund and create a new wallet
-    Market memory _market = markets[bid.marketId];
-    newWallet = address(deployClone(bid.sender, address(this)));
+    function createIPOrder(uint96 _duration, uint128 _amount, uint128 _incentiveAmountPerToken, uint128 _marketId) external returns (uint256 IPOrderId) {
+        Market memory _market = markets[_marketId];
+        _market.primaryRewardToken.safeTransferFrom(msg.sender, address(this), uint256(_amount) * uint256(_incentiveAmountPerToken) / 1e18);
 
-    // 2.1 Fund wallet
-    custodian.spendFunds(_market.token, newWallet, ask.sender, ask.amount);
-    // 2.2 Execute Script
-    WeirollWallet(newWallet).executeWeiroll(_market.weirollCommands, _market.weirollState);
+        IPOrder memory order = IPOrder({ sender: msg.sender, duration: _duration, amount: _amount, incentiveAmountPerToken: _incentiveAmountPerToken, marketId: _marketId });
 
-    // 3. Handle Rewards Logic
-    if (bid._type == Type.LumpsumUnlocked) {
-      // Pay out rewards right away
-      custodian.spendFunds(_market.token, ask.sender, bid.sender, bid.incentiveAmount);
-    } else if (bid._type == Type.LumpsumLocked) {
-      WeirollWallet(newWallet).lockWallet(bid.duration);
-      DssVestTransferrable vest = vestingContracts[bid.token];
-      if (address(vest) == address(0)) {
-        vest = new DssVestTransferrable(address(_market.token), address(this));
-        vestingContracts[bid.token] = vest;
-      }
-      vest.create(ask.sender, ask.incentiveAmount, block.timestamp, bid.duration, bid.duration, address(0));
-    } else if (bid._type == Type.StreamingUnlocked) {
-      // Deploy and fund a new pastry chef
-    } else if (bid._type == Type.StreamingLocked) {
-      WeirollWallet(newWallet).lockWallet(bid.duration);
-      
-      DssVestTransferrable vest = vestingContracts[bid.token];
-      if (address(vest) == address(0)) {
-        vest = new DssVestTransferrable(address(_market.token), address(this));
-        vestingContracts[bid.token] = vest;
-      }
-      
-      vest.create(ask.sender, ask.incentiveAmount, block.timestamp, bid.duration, 0, address(0));
+        IPOrderId = maxIPOrderId++;
+        IpOrders[IPOrderId] = order;
     }
-  }
+
+    function cancelLPOrder(LPOrder order) external {
+        require(msg.sender == order.owner(), "Royco: Not Owner");
+
+        uint256 marketId = order.marketId();
+        Market memory _market = markets[marketId];
+
+        // 0 Out of incentives
+        OrderRewardsOwed[_market.primaryRewardToken][order] = 0;
+        // Exit the position
+        order.executeWeiroll(_market.exit.weirollCommands, _market.exit.weirollState);
+        order.cancel();
+    }
+
+    function matchOrders(uint256 IPOrderId, uint256 LPOrderId) public {
+        IPOrder storage IpOrder = IpOrders[IPOrderId];
+        LPOrder _LpOrder = LpOrders[LPOrderId];
+
+        uint256 lpOrderAmount = _LpOrder.amount();
+
+        if (IpOrder.amount > lpOrderAmount) {
+            IpOrder.amount = uint128(lpOrderAmount);
+            IpOrder.amount -= uint128(lpOrderAmount);
+        } else {
+            uint256 delta = lpOrderAmount - IpOrder.amount;
+
+            LPOrder clone = LPOrder(
+                ORDER_IMPLEMENTATION.clone(
+                    abi.encode(_LpOrder.owner(), _LpOrder.depositToken(), delta, address(this), _LpOrder.maxDuration(), _LpOrder.desiredIncentives())
+                )
+            );
+
+            uint256 orderId = maxLPOrderId++;
+            uint256[] memory allowedMarkets = _LpOrder.allowedMarkets();
+            clone.initialize(allowedMarkets);
+            _LpOrder.fundSweepToNewOrder(address(clone), delta);
+
+            LpOrders[orderId] = clone;
+
+            emit OrderSubmitted(address(clone), msg.sender, allowedMarkets);
+        }
+
+        validateOrder(IpOrder, _LpOrder);
+
+        Market memory _market = markets[IpOrder.marketId];
+
+        // Enter the script
+        _LpOrder.executeWeiroll(_market.enter.weirollCommands, _market.enter.weirollState);
+
+        // Lock the wallet for the time if neccessary
+        if (_market._type != MarketType.Streaming) {
+            _LpOrder.lockWallet(block.timestamp + IpOrder.duration);
+        }
+
+        OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmountPerToken * lpOrderAmount;
+    }
+
+    function validateOrder(IPOrder memory IpOrder, LPOrder lpOrder) public view {
+        require(lpOrder.supportedMarkets(IpOrder.marketId), "Royco: Market Mismatch");
+        require(lpOrder.maxDuration() >= IpOrder.duration, "Royco: Duration Mismatch");
+        require(lpOrder.desiredIncentives() >= IpOrder.incentiveAmountPerToken, "Royco: Not Enough Incentives");
+    }
+
+    /// @param token The Token to Claim Rewards In
+    /// @param order The (fufilled) Order to claim rewards for
+    function claimRewards(ERC20 token, LPOrder order) public {
+        uint256 owed = OrderRewardsOwed[token][order];
+        if (order.lockedUntil() > block.timestamp) {
+            return;
+        }
+
+        token.safeTransfer(order.owner(), owed);
+    }
 }
