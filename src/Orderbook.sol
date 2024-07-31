@@ -100,7 +100,7 @@ contract Orderbook {
         uint256 desiredIncentives,
         uint256[] calldata allowedMarkets
     )
-        external
+        public
         returns (LPOrder clone, uint256 orderId)
     {
         clone = LPOrder(ORDER_IMPLEMENTATION.clone(abi.encode(msg.sender, address(depositToken), tokenAmount, address(this), maxDuration, desiredIncentives)));
@@ -115,7 +115,7 @@ contract Orderbook {
         emit OrderSubmitted(address(clone), msg.sender, allowedMarkets);
     }
 
-    function createIPOrder(uint96 _duration, uint128 _amount, uint128 _incentiveAmountPerToken, uint128 _marketId) external returns (uint256 IPOrderId) {
+    function createIPOrder(uint96 _duration, uint128 _amount, uint128 _incentiveAmountPerToken, uint128 _marketId) public returns (uint256 IPOrderId) {
         Market memory _market = markets[_marketId];
         _market.primaryRewardToken.safeTransferFrom(msg.sender, address(this), uint256(_amount) * uint256(_incentiveAmountPerToken) / 1e18);
 
@@ -123,6 +123,29 @@ contract Orderbook {
 
         IPOrderId = maxIPOrderId++;
         IpOrders[IPOrderId] = order;
+    }
+
+    function createLPOrderAndFill(
+        ERC20 depositToken,
+        uint256 tokenAmount,
+        uint96 maxDuration,
+        uint256 desiredIncentives,
+        uint256[] calldata allowedMarkets,
+        uint256 IPOrderId
+    ) external {
+      (LPOrder clone, uint256 LPOrderId) = createLPOrder(depositToken, tokenAmount, maxDuration, desiredIncentives, allowedMarkets);
+      matchOrders(IPOrderId, LPOrderId);
+    }
+
+    function createIPOrderAndFill(
+      uint96 _duration,
+      uint128 _amount, 
+      uint128 _incentiveAmountPerToken, 
+      uint128 _marketId,
+      uint256 LPOrderId,
+    ) external {
+      uint256 IPOrderId = createIPOrder(_duration, _amount, _incentiveAmountPerToken, _marketId, LPOrderId);
+      matchOrders(IPOrderId, LPOrderId);
     }
 
     function cancelLPOrder(LPOrder order) external {
