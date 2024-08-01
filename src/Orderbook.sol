@@ -403,7 +403,8 @@ contract Orderbook {
         }
 
         uint256 duration = IpOrder.duration;
-        if (duration == 0) {
+        /// If both are Zero its LumpSum and we just pay out right away with no vesting
+        if (duration == 0 && IpOrder.unlockDate != 0) {
             duration = IpOrder.unlockDate - block.timestamp;
         }
 

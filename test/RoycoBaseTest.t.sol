@@ -11,7 +11,7 @@ import { console } from "forge-std/console.sol";
 
 contract RoycoBaseTest is Test {
     Orderbook public book;
-    LPOrder public order = new LPOrder();
+    LPOrder public ORDER_IMPL = new LPOrder();
 
     address User01 = address(0x07);
 
@@ -19,7 +19,7 @@ contract RoycoBaseTest is Test {
     MockERC20 public depositToken = new MockERC20("Deposit Token", "DEPOSIT");
 
     function setUp() public {
-        book = new Orderbook(address(order));
+        book = new Orderbook(address(ORDER_IMPL));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -213,13 +213,18 @@ contract RoycoBaseTest is Test {
         depositToken.mint(address(this), 100 ether);
         depositToken.approve(address(book), 100 ether);
 
-        (, uint256 orderId) = book.createLPOrder(depositToken, 100 ether, 10 days, desiredIncentives, allowedMarkets, type(uint96).max);
+        (LPOrder order, uint256 orderId) = book.createLPOrder(depositToken, 100 ether, 0, desiredIncentives, allowedMarkets, type(uint96).max);
 
+        uint256 initialTicketAmount = book.nextIPOrderId();
+        uint256 initialRewardBalance = rewardToken.balanceOf(address(this));
+        
         rewardToken.mint(address(this), 100 ether);
         rewardToken.approve(address(book), 100 ether);
-        uint256 initialTicketAmount = book.nextIPOrderId();
-        book.createIPOrderAndFill(10 days, 100 ether, 1 ether, uint128(marketId), 0, orderId);
+        book.createIPOrderAndFill(0, 100 ether, 1 ether, uint128(marketId), 0, orderId);
+
         assertEq(initialTicketAmount + 1, book.nextIPOrderId());
+        assertGt(rewardToken.balanceOf(address(this)), initialRewardBalance);
+        assertEq(order.lockedUntil(), 1);
     }
 
     function testCancelIPOrder() public {
@@ -249,7 +254,6 @@ contract RoycoBaseTest is Test {
             depositToken.mint(User01, 50 ether);
             depositToken.approve(address(book), 50 ether);
 
-            uint256 initialTicketAmount = book.nextLPOrderId();
             book.createLPOrderAndFill(depositToken, 50 ether, 10 days, desiredIncentives, allowedMarkets, IPOrderId);
             vm.stopPrank();
         }
@@ -266,7 +270,7 @@ contract RoycoBaseTest is Test {
 
         rewardToken.mint(address(this), 100 ether);
         rewardToken.approve(address(book), 100 ether);
-        uint256 IPOrderId = book.createIPOrder(10 days, 100 ether, 1 ether, uint128(marketId), 0, type(uint96).max);
+        book.createIPOrder(10 days, 100 ether, 1 ether, uint128(marketId), 0, type(uint96).max);
 
         uint256[] memory allowedMarkets = new uint256[](1);
         allowedMarkets[0] = marketId;
@@ -344,7 +348,7 @@ contract RoycoBaseTest is Test {
         depositToken.mint(address(this), 100 ether);
         depositToken.approve(address(book), 100 ether);
 
-        (LPOrder order, uint256 orderId) = book.createLPOrder(depositToken, 100 ether, 10 days, desiredIncentives, allowedMarkets, type(uint96).max);
+        (, uint256 orderId) = book.createLPOrder(depositToken, 100 ether, 10 days, desiredIncentives, allowedMarkets, type(uint96).max);
 
         rewardToken.mint(address(this), 100 ether);
         rewardToken.approve(address(book), 100 ether);
@@ -371,7 +375,6 @@ contract RoycoBaseTest is Test {
 
         rewardToken.mint(address(this), 100 ether);
         rewardToken.approve(address(book), 100 ether);
-        uint256 initialTicketAmount = book.nextIPOrderId();
         book.createIPOrderAndFill(0, 100 ether, 1 ether, uint128(marketId), 10 days, orderId);
 
         // Should be locked until time, not time + duration
@@ -383,7 +386,7 @@ contract RoycoBaseTest is Test {
 
         rewardToken.mint(address(this), 100 ether);
         rewardToken.approve(address(book), 100 ether);
-        uint256 IPOrderId = book.createIPOrder(10 days, 100 ether, 1 ether, uint128(marketId), 0, type(uint96).max);
+        book.createIPOrder(10 days, 100 ether, 1 ether, uint128(marketId), 0, type(uint96).max);
 
         uint256[] memory allowedMarkets = new uint256[](1);
         allowedMarkets[0] = marketId;
@@ -397,7 +400,6 @@ contract RoycoBaseTest is Test {
 
         rewardToken.mint(address(this), 100 ether);
         rewardToken.approve(address(book), 100 ether);
-        uint256 initialTicketAmount = book.nextIPOrderId();
         book.createIPOrderAndFill(10 days, 100 ether, 1 ether, uint128(marketId), 0, orderId);
 
         vm.warp(5 days);
@@ -422,7 +424,6 @@ contract RoycoBaseTest is Test {
 
         rewardToken.mint(address(this), 100 ether);
         rewardToken.approve(address(book), 100 ether);
-        uint256 initialTicketAmount = book.nextIPOrderId();
 
         vm.expectRevert("Royco: Order Expired");
         book.createIPOrderAndFill(10 days, 100 ether, 1 ether, uint128(marketId), 0, orderId);

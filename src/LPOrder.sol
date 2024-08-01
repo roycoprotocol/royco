@@ -134,15 +134,15 @@ contract LPOrder is Clone, VM {
                              ORDER CONTROL
     //////////////////////////////////////////////////////////////*/
 
-    /// @param marketId The MarketId to add an order for
+    /// @param newMarketId The MarketId to add an order for
     /// @param incentives The requested incentives for the market
-    function addOrder(uint256 marketId, uint256 incentives) external onlyOwner {
-        require(supportedMarkets[marketId] == false, "Royco: Order Already Placed");
+    function addOrder(uint256 newMarketId, uint256 incentives) external onlyOwner {
+        require(supportedMarkets[newMarketId] == false, "Royco: Order Already Placed");
         require(marketId == 0, "Royco: Order Already Filled");
-        supportedMarkets[marketId] = true;
-        expectedIncentives[marketId] = incentives;
+        supportedMarkets[newMarketId] = true;
+        expectedIncentives[newMarketId] = incentives;
 
-        _allowedMarkets.push(marketId);
+        _allowedMarkets.push(newMarketId);
         _desiredIncentives.push(incentives);
     }
 
