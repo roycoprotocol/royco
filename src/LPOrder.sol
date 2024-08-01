@@ -50,20 +50,26 @@ contract LPOrder is Clone, VM {
     //////////////////////////////////////////////////////////////*/
     /// @dev Whether or not this order has been executed
     bool public executed;
+    /// @dev All Markets this order is valid for
     uint256[] private _allowedMarkets;
+    /// @dev The expected incentives for each market
     uint256[] private _desiredIncentives;
 
+    /// @return An array of all valid markets for this order
     function allowedMarkets() public view returns (uint256[] memory) {
         return _allowedMarkets;
     }
 
+    /// @return An array of each incentivePerAmount expected for each market
     function desiredIncentives() public view returns (uint256[] memory) {
         return _desiredIncentives;
     }
 
     /// @param markets The markets for which this order is valid
-    function initialize(uint256[] calldata markets, uint256[] calldata _expectedIncentives) external onlyOrderbook {
+    function initialize(uint256[] calldata markets, uint256[] calldata _expectedIncentives, uint256 _expiry) external onlyOrderbook {
         _allowedMarkets = markets;
+        expiry = _expiry;
+
         /// Allowlist all markets
         for (uint256 i; i < markets.length;) {
             supportedMarkets[markets[i]] = true;
@@ -91,6 +97,7 @@ contract LPOrder is Clone, VM {
                                STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
 
+    /// @dev The MarketId of the Market which this order has been fufilled by
     uint256 public marketId;
 
     /// @notice The address of the order creator (owner)
@@ -118,15 +125,27 @@ contract LPOrder is Clone, VM {
         return _getArgUint256(92);
     }
 
-    /// @notice The timestamp at which this order becomes invalid
-    function expiry() public returns (uint256) {
-        return _getArgUint256(124);
-    }
-
     /// @notice Whether or not a market is supported by this order
     mapping(uint256 marketId => bool) public supportedMarkets;
     /// @notice Mappiing to determine how much incentives are wanted for a market
     mapping(uint256 marketId => uint256 incentives) public expectedIncentives;
+
+    /*//////////////////////////////////////////////////////////////
+                             ORDER CONTROL
+    //////////////////////////////////////////////////////////////*/
+
+    /// @param marketId The MarketId to add an order for
+    /// @param incentives The requested incentives for the market
+    function addOrder(uint256 marketId, uint256 incentives) external onlyOwner {
+        require(supportedMarkets[marketId] == false, "Royco: Order Already Placed");
+        require(marketId == 0, "Royco: Order Already Filled");
+        supportedMarkets[marketId] = true;
+        expectedIncentives[marketId] = incentives;
+
+        _allowedMarkets.push(marketId);
+        _desiredIncentives.push(incentives);
+    }
+
     /*//////////////////////////////////////////////////////////////
                                LOCKING LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -142,15 +161,12 @@ contract LPOrder is Clone, VM {
     /*//////////////////////////////////////////////////////////////
                             CANCELLATION LOGIC
     //////////////////////////////////////////////////////////////*/
-
     /// @notice The order has been cancelled.
-    bool public cancelled;
+    uint256 public expiry;
 
-    /// @notice Cancel the order.
-    ///   We only support cancelling through the OrderBook in order to ensure all funds are exited properly
+    /// @dev Cancels an order by instantly setting it to expire
     function cancel() public onlyOrderbook {
-        // Mark the order as cancelled.
-        cancelled = true;
+        expiry = 0;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -159,8 +175,6 @@ contract LPOrder is Clone, VM {
     /// @notice Execute the Weiroll VM with the given commands.
     /// @param commands The commands to be executed by the Weiroll VM.
     function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOrderbook returns (bytes[] memory) {
-        require(!executed, "Royco: AlreadyRan");
-
         executed = true;
         // Execute the Weiroll VM.
         return _execute(commands, state);

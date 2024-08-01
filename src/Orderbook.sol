@@ -180,6 +180,7 @@ contract Orderbook {
     }
 
     /// @param _ticketId The ticketId of the vesting schedule to claim the rewards for
+    /// @return releaseableAmount The amount of vested tokens released
     function releaseVestedTokens(uint256 _ticketId) external returns (uint256 releaseableAmount) {
         VestingSchedule storage schedule = vestingSchedules[_ticketId];
         require(schedule.beneficiary == msg.sender, "Only the beneficiary can release tokens");
@@ -207,13 +208,15 @@ contract Orderbook {
     }
 
     /// @param token The Token to Claim Rewards In
-    /// @param order The (fufilled) Order to claim rewards for
-    function claimRewards(ERC20 token, LPOrder order) external {
+    /// @param orderId The (fufilled) Order to claim rewards for
+    function claimRewards(ERC20 token, uint256 orderId) external {
+        LPOrder order = LpOrders[orderId];
         uint256 owed = OrderRewardsOwed[token][order];
-        if (order.lockedUntil() > block.timestamp) {
-            return;
-        }
 
+        require(order.owner() == msg.sender, "Royco: Not Owner");
+        require(order.lockedUntil() < block.timestamp, "Royco: Rewards Not Unlocked");
+
+        OrderRewardsOwed[token][order] = 0;
         token.safeTransfer(order.owner(), owed);
     }
 
@@ -240,13 +243,13 @@ contract Orderbook {
         public
         returns (LPOrder clone, uint256 orderId)
     {
-        clone =
-            LPOrder(ORDER_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), address(depositToken), tokenAmount, uint256(maxDuration), expiry)));
+        require(desiredIncentives.length == allowedMarkets.length, "Royco: Length Mismatch");
+        clone = LPOrder(ORDER_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), address(depositToken), tokenAmount, uint256(maxDuration))));
 
         orderId = nextLPOrderId++;
 
         depositToken.safeTransferFrom(msg.sender, address(clone), tokenAmount);
-        clone.initialize(allowedMarkets, desiredIncentives);
+        clone.initialize(allowedMarkets, desiredIncentives, expiry);
 
         LpOrders[orderId] = clone;
 
@@ -353,15 +356,20 @@ contract Orderbook {
     function cancelLPOrder(uint256 LPOrderId) external {
         LPOrder order = LpOrders[LPOrderId];
         require(msg.sender == order.owner(), "Royco: Not Owner");
-
         uint256 marketId = order.marketId();
+        require(marketId != 0, "Royco: Order Not Initialized");
+
         Market memory _market = markets[marketId];
+        require(_market._type == MarketType.Forfeitable_Vested, "Royco: Wrong Market Type");
 
         // 0 Out of incentives
         delete OrderRewardsOwed[_market.primaryRewardToken][order];
         // Exit the position
-        order.executeWeiroll(_market.exit.weirollCommands, _market.exit.weirollState);
-        order.cancel();
+        try order.executeWeiroll(_market.exit.weirollCommands, _market.exit.weirollState) {
+            order.cancel();
+        } catch (bytes memory) {
+            order.cancel();
+        }
     }
 
     /// @param IPOrderId The Id of the Incentive Provider Order to fill
@@ -386,7 +394,7 @@ contract Orderbook {
             uint256 orderId = nextLPOrderId++;
             uint256[] memory allowedMarkets = _LpOrder.allowedMarkets();
             uint256[] memory desiredIncentives = _LpOrder.desiredIncentives();
-            clone.initialize(allowedMarkets, desiredIncentives);
+            clone.initialize(allowedMarkets, desiredIncentives, _LpOrder.expiry());
             _LpOrder.fundSweepToNewOrder(address(clone), delta);
 
             LpOrders[orderId] = clone;
@@ -407,12 +415,13 @@ contract Orderbook {
         Market memory _market = markets[IpOrder.marketId];
 
         // Enter the script
+        _LpOrder.fillOrder(IpOrder.marketId);
         _LpOrder.executeWeiroll(_market.enter.weirollCommands, _market.enter.weirollState);
 
         // Lock the wallet for the time if neccessary
         if (_market._type != MarketType.Streaming) {
             _LpOrder.lockWallet(block.timestamp + duration);
-            if (_market._type == MarketType.BL_Vesting) {
+            if (_market._type == MarketType.BL_Vesting || _market._type == MarketType.Forfeitable_Vested) {
                 OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmountPerToken * lpOrderAmount / 1e18;
             } else {
                 _market.primaryRewardToken.safeTransfer(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount / 1e18);

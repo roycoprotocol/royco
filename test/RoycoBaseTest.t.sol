@@ -88,6 +88,11 @@ contract RoycoBaseTest is Test {
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
         book.createLPOrder(depositToken, 100 ether, 10 days, desiredIncentives, allowedMarkets, type(uint96).max);
+
+        allowedMarkets = new uint256[](5);
+
+        vm.expectRevert("Royco: Length Mismatch");
+        book.createLPOrder(depositToken, 100 ether, 10 days, desiredIncentives, allowedMarkets, type(uint96).max);
     }
 
     function testPostIPAsk() public {
@@ -256,7 +261,7 @@ contract RoycoBaseTest is Test {
         assertEq(rewardToken.balanceOf(address(this)), 50 ether);
     }
 
-    function testCancelLPOrder() public {
+    function testCancelUnfufilledLPOrder() public {
         uint256 marketId = createSimpleMarket(Orderbook.MarketType.FL_Vesting);
 
         rewardToken.mint(address(this), 100 ether);
@@ -271,7 +276,79 @@ contract RoycoBaseTest is Test {
         depositToken.mint(address(this), 100 ether);
         depositToken.approve(address(book), 100 ether);
 
+        // Can't cancel an order that doesn't exist
+        vm.expectRevert();
+        book.cancelUnfufilledLPOrder(5);
+
         (, uint256 orderId) = book.createLPOrder(depositToken, 100 ether, 10 days, desiredIncentives, allowedMarkets, type(uint96).max);
+
+        // Can't cancel someone else's order
+        vm.startPrank(User01);
+        vm.expectRevert("Royco: Not Owner");
+        book.cancelUnfufilledLPOrder(orderId);
+        vm.stopPrank();
+
+        book.cancelUnfufilledLPOrder(orderId);
+
+        assertEq(book.LpOrders(orderId).expiry(), 0);
+
+        rewardToken.mint(address(this), 100 ether);
+        rewardToken.approve(address(book), 100 ether);
+
+        vm.expectRevert("Royco: Order Expired");
+        book.createIPOrderAndFill(0, 100 ether, 1 ether, uint128(marketId), 10 days, orderId);
+    }
+
+    function testClaimRewards() public {
+        uint256 marketId = createSimpleMarket(Orderbook.MarketType.BL_Vesting);
+
+        uint256[] memory allowedMarkets = new uint256[](1);
+        allowedMarkets[0] = marketId;
+        uint256[] memory desiredIncentives = new uint256[](1);
+        desiredIncentives[0] = 1 ether;
+
+        depositToken.mint(address(this), 100 ether);
+        depositToken.approve(address(book), 100 ether);
+
+        (, uint256 orderId) = book.createLPOrder(depositToken, 100 ether, 10 days, desiredIncentives, allowedMarkets, type(uint96).max);
+
+        rewardToken.mint(address(this), 100 ether);
+        rewardToken.approve(address(book), 100 ether);
+
+        book.createIPOrderAndFill(0, 100 ether, 1 ether, uint128(marketId), 10 days, orderId);
+
+        vm.expectRevert("Royco: Rewards Not Unlocked");
+        book.claimRewards(rewardToken, orderId);
+
+        vm.warp(11 days);
+
+        vm.startPrank(User01);
+        vm.expectRevert("Royco: Not Owner");
+        book.claimRewards(rewardToken, orderId);
+        vm.stopPrank();
+
+        uint256 initialBalance = rewardToken.balanceOf(address(this));
+        book.claimRewards(rewardToken, orderId);
+        assertGt(rewardToken.balanceOf(address(this)), initialBalance);
+    }
+
+    function testCancelFufilledLPOrder() public {
+        uint256 marketId = createSimpleMarket(Orderbook.MarketType.Forfeitable_Vested);
+
+        uint256[] memory allowedMarkets = new uint256[](1);
+        allowedMarkets[0] = marketId;
+
+        uint256[] memory desiredIncentives = new uint256[](1);
+        desiredIncentives[0] = 1 ether;
+
+        depositToken.mint(address(this), 100 ether);
+        depositToken.approve(address(book), 100 ether);
+
+        (LPOrder order, uint256 orderId) = book.createLPOrder(depositToken, 100 ether, 10 days, desiredIncentives, allowedMarkets, type(uint96).max);
+
+        rewardToken.mint(address(this), 100 ether);
+        rewardToken.approve(address(book), 100 ether);
+        book.createIPOrderAndFill(0, 100 ether, 1 ether, uint128(marketId), 10 days, orderId);
 
         book.cancelLPOrder(orderId);
     }
