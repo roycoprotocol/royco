@@ -27,12 +27,16 @@ contract Orderbook {
     /// @param orderbook_impl An deployment of the LPOrder contract
     constructor(address orderbook_impl) {
         ORDER_IMPLEMENTATION = orderbook_impl;
+        nextMarketId++;
     }
 
     /*//////////////////////////////////////////////////////////////
                              INTERFACE
     //////////////////////////////////////////////////////////////*/
-    event OrderSubmitted(address order, address creator, uint256[] markets);
+    event MarketCreated(uint256 marketId, MarketType _type, address _depositToken, address _primaryRewardToken);
+
+    event LPOrderSubmitted(address order, address creator, uint256[] markets);
+    event IPOrderSubmitted(uint256 duration, uint256 amount, uint256 incentivesPerToken, uint256 marketId);
 
     event VestingScheduleCreated(uint256 indexed ticketId, address indexed beneficiary, uint256 totalAmount, uint256 startTime, uint256 duration);
     event TokensReleased(uint256 indexed ticketId, address indexed beneficiary, uint256 amount);
@@ -55,12 +59,12 @@ contract Orderbook {
     }
 
     /// @dev Counter to track IPOrderIds so they can increment
-    uint256 public maxIPOrderId;
+    uint256 public nextIPOrderId;
     /// @dev Mapping to match an IPOrderId to a its assosiated order information
     mapping(uint256 IPOrderId => IPOrder) public IpOrders;
 
     /// @dev Counter to track LPOrderIds so they can increment
-    uint256 public maxLPOrderId;
+    uint256 public nextLPOrderId;
     /// @dev Mapping to match an LPOrderId to a its assosiated order information
     mapping(uint256 LPOrderId => LPOrder) public LpOrders;
 
@@ -93,7 +97,7 @@ contract Orderbook {
     }
 
     /// @dev The max market Id, incremented with each new market
-    uint256 public maxMarketId;
+    uint256 public nextMarketId;
     /// @dev Mapping to track a marketId to its assosiated info
     mapping(uint256 marketId => Market _market) public markets;
 
@@ -115,13 +119,15 @@ contract Orderbook {
         Recipe calldata enterMarket,
         Recipe calldata exitMarket
     )
-        public
+        external
         returns (uint256 marketId)
     {
-        marketId = maxMarketId++;
+        marketId = nextMarketId++;
 
         markets[marketId] =
             Market({ depositToken: _depositToken, primaryRewardToken: _primaryRewardToken, _type: marketType, enter: enterMarket, exit: exitMarket });
+
+        emit MarketCreated(marketId, marketType, address(_depositToken), address(_primaryRewardToken));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -202,7 +208,7 @@ contract Orderbook {
 
     /// @param token The Token to Claim Rewards In
     /// @param order The (fufilled) Order to claim rewards for
-    function claimRewards(ERC20 token, LPOrder order) public {
+    function claimRewards(ERC20 token, LPOrder order) external {
         uint256 owed = OrderRewardsOwed[token][order];
         if (order.lockedUntil() > block.timestamp) {
             return;
@@ -227,22 +233,22 @@ contract Orderbook {
         ERC20 depositToken,
         uint256 tokenAmount,
         uint96 maxDuration,
-        uint256 desiredIncentives,
+        uint256[] calldata desiredIncentives,
         uint256[] calldata allowedMarkets
     )
         public
         returns (LPOrder clone, uint256 orderId)
     {
-        clone = LPOrder(ORDER_IMPLEMENTATION.clone(abi.encode(msg.sender, address(depositToken), tokenAmount, address(this), maxDuration, desiredIncentives)));
+        clone = LPOrder(ORDER_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), address(depositToken), tokenAmount, uint256(maxDuration))));
 
-        orderId = maxLPOrderId++;
+        orderId = nextLPOrderId++;
 
         depositToken.safeTransferFrom(msg.sender, address(clone), tokenAmount);
-        clone.initialize(allowedMarkets);
+        clone.initialize(allowedMarkets, desiredIncentives);
 
         LpOrders[orderId] = clone;
 
-        emit OrderSubmitted(address(clone), msg.sender, allowedMarkets);
+        emit LPOrderSubmitted(address(clone), msg.sender, allowedMarkets);
     }
 
     /// @param _duration The duration the LP should lockup for to recieve incentives
@@ -258,8 +264,10 @@ contract Orderbook {
         IPOrder memory order =
             IPOrder({ sender: msg.sender, duration: _duration, amount: _amount, incentiveAmountPerToken: _incentiveAmountPerToken, marketId: _marketId });
 
-        IPOrderId = maxIPOrderId++;
+        IPOrderId = nextIPOrderId++;
         IpOrders[IPOrderId] = order;
+    
+        emit IPOrderSubmitted(uint256(_duration), uint256(_amount), uint256(_incentiveAmountPerToken), uint256(_marketId));
     }
 
     /// @param depositToken The token to deposit as liquidity
@@ -272,7 +280,7 @@ contract Orderbook {
         ERC20 depositToken,
         uint256 tokenAmount,
         uint96 maxDuration,
-        uint256 desiredIncentives,
+        uint256[] calldata desiredIncentives,
         uint256[] calldata allowedMarkets,
         uint256 IPOrderId
     )
@@ -292,6 +300,24 @@ contract Orderbook {
         matchOrders(IPOrderId, LPOrderId);
     }
 
+    /// @param IPOrderId The Incentive Provider Order Id to cancel
+    function cancelIPOrder(uint256 IPOrderId) external {
+      IPOrder memory order = IpOrders[IPOrderId];
+      require(msg.sender == order.sender, "Royco: Not Owner");
+
+      Market storage _market = markets[order.marketId];
+      _market.primaryRewardToken.safeTransfer(msg.sender, order.amount * order.incentiveAmountPerToken / 1e18);
+     
+      delete IpOrders[IPOrderId];
+    }
+
+    function cancelUnfufilledLPOrder(LPOrder order) external {
+        require(msg.sender == order.owner(), "Royco: Not Owner");
+        require(order.marketId() == 0, "Royco: Order Fufilled");
+
+        order.cancel();
+    }
+
     /// @param order Address of the order to cancel
     function cancelLPOrder(LPOrder order) external {
         require(msg.sender == order.owner(), "Royco: Not Owner");
@@ -300,7 +326,7 @@ contract Orderbook {
         Market memory _market = markets[marketId];
 
         // 0 Out of incentives
-        OrderRewardsOwed[_market.primaryRewardToken][order] = 0;
+        delete OrderRewardsOwed[_market.primaryRewardToken][order];
         // Exit the position
         order.executeWeiroll(_market.exit.weirollCommands, _market.exit.weirollState);
         order.cancel();
@@ -315,30 +341,30 @@ contract Orderbook {
         uint256 lpOrderAmount = _LpOrder.amount();
 
         if (IpOrder.amount > lpOrderAmount) {
-            IpOrder.amount = uint128(lpOrderAmount);
             IpOrder.amount -= uint128(lpOrderAmount);
-        } else {
+        } else if (IpOrder.amount != lpOrderAmount) {
             uint256 delta = lpOrderAmount - IpOrder.amount;
 
             LPOrder clone = LPOrder(
                 ORDER_IMPLEMENTATION.clone(
-                    abi.encode(_LpOrder.owner(), _LpOrder.depositToken(), delta, address(this), _LpOrder.maxDuration(), _LpOrder.desiredIncentives())
+                    abi.encodePacked(_LpOrder.owner(), address(this), _LpOrder.depositToken(), delta, _LpOrder.maxDuration(), _LpOrder.desiredIncentives())
                 )
             );
 
-            uint256 orderId = maxLPOrderId++;
+            uint256 orderId = nextLPOrderId++;
             uint256[] memory allowedMarkets = _LpOrder.allowedMarkets();
-            clone.initialize(allowedMarkets);
+            uint256[] memory desiredIncentives = _LpOrder.desiredIncentives();
+            clone.initialize(allowedMarkets, desiredIncentives);
             _LpOrder.fundSweepToNewOrder(address(clone), delta);
 
             LpOrders[orderId] = clone;
 
-            emit OrderSubmitted(address(clone), msg.sender, allowedMarkets);
+            emit LPOrderSubmitted(address(clone), msg.sender, allowedMarkets);
         }
 
         require(_LpOrder.supportedMarkets(IpOrder.marketId), "Royco: Market Mismatch");
         require(_LpOrder.maxDuration() >= IpOrder.duration, "Royco: Duration Mismatch");
-        require(_LpOrder.desiredIncentives() >= IpOrder.incentiveAmountPerToken, "Royco: Not Enough Incentives");
+        require(_LpOrder.expectedIncentives(IpOrder.marketId) >= IpOrder.incentiveAmountPerToken, "Royco: Not Enough Incentives");
 
         Market memory _market = markets[IpOrder.marketId];
 
@@ -349,12 +375,12 @@ contract Orderbook {
         if (_market._type != MarketType.Streaming) {
             _LpOrder.lockWallet(block.timestamp + IpOrder.duration);
             if (_market._type == MarketType.BL_Vesting) {
-                OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmountPerToken * lpOrderAmount;
+                OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmountPerToken * lpOrderAmount / 1e18;
             } else {
-                _market.primaryRewardToken.safeTransfer(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount);
+                _market.primaryRewardToken.safeTransfer(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount / 1e18);
             }
         } else {
-            createVestingTicket(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount, IpOrder.duration, _market.primaryRewardToken);
+            createVestingTicket(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount / 1e18, IpOrder.duration, _market.primaryRewardToken);
         }
     }
 }

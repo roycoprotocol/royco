@@ -51,17 +51,23 @@ contract LPOrder is Clone, VM {
     /// @dev Whether or not this order has been executed
     bool public executed;
     uint256[] private _allowedMarkets;
+    uint256[] private _desiredIncentives;
 
     function allowedMarkets() public view returns (uint256[] memory) {
         return _allowedMarkets;
     }
 
+    function desiredIncentives() public view returns (uint256[] memory) {
+      return _desiredIncentives;
+    }
+
     /// @param markets The markets for which this order is valid
-    function initialize(uint256[] calldata markets) external onlyOrderbook {
+    function initialize(uint256[] calldata markets, uint256[] calldata _expectedIncentives) external onlyOrderbook {
         _allowedMarkets = markets;
         /// Allowlist all markets
         for (uint256 i; i < markets.length;) {
-            supportedMarkets[i] = true;
+            supportedMarkets[markets[i]] = true;
+            expectedIncentives[markets[i]] = _expectedIncentives[i];
 
             unchecked {
                 ++i;
@@ -112,12 +118,10 @@ contract LPOrder is Clone, VM {
         return _getArgUint256(92);
     }
 
-    function desiredIncentives() public pure returns (uint256) {
-        return _getArgUint256(124);
-    }
-
     /// @notice Whether or not a market is supported by this order
     mapping(uint256 marketId => bool) public supportedMarkets;
+    /// @notice Mappiing to determine how much incentives are wanted for a market 
+    mapping(uint256 marketId => uint256 incentives) public expectedIncentives;
     /*//////////////////////////////////////////////////////////////
                                LOCKING LOGIC
     //////////////////////////////////////////////////////////////*/

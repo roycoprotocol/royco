@@ -1,16 +1,30 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 
-contract TestOpportunity {
-    ERC20 public token;
+contract Lock {
+  function depositTokens(
+    address token,
+    address sender,
+    uint256 amount
+  ) public payable {
+    ERC20 erc20 = ERC20(token);
 
-    constructor(ERC20 _token) {
-        token = _token;
-    }
+    // Transfer the tokens from the sender to the contract
+    // working
+    // token.transfer(address(this), amount);
 
-    function withdraw(uint256 tokens) public {
-        token.transfer(msg.sender, tokens);
-    }
+    erc20.transferFrom(sender, address(this), amount);
+  }
+
+  function withdrawTokens(
+    address token,
+    address recipient,
+    uint256 amount
+  ) public payable {
+    ERC20 erc20 = ERC20(token);
+
+    erc20.transfer(recipient, amount);
+  }
 }
