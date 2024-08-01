@@ -311,15 +311,19 @@ contract Orderbook {
       delete IpOrders[IPOrderId];
     }
 
-    function cancelUnfufilledLPOrder(LPOrder order) external {
+    /// @notice Cancels an existing LP Order whic hhas not been fufilled
+    /// @param LPOrderId The LPOrderId to cancel
+    function cancelUnfufilledLPOrder(uint256 LPOrderId) external {
+        LPOrder order = LpOrders[LPOrderId];
         require(msg.sender == order.owner(), "Royco: Not Owner");
         require(order.marketId() == 0, "Royco: Order Fufilled");
 
         order.cancel();
     }
 
-    /// @param order Address of the order to cancel
-    function cancelLPOrder(LPOrder order) external {
+    /// @param LPOrderId The LPOrderId to cancel
+    function cancelLPOrder(uint256 LPOrderId) external {
+        LPOrder order = LpOrders[LPOrderId];
         require(msg.sender == order.owner(), "Royco: Not Owner");
 
         uint256 marketId = order.marketId();

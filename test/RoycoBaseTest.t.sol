@@ -254,6 +254,23 @@ contract RoycoBaseTest is Test {
       book.cancelIPOrder(IPOrderId);
       assertEq(rewardToken.balanceOf(User01), 50 ether);
       assertEq(rewardToken.balanceOf(address(this)), 50 ether);
+    }
 
+    function testCancelLPOrder() public {
+      uint256 marketId = createSimpleMarket();
+      
+      rewardToken.mint(address(this), 100 ether);
+      rewardToken.approve(address(book), 100 ether);
+      uint256 IPOrderId = book.createIPOrder(10 days, 100 ether, 1 ether, uint128(marketId));
+      
+      uint256[] memory allowedMarkets = new uint256[](1);
+      allowedMarkets[0] = marketId;
+      uint256[] memory desiredIncentives = new uint256[](1);
+      desiredIncentives[0] = 1 ether;
+
+      depositToken.mint(address(this), 100 ether);
+      depositToken.approve(address(book), 100 ether);
+
+      (, uint256 orderId) = book.createLPOrder(depositToken, 100 ether, 10 days, desiredIncentives, allowedMarkets);
     }
 }
