@@ -58,7 +58,7 @@ contract LPOrder is Clone, VM {
     }
 
     function desiredIncentives() public view returns (uint256[] memory) {
-      return _desiredIncentives;
+        return _desiredIncentives;
     }
 
     /// @param markets The markets for which this order is valid
@@ -120,7 +120,7 @@ contract LPOrder is Clone, VM {
 
     /// @notice Whether or not a market is supported by this order
     mapping(uint256 marketId => bool) public supportedMarkets;
-    /// @notice Mappiing to determine how much incentives are wanted for a market 
+    /// @notice Mappiing to determine how much incentives are wanted for a market
     mapping(uint256 marketId => uint256 incentives) public expectedIncentives;
     /*//////////////////////////////////////////////////////////////
                                LOCKING LOGIC
@@ -164,6 +164,8 @@ contract LPOrder is Clone, VM {
     /// @notice Execute the Weiroll VM with the given commands.
     /// @param commands The commands to be executed by the Weiroll VM.
     function manualExecuteWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOwner notLocked returns (bytes[] memory) {
+        // Prevent people from approving w/e then rugging during vesting
+        require(executed, "Royco: Order unfilled");
         // Execute the Weiroll VM.
         return _execute(commands, state);
     }
