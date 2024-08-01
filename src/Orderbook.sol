@@ -36,7 +36,7 @@ contract Orderbook {
     event MarketCreated(uint256 marketId, MarketType _type, address _depositToken, address _primaryRewardToken);
 
     event LPOrderSubmitted(address order, address creator, uint256[] markets);
-    event IPOrderSubmitted(uint256 duration, uint256 amount, uint256 incentivesPerToken, uint256 marketId);
+    event IPOrderSubmitted(uint256 duration, uint256 amount, uint256 incentivesPerToken, uint256 marketId, uint256 unlockDate);
 
     event VestingScheduleCreated(uint256 indexed ticketId, address indexed beneficiary, uint256 totalAmount, uint256 startTime, uint256 duration);
     event TokensReleased(uint256 indexed ticketId, address indexed beneficiary, uint256 amount);
@@ -56,6 +56,8 @@ contract Orderbook {
         uint128 amount;
         uint128 incentiveAmountPerToken;
         uint128 marketId;
+        uint128 unlockDate;
+        uint128 expiry;
     }
 
     /// @dev Counter to track IPOrderIds so they can increment
@@ -158,14 +160,12 @@ contract Orderbook {
     /// @param _totalAmount The total amount of reward tokens to vest
     /// @param _duration The duration of which to vest the tokens over
     /// @param _rewardToken The token to reward the beneficiary with
-    ///
-    /// @return newTicketId The ticketId to track the new vesting schedule created
-    function createVestingTicket(address _beneficiary, uint256 _totalAmount, uint256 _duration, ERC20 _rewardToken) internal returns (uint256 newTicketId) {
+    function createVestingTicket(address _beneficiary, uint256 _totalAmount, uint256 _duration, ERC20 _rewardToken) internal {
         require(_beneficiary != address(0), "Invalid beneficiary address");
         require(_totalAmount > 0 && _totalAmount <= type(uint128).max, "Invalid total amount");
         require(_duration > 0 && _duration <= type(uint64).max, "Invalid duration");
 
-        newTicketId = nextTicketId++;
+        uint256 newTicketId = nextTicketId++;
 
         vestingSchedules[newTicketId] = VestingSchedule({
             rewardToken: _rewardToken,
@@ -180,7 +180,7 @@ contract Orderbook {
     }
 
     /// @param _ticketId The ticketId of the vesting schedule to claim the rewards for
-    function releaseVestedTokens(uint256 _ticketId) external {
+    function releaseVestedTokens(uint256 _ticketId) external returns (uint256 releaseableAmount) {
         VestingSchedule storage schedule = vestingSchedules[_ticketId];
         require(schedule.beneficiary == msg.sender, "Only the beneficiary can release tokens");
 
@@ -198,7 +198,7 @@ contract Orderbook {
             vestedAmount = (totalAmount * (block.timestamp - startTime)) / duration;
         }
 
-        uint256 releaseableAmount = vestedAmount - releasedAmount;
+        releaseableAmount = vestedAmount - releasedAmount;
         schedule.releasedAmount = uint128(releasedAmount + releaseableAmount);
 
         schedule.rewardToken.safeTransfer(schedule.beneficiary, releaseableAmount);
@@ -234,12 +234,14 @@ contract Orderbook {
         uint256 tokenAmount,
         uint96 maxDuration,
         uint256[] calldata desiredIncentives,
-        uint256[] calldata allowedMarkets
+        uint256[] calldata allowedMarkets,
+        uint256 expiry
     )
         public
         returns (LPOrder clone, uint256 orderId)
     {
-        clone = LPOrder(ORDER_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), address(depositToken), tokenAmount, uint256(maxDuration))));
+        clone =
+            LPOrder(ORDER_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), address(depositToken), tokenAmount, uint256(maxDuration), expiry)));
 
         orderId = nextLPOrderId++;
 
@@ -257,17 +259,34 @@ contract Orderbook {
     /// @param _marketId The marketId the order should be valid for
     ///
     /// @return IPOrderId The orderId of the new IPOrder
-    function createIPOrder(uint96 _duration, uint128 _amount, uint128 _incentiveAmountPerToken, uint128 _marketId) public returns (uint256 IPOrderId) {
+    function createIPOrder(
+        uint96 _duration,
+        uint128 _amount,
+        uint128 _incentiveAmountPerToken,
+        uint128 _marketId,
+        uint128 _unlockDate,
+        uint128 _expiry
+    )
+        public
+        returns (uint256 IPOrderId)
+    {
         Market memory _market = markets[_marketId];
         _market.primaryRewardToken.safeTransferFrom(msg.sender, address(this), uint256(_amount) * uint256(_incentiveAmountPerToken) / 1e18);
 
-        IPOrder memory order =
-            IPOrder({ sender: msg.sender, duration: _duration, amount: _amount, incentiveAmountPerToken: _incentiveAmountPerToken, marketId: _marketId });
+        IPOrder memory order = IPOrder({
+            sender: msg.sender,
+            duration: _duration,
+            amount: _amount,
+            incentiveAmountPerToken: _incentiveAmountPerToken,
+            marketId: _marketId,
+            unlockDate: _unlockDate,
+            expiry: _expiry
+        });
 
         IPOrderId = nextIPOrderId++;
         IpOrders[IPOrderId] = order;
-    
-        emit IPOrderSubmitted(uint256(_duration), uint256(_amount), uint256(_incentiveAmountPerToken), uint256(_marketId));
+
+        emit IPOrderSubmitted(uint256(_duration), uint256(_amount), uint256(_incentiveAmountPerToken), uint256(_marketId), _unlockDate);
     }
 
     /// @param depositToken The token to deposit as liquidity
@@ -286,7 +305,7 @@ contract Orderbook {
     )
         external
     {
-        (, uint256 LPOrderId) = createLPOrder(depositToken, tokenAmount, maxDuration, desiredIncentives, allowedMarkets);
+        (, uint256 LPOrderId) = createLPOrder(depositToken, tokenAmount, maxDuration, desiredIncentives, allowedMarkets, type(uint128).max);
         matchOrders(IPOrderId, LPOrderId);
     }
 
@@ -295,20 +314,29 @@ contract Orderbook {
     /// @param _incentiveAmountPerToken The amount of incentives per token the LP should recieve
     /// @param _marketId The marketId the order should be valid for
     /// @param LPOrderId The LP Order to match and fill with
-    function createIPOrderAndFill(uint96 _duration, uint128 _amount, uint128 _incentiveAmountPerToken, uint128 _marketId, uint256 LPOrderId) external {
-        uint256 IPOrderId = createIPOrder(_duration, _amount, _incentiveAmountPerToken, _marketId);
+    function createIPOrderAndFill(
+        uint96 _duration,
+        uint128 _amount,
+        uint128 _incentiveAmountPerToken,
+        uint128 _marketId,
+        uint128 _unlockDate,
+        uint256 LPOrderId
+    )
+        external
+    {
+        uint256 IPOrderId = createIPOrder(_duration, _amount, _incentiveAmountPerToken, _marketId, _unlockDate, uint128(type(uint128).max));
         matchOrders(IPOrderId, LPOrderId);
     }
 
     /// @param IPOrderId The Incentive Provider Order Id to cancel
     function cancelIPOrder(uint256 IPOrderId) external {
-      IPOrder memory order = IpOrders[IPOrderId];
-      require(msg.sender == order.sender, "Royco: Not Owner");
+        IPOrder memory order = IpOrders[IPOrderId];
+        require(msg.sender == order.sender, "Royco: Not Owner");
 
-      Market storage _market = markets[order.marketId];
-      _market.primaryRewardToken.safeTransfer(msg.sender, order.amount * order.incentiveAmountPerToken / 1e18);
-     
-      delete IpOrders[IPOrderId];
+        Market storage _market = markets[order.marketId];
+        _market.primaryRewardToken.safeTransfer(msg.sender, order.amount * order.incentiveAmountPerToken / 1e18);
+
+        delete IpOrders[IPOrderId];
     }
 
     /// @notice Cancels an existing LP Order whic hhas not been fufilled
@@ -366,8 +394,14 @@ contract Orderbook {
             emit LPOrderSubmitted(address(clone), msg.sender, allowedMarkets);
         }
 
+        uint256 duration = IpOrder.duration;
+        if (duration == 0) {
+            duration = IpOrder.unlockDate - block.timestamp;
+        }
+
+        require(_LpOrder.expiry() > block.timestamp && IpOrder.expiry > block.timestamp, "Royco: Order Expired");
         require(_LpOrder.supportedMarkets(IpOrder.marketId), "Royco: Market Mismatch");
-        require(_LpOrder.maxDuration() >= IpOrder.duration, "Royco: Duration Mismatch");
+        require(_LpOrder.maxDuration() >= duration, "Royco: Duration Mismatch");
         require(_LpOrder.expectedIncentives(IpOrder.marketId) >= IpOrder.incentiveAmountPerToken, "Royco: Not Enough Incentives");
 
         Market memory _market = markets[IpOrder.marketId];
@@ -377,14 +411,14 @@ contract Orderbook {
 
         // Lock the wallet for the time if neccessary
         if (_market._type != MarketType.Streaming) {
-            _LpOrder.lockWallet(block.timestamp + IpOrder.duration);
+            _LpOrder.lockWallet(block.timestamp + duration);
             if (_market._type == MarketType.BL_Vesting) {
                 OrderRewardsOwed[_market.primaryRewardToken][_LpOrder] = IpOrder.incentiveAmountPerToken * lpOrderAmount / 1e18;
             } else {
                 _market.primaryRewardToken.safeTransfer(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount / 1e18);
             }
         } else {
-            createVestingTicket(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount / 1e18, IpOrder.duration, _market.primaryRewardToken);
+            createVestingTicket(_LpOrder.owner(), IpOrder.incentiveAmountPerToken * lpOrderAmount / 1e18, duration, _market.primaryRewardToken);
         }
     }
 }

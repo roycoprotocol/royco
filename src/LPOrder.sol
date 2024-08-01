@@ -58,7 +58,7 @@ contract LPOrder is Clone, VM {
     }
 
     function desiredIncentives() public view returns (uint256[] memory) {
-      return _desiredIncentives;
+        return _desiredIncentives;
     }
 
     /// @param markets The markets for which this order is valid
@@ -118,9 +118,14 @@ contract LPOrder is Clone, VM {
         return _getArgUint256(92);
     }
 
+    /// @notice The timestamp at which this order becomes invalid
+    function expiry() public returns (uint256) {
+        return _getArgUint256(124);
+    }
+
     /// @notice Whether or not a market is supported by this order
     mapping(uint256 marketId => bool) public supportedMarkets;
-    /// @notice Mappiing to determine how much incentives are wanted for a market 
+    /// @notice Mappiing to determine how much incentives are wanted for a market
     mapping(uint256 marketId => uint256 incentives) public expectedIncentives;
     /*//////////////////////////////////////////////////////////////
                                LOCKING LOGIC
