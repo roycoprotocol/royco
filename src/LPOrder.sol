@@ -153,11 +153,17 @@ contract LPOrder is Clone, VM {
     //////////////////////////////////////////////////////////////*/
     /// @notice Execute the Weiroll VM with the given commands.
     /// @param commands The commands to be executed by the Weiroll VM.
-    /// @dev No state parameter is necessary because the proposed state is stored in the contract.
     function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOrderbook returns (bytes[] memory) {
         require(!executed, "Royco: AlreadyRan");
 
         executed = true;
+        // Execute the Weiroll VM.
+        return _execute(commands, state);
+    }
+
+    /// @notice Execute the Weiroll VM with the given commands.
+    /// @param commands The commands to be executed by the Weiroll VM.
+    function manualExecuteWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOwner notLocked returns (bytes[] memory) {
         // Execute the Weiroll VM.
         return _execute(commands, state);
     }
