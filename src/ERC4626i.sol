@@ -1,0 +1,269 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
+
+import { SafeCast } from "src/libraries/SafeCast.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
+import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
+
+/// @title is ERC4626i
+contract ERC4626i is Owned(msg.sender), ERC4626 {
+    using SafeTransferLib for ERC20;
+    using SafeCast for uint256;
+
+    /*//////////////////////////////////////////////////////////////
+                          EVENTS AND INTERFACE
+    //////////////////////////////////////////////////////////////*/
+
+    event RewardsSet(uint32 start, uint32 end, uint256 rate);
+    event RewardCampaignAdded(uint256 campaign, address token);
+    event RewardsCampaignUpdated(uint256 campaign, address token, uint256 accumulated);
+    event UserRewardsUpdated(uint256 campaign, address token, address user, uint256 userRewards, uint256 paidRewardPerToken);
+    event Claimed(uint256 campaign, address token, address user, address receiver, uint256 claimed);
+
+    /*//////////////////////////////////////////////////////////////
+                                STORAGE
+    //////////////////////////////////////////////////////////////*/
+    uint256 public totalCampaigns;
+
+    struct RewardsInterval {
+        uint32 start; // Start time for the current rewardsToken schedule
+        uint32 end; // End time for the current rewardsToken schedule
+        uint96 rate; // Wei rewarded per second among all token holders
+    }
+
+    struct RewardsPerToken {
+        uint128 accumulated; // Accumulated rewards per token for the interval, scaled up by 1e18
+        uint32 lastUpdated; // Last time the rewards per token accumulator was updated
+    }
+
+    struct UserRewards {
+        uint128 accumulated; // Accumulated rewards for the user until the checkpoint
+        uint128 checkpoint; // RewardsPerToken the last time the user rewards were updated
+    }
+
+    ERC20[] public rewardTokens; // Tokens used as rewards
+
+    mapping(address user => uint256[5] campaignsOptedInto) public userSelectedCampaigns;
+
+    mapping(uint256 campaign => address token) public campaignToToken;
+    mapping(uint256 campaign => RewardsInterval) public tokenToRewardsInterval; // Interval in which rewards are accumulated by users
+    mapping(uint256 campaign => RewardsPerToken) public tokenToRewardsPerToken; // Accumulator to track rewards per token
+    mapping(uint256 campaign  => mapping(address user => UserRewards)) public tokenToAccumulatedRewards; // Rewards accumulated per user
+
+    /*//////////////////////////////////////////////////////////////
+                              CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+    constructor(ERC20 _asset, ERC20[] memory _rewardTokens, string memory name, string memory symbol)
+        ERC4626(_asset, name, symbol)
+    {
+        totalCampaigns = 1;
+        rewardTokens = _rewardTokens;
+    }
+
+    function totalAssets() view override public returns (uint256) {
+        return 0;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              NEW CAMPAIGN
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Set a rewards schedule
+    function createRewardsCampaign(address token, uint256 start, uint256 end, uint256 totalRewards) external returns (uint256 campaignId) {
+        require(start > block.timestamp, "Campaing Not Started");
+        require(start < end, "Incorrect interval");
+
+        campaignId = totalCampaigns++;        
+
+        RewardsInterval memory rewardsInterval = tokenToRewardsInterval[campaignId];
+
+        // A new rewards program can be set if one is not running
+
+        // Update the rewards per token so that we don't lose any rewards
+        _updateRewardsPerCampaign(campaignId);
+
+        campaignToToken[campaignId] = token;
+        ERC20(token).safeTransferFrom(msg.sender, address(this), totalRewards);
+
+        uint256 rate = totalRewards / (end - start);
+
+        rewardsInterval.start = start.toUint32();
+        rewardsInterval.end = end.toUint32();
+        rewardsInterval.rate = rate.toUint96();
+
+        // If setting up a new rewards program, the rewardsPerToken.accumulated is used and built upon
+        // New rewards start accumulating from the new rewards program start
+        // Any unaccounted rewards from last program can still be added to the user rewards
+        // Any unclaimed rewards can still be claimed
+        tokenToRewardsPerToken[campaignId].lastUpdated = start.toUint32();
+
+        emit RewardsSet(start.toUint32(), end.toUint32(), rate);
+    }
+
+    function optIntoCampaign(uint256 campaignId, uint256 index) external {
+      updateUserCampaigns(msg.sender);
+
+      userSelectedCampaigns[msg.sender][index] = campaignId;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             CAMPAIGN MATH
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Update the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.
+    function _calculateRewardsPerToken(
+        RewardsPerToken memory rewardsPerTokenIn,
+        RewardsInterval memory rewardsInterval_
+    ) internal view returns (RewardsPerToken memory) {
+        RewardsPerToken memory rewardsPerTokenOut =
+            RewardsPerToken(rewardsPerTokenIn.accumulated, rewardsPerTokenIn.lastUpdated);
+        uint256 totalSupply_ = totalSupply;
+
+        // No changes if the program hasn't started
+        if (block.timestamp < rewardsInterval_.start) return rewardsPerTokenOut;
+
+        // Stop accumulating at the end of the rewards interval
+        uint256 updateTime = block.timestamp < rewardsInterval_.end ? block.timestamp : rewardsInterval_.end;
+        uint256 elapsed = updateTime - rewardsPerTokenIn.lastUpdated;
+
+        // No changes if no time has passed
+        if (elapsed == 0) return rewardsPerTokenOut;
+        rewardsPerTokenOut.lastUpdated = updateTime.toUint32();
+
+        // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
+        if (totalSupply_ == 0) return rewardsPerTokenOut;
+
+        // Calculate and update the new value of the accumulator.
+        rewardsPerTokenOut.accumulated =
+            (rewardsPerTokenIn.accumulated + 1e18 * elapsed * rewardsInterval_.rate / totalSupply_).toUint128(); // The rewards per token are scaled up for precision
+        return rewardsPerTokenOut;
+    }
+
+    /// @notice Calculate the rewards accumulated by a stake between two checkpoints.
+    function _calculateUserRewards(uint256 stake_, uint256 earlierCheckpoint, uint256 latterCheckpoint)
+        internal
+        pure
+        returns (uint256)
+    {
+        return stake_ * (latterCheckpoint - earlierCheckpoint) / 1e18; // We must scale down the rewards by the precision factor
+    }
+
+    /// @notice Update and return the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.
+    function _updateRewardsPerCampaign(uint256 campaignId) internal returns (RewardsPerToken memory) {
+        RewardsInterval memory rewardsInterval = tokenToRewardsInterval[campaignId];
+
+        RewardsPerToken memory rewardsPerTokenIn = tokenToRewardsPerToken[campaignId];
+        RewardsPerToken memory rewardsPerTokenOut = _calculateRewardsPerToken(rewardsPerTokenIn, rewardsInterval);
+
+        // We skip the storage changes if already updated in the same block, or if the program has ended and was updated at the end
+        if (rewardsPerTokenIn.lastUpdated == rewardsPerTokenOut.lastUpdated) return rewardsPerTokenOut;
+
+        tokenToRewardsPerToken[campaignId] = rewardsPerTokenOut;
+        
+        address token = campaignToToken[campaignId];
+        emit RewardsCampaignUpdated(campaignId, token, rewardsPerTokenOut.accumulated);
+
+        return rewardsPerTokenOut;
+    }
+
+    /// @notice Calculate and store current rewards for an user. Checkpoint the rewardsPerToken value with the user.
+    function _updateUserRewards(uint256 campaignId, address user) internal returns (UserRewards memory) {
+        RewardsPerToken memory rewardsPerToken_ = _updateRewardsPerCampaign(campaignId);
+        UserRewards memory userRewards_ = tokenToAccumulatedRewards[campaignId][user];
+
+        // We skip the storage changes if there are no changes to the rewards per token accumulator
+        if (userRewards_.checkpoint == rewardsPerToken_.accumulated) return userRewards_;
+
+        // Calculate and update the new value user reserves.
+        userRewards_.accumulated +=
+            _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerToken_.accumulated).toUint128();
+        userRewards_.checkpoint = rewardsPerToken_.accumulated;
+
+        tokenToAccumulatedRewards[campaignId][user] = userRewards_;
+
+        address token = campaignToToken[campaignId];
+        emit UserRewardsUpdated(campaignId, token, user, userRewards_.accumulated, userRewards_.checkpoint);
+
+        return userRewards_;
+    }
+
+    /// @notice Claim rewards for an user
+    function _claim(uint256 campaignId, address from, address to, uint256 amount) internal virtual {
+        _updateUserRewards(campaignId, from);
+        tokenToAccumulatedRewards[campaignId][from].accumulated -= amount.toUint128();
+        
+        address token = campaignToToken[campaignId];
+        ERC20(token).safeTransfer(to, amount);
+
+        emit Claimed(campaignId, token, from, to, amount);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            ERC4626 OVERRIDE
+    //////////////////////////////////////////////////////////////*/
+    function updateUserCampaigns(address user) internal {
+        for (uint8 i = 0; i < userSelectedCampaigns[user].length; ) {
+            uint256 campaignId = userSelectedCampaigns[user][i];
+            _updateUserRewards(campaignId, user);
+
+            unchecked {
+              ++i;
+            }
+        }
+    }
+
+    /// @dev Mint tokens, after accumulating rewards for an user and update the rewards per token accumulator.
+    function _mint(address to, uint256 amount) internal virtual override {
+        updateUserCampaigns(to);
+        super._mint(to, amount);
+    }
+
+    /// @dev Burn tokens, after accumulating rewards for an user and update the rewards per token accumulator.
+    function _burn(address from, uint256 amount) internal virtual override {
+        updateUserCampaigns(from);
+
+        super._burn(from, amount);
+    }
+
+    /// @dev Transfer tokens, after updating rewards for source and destination.
+    function transfer(address to, uint256 amount) public virtual override returns (bool) {
+        updateUserCampaigns(msg.sender);
+        updateUserCampaigns(to);
+
+        return super.transfer(to, amount);
+    }
+
+    /// @dev Transfer tokens, after updating rewards for source and destination.
+    function transferFrom(address from, address to, uint256 amount) public virtual override returns (bool) {
+        updateUserCampaigns(from);
+        updateUserCampaigns(to);
+
+        return super.transferFrom(from, to, amount);
+    }
+
+    /// @notice Claim all of one reward token for the caller
+    function claim(uint256 campaignId, address to) public virtual returns (uint256) {
+        uint256 claimed = currentUserRewards(campaignId, msg.sender);
+
+        _claim(campaignId, msg.sender, to, claimed);
+
+        return claimed;
+    }
+
+    /// @notice Calculate and return current rewards per token.
+    function currentRewardsPerCampaign(uint256 campaignId) public view returns (uint256) {
+        return _calculateRewardsPerToken(tokenToRewardsPerToken[campaignId], tokenToRewardsInterval[campaignId]).accumulated;
+    }
+
+    /// @notice Calculate and return current rewards for a user.
+    function currentUserRewards(uint256 campaignId, address user) public view returns (uint256) {
+        /// @dev This repeats the logic used on transactions, but doesn't update the storage.
+        UserRewards memory accumulatedRewards_ = tokenToAccumulatedRewards[campaignId][user];
+        RewardsPerToken memory rewardsPerToken_ =
+            _calculateRewardsPerToken(tokenToRewardsPerToken[campaignId], tokenToRewardsInterval[campaignId]);
+        return accumulatedRewards_.accumulated
+            + _calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerToken_.accumulated);
+    }
+}
