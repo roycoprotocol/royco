@@ -5,7 +5,6 @@ import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol";
 
 contract VaultOrderbook {
-
     struct LPOrder {
         uint256 orderID;
         address targetVault; //TODO convert to 4626i
@@ -30,7 +29,7 @@ contract VaultOrderbook {
     /// @custom:field expiry The timestamp after which the order is considered expired
     /// @custom:field price The desired rewards per input token (per second if a Vault market)
     /// @custom:field quantity The amount of input tokens to be deposited
-    event LPOrderCreated(
+    event LPOrderCreated( //TODO offered/requested paradigm
         uint256 indexed orderID,
         address indexed targetVault,
         address indexed lp,
@@ -41,12 +40,7 @@ contract VaultOrderbook {
         uint256 quantity
     );
 
-    event LPOrderFilled(
-        uint256 indexed orderID,
-        address indexed targetVault,
-        address indexed lp,
-        uint256 quantity
-    );
+    event LPOrderFilled(uint256 indexed orderID, address indexed targetVault, address indexed lp, uint256 quantity);
 
     // Errors
     error OrderExpired();
@@ -66,7 +60,14 @@ contract VaultOrderbook {
     // Functions
 
     /// @dev Setting an expiry of 0 means the order never expires
-    function createLPOrderNew(address targetVault, address fundingVault, uint256 quantity, uint256 expiry, address[] memory tokens, uint256[] memory prices) public returns (uint256) {
+    function createLPOrder(
+        address targetVault,
+        address fundingVault,
+        uint256 quantity,
+        uint256 expiry,
+        address[] memory tokens,
+        uint256[] memory prices
+    ) public returns (uint256) {
         if (expiry != 0 && expiry < block.timestamp) {
             revert CannotPlaceExpiredOrder();
         }
@@ -88,24 +89,26 @@ contract VaultOrderbook {
 
         LPOrder memory order = LPOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokens, prices);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
-        return(numOrders++);
+        return (numOrders++);
     }
 
     function allocateOrder(LPOrder memory order) public {
-        if(order.expiry != 0 && block.timestamp >= order.expiry) {
+        //TODO: partial fills
+        if (order.expiry != 0 && block.timestamp >= order.expiry) {
             revert OrderExpired();
         }
 
         bytes32 orderHash = getOrderHash(order);
         uint256 remainingQuantity = orderHashToRemainingQuantity[orderHash];
 
-        if(remainingQuantity == 0) {
+        if (remainingQuantity == 0) {
             revert NotEnoughRemainingQuantity();
         }
 
         uint256 len = order.tokens.length;
         for (uint256 i = 0; i < len; ++i) {
-            if (ERC4626i(order.targetVault).previewRewards(order.tokens[i]) < order.prices[i]) { //TODO: update with 4626i preview function signature, post-deposit rates
+            if (ERC4626i(order.targetVault).previewRewards(order.tokens[i]) < order.prices[i]) {
+                //TODO: update with 4626i preview function signature, post-deposit rates
                 revert OrderConditionsNotMet();
             }
         }
@@ -125,7 +128,7 @@ contract VaultOrderbook {
 
     function allocateOrders(LPOrder[] memory orders) public {
         uint256 len = orders.length;
-        for(uint256 i = 0; i < len; ++i) {
+        for (uint256 i = 0; i < len; ++i) {
             allocateOrder(orders[i]);
         }
     }
