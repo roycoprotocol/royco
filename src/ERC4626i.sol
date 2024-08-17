@@ -8,7 +8,7 @@ import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 
 /// @title is ERC4626i
-contract ERC4626i is Owned(msg.sender), ERC4626 {
+contract ERC4626i is Owned(msg.sender) {
     using SafeTransferLib for ERC20;
     using SafeCast for uint256;
 
@@ -19,13 +19,14 @@ contract ERC4626i is Owned(msg.sender), ERC4626 {
     event RewardsSet(uint32 start, uint32 end, uint256 rate);
     event RewardCampaignAdded(uint256 campaign, address token);
     event RewardsCampaignUpdated(uint256 campaign, address token, uint256 accumulated);
-    event UserRewardsUpdated(uint256 campaign, address token, address user, uint256 userRewards, uint256 paidRewardPerToken);
+    event UserRewardsUpdated(uint256 campaign, address token, address user, uint256 userRewards, uint256 paidRewardPerCampaign);
     event Claimed(uint256 campaign, address token, address user, address receiver, uint256 claimed);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
     uint256 public totalCampaigns;
+    ERC4626 public underlyingVault;
 
     struct RewardsInterval {
         uint32 start; // Start time for the current rewardsToken schedule
@@ -33,14 +34,14 @@ contract ERC4626i is Owned(msg.sender), ERC4626 {
         uint96 rate; // Wei rewarded per second among all token holders
     }
 
-    struct RewardsPerToken {
+    struct RewardsPerCampaign {
         uint128 accumulated; // Accumulated rewards per token for the interval, scaled up by 1e18
         uint32 lastUpdated; // Last time the rewards per token accumulator was updated
     }
 
     struct UserRewards {
         uint128 accumulated; // Accumulated rewards for the user until the checkpoint
-        uint128 checkpoint; // RewardsPerToken the last time the user rewards were updated
+        uint128 checkpoint; // RewardsPerCampaign the last time the user rewards were updated
     }
 
     ERC20[] public rewardTokens; // Tokens used as rewards
@@ -49,14 +50,13 @@ contract ERC4626i is Owned(msg.sender), ERC4626 {
 
     mapping(uint256 campaign => address token) public campaignToToken;
     mapping(uint256 campaign => RewardsInterval) public tokenToRewardsInterval; // Interval in which rewards are accumulated by users
-    mapping(uint256 campaign => RewardsPerToken) public tokenToRewardsPerToken; // Accumulator to track rewards per token
+    mapping(uint256 campaign => RewardsPerCampaign) public tokenToRewardsPerCampaign; // Accumulator to track rewards per token
     mapping(uint256 campaign  => mapping(address user => UserRewards)) public tokenToAccumulatedRewards; // Rewards accumulated per user
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
     constructor(ERC20 _asset, ERC20[] memory _rewardTokens, string memory name, string memory symbol)
-        ERC4626(_asset, name, symbol)
     {
         totalCampaigns = 1;
         rewardTokens = _rewardTokens;
@@ -93,11 +93,11 @@ contract ERC4626i is Owned(msg.sender), ERC4626 {
         rewardsInterval.end = end.toUint32();
         rewardsInterval.rate = rate.toUint96();
 
-        // If setting up a new rewards program, the rewardsPerToken.accumulated is used and built upon
+        // If setting up a new rewards program, the rewardsPerCampaign.accumulated is used and built upon
         // New rewards start accumulating from the new rewards program start
         // Any unaccounted rewards from last program can still be added to the user rewards
         // Any unclaimed rewards can still be claimed
-        tokenToRewardsPerToken[campaignId].lastUpdated = start.toUint32();
+        tokenToRewardsPerCampaign[campaignId].lastUpdated = start.toUint32();
 
         emit RewardsSet(start.toUint32(), end.toUint32(), rate);
     }
@@ -113,32 +113,32 @@ contract ERC4626i is Owned(msg.sender), ERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Update the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.
-    function _calculateRewardsPerToken(
-        RewardsPerToken memory rewardsPerTokenIn,
+    function _calculateRewardsPerCampaign(
+        RewardsPerCampaign memory rewardsPerCampaignIn,
         RewardsInterval memory rewardsInterval_
-    ) internal view returns (RewardsPerToken memory) {
-        RewardsPerToken memory rewardsPerTokenOut =
-            RewardsPerToken(rewardsPerTokenIn.accumulated, rewardsPerTokenIn.lastUpdated);
+    ) internal view returns (RewardsPerCampaign memory) {
+        RewardsPerCampaign memory rewardsPerCampaignOut =
+            RewardsPerCampaign(rewardsPerCampaignIn.accumulated, rewardsPerCampaignIn.lastUpdated);
         uint256 totalSupply_ = totalSupply;
 
         // No changes if the program hasn't started
-        if (block.timestamp < rewardsInterval_.start) return rewardsPerTokenOut;
+        if (block.timestamp < rewardsInterval_.start) return rewardsPerCampaignOut;
 
         // Stop accumulating at the end of the rewards interval
         uint256 updateTime = block.timestamp < rewardsInterval_.end ? block.timestamp : rewardsInterval_.end;
-        uint256 elapsed = updateTime - rewardsPerTokenIn.lastUpdated;
+        uint256 elapsed = updateTime - rewardsPerCampaignIn.lastUpdated;
 
         // No changes if no time has passed
-        if (elapsed == 0) return rewardsPerTokenOut;
-        rewardsPerTokenOut.lastUpdated = updateTime.toUint32();
+        if (elapsed == 0) return rewardsPerCampaignOut;
+        rewardsPerCampaignOut.lastUpdated = updateTime.toUint32();
 
         // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
-        if (totalSupply_ == 0) return rewardsPerTokenOut;
+        if (totalSupply_ == 0) return rewardsPerCampaignOut;
 
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated =
-            (rewardsPerTokenIn.accumulated + 1e18 * elapsed * rewardsInterval_.rate / totalSupply_).toUint128(); // The rewards per token are scaled up for precision
-        return rewardsPerTokenOut;
+        rewardsPerCampaignOut.accumulated =
+            (rewardsPerCampaignIn.accumulated + 1e18 * elapsed * rewardsInterval_.rate / totalSupply_).toUint128(); // The rewards per token are scaled up for precision
+        return rewardsPerCampaignOut;
     }
 
     /// @notice Calculate the rewards accumulated by a stake between two checkpoints.
@@ -151,35 +151,35 @@ contract ERC4626i is Owned(msg.sender), ERC4626 {
     }
 
     /// @notice Update and return the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.
-    function _updateRewardsPerCampaign(uint256 campaignId) internal returns (RewardsPerToken memory) {
+    function _updateRewardsPerCampaign(uint256 campaignId) internal returns (RewardsPerCampaign memory) {
         RewardsInterval memory rewardsInterval = tokenToRewardsInterval[campaignId];
 
-        RewardsPerToken memory rewardsPerTokenIn = tokenToRewardsPerToken[campaignId];
-        RewardsPerToken memory rewardsPerTokenOut = _calculateRewardsPerToken(rewardsPerTokenIn, rewardsInterval);
+        RewardsPerCampaign memory rewardsPerCampaignIn = tokenToRewardsPerCampaign[campaignId];
+        RewardsPerCampaign memory rewardsPerCampaignOut = _calculateRewardsPerCampaign(rewardsPerCampaignIn, rewardsInterval);
 
         // We skip the storage changes if already updated in the same block, or if the program has ended and was updated at the end
-        if (rewardsPerTokenIn.lastUpdated == rewardsPerTokenOut.lastUpdated) return rewardsPerTokenOut;
+        if (rewardsPerCampaignIn.lastUpdated == rewardsPerCampaignOut.lastUpdated) return rewardsPerCampaignOut;
 
-        tokenToRewardsPerToken[campaignId] = rewardsPerTokenOut;
+        tokenToRewardsPerCampaign[campaignId] = rewardsPerCampaignOut;
         
         address token = campaignToToken[campaignId];
-        emit RewardsCampaignUpdated(campaignId, token, rewardsPerTokenOut.accumulated);
+        emit RewardsCampaignUpdated(campaignId, token, rewardsPerCampaignOut.accumulated);
 
-        return rewardsPerTokenOut;
+        return rewardsPerCampaignOut;
     }
 
-    /// @notice Calculate and store current rewards for an user. Checkpoint the rewardsPerToken value with the user.
+    /// @notice Calculate and store current rewards for an user. Checkpoint the rewardsPerCampaign value with the user.
     function _updateUserRewards(uint256 campaignId, address user) internal returns (UserRewards memory) {
-        RewardsPerToken memory rewardsPerToken_ = _updateRewardsPerCampaign(campaignId);
+        RewardsPerCampaign memory rewardsPerCampaign_ = _updateRewardsPerCampaign(campaignId);
         UserRewards memory userRewards_ = tokenToAccumulatedRewards[campaignId][user];
 
         // We skip the storage changes if there are no changes to the rewards per token accumulator
-        if (userRewards_.checkpoint == rewardsPerToken_.accumulated) return userRewards_;
+        if (userRewards_.checkpoint == rewardsPerCampaign_.accumulated) return userRewards_;
 
         // Calculate and update the new value user reserves.
         userRewards_.accumulated +=
-            _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerToken_.accumulated).toUint128();
-        userRewards_.checkpoint = rewardsPerToken_.accumulated;
+            _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerCampaign_.accumulated).toUint128();
+        userRewards_.checkpoint = rewardsPerCampaign_.accumulated;
 
         tokenToAccumulatedRewards[campaignId][user] = userRewards_;
 
@@ -213,6 +213,58 @@ contract ERC4626i is Owned(msg.sender), ERC4626 {
             }
         }
     }
+
+ /*////////////////////////////////////////////////////////
+                      Events
+    ////////////////////////////////////////////////////////*/
+
+    /// @notice `sender` has exchanged `assets` for `shares`,
+    /// and transferred those `shares` to `receiver`.
+    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
+
+    /// @notice `sender` has exchanged `shares` for `assets`,
+    /// and transferred those `assets` to `receiver`.
+    event Withdraw(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
+
+    /*////////////////////////////////////////////////////////
+                      Vault properties
+    ////////////////////////////////////////////////////////*/
+
+    /// @notice The address of the underlying ERC20 token used for
+    /// the Vault for accounting, depositing, and withdrawing.
+    function asset() external view virtual returns (address asset);
+
+    /// @notice Total amount of the underlying asset that
+    /// is "managed" by Vault.
+    function totalAssets() external view virtual returns (uint256 totalAssets);
+
+    /*////////////////////////////////////////////////////////
+                      Deposit/Withdrawal Logic
+    ////////////////////////////////////////////////////////*/
+
+    /// @notice Mints `shares` Vault shares to `receiver` by
+    /// depositing exactly `assets` of underlying tokens.
+    function deposit(uint256 assets, address receiver) external virtual returns (uint256 shares);
+
+    /// @notice Mints exactly `shares` Vault shares to `receiver`
+    /// by depositing `assets` of underlying tokens.
+    function mint(uint256 shares, address receiver) external virtual returns (uint256 assets);
+
+    /// @notice Redeems `shares` from `owner` and sends `assets`
+    /// of underlying tokens to `receiver`.
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) external virtual returns (uint256 shares);
+
+    /// @notice Redeems `shares` from `owner` and sends `assets`
+    /// of underlying tokens to `receiver`.
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) external virtual returns (uint256 assets);
 
     /// @dev Mint tokens, after accumulating rewards for an user and update the rewards per token accumulator.
     function _mint(address to, uint256 amount) internal virtual override {
@@ -254,16 +306,93 @@ contract ERC4626i is Owned(msg.sender), ERC4626 {
 
     /// @notice Calculate and return current rewards per token.
     function currentRewardsPerCampaign(uint256 campaignId) public view returns (uint256) {
-        return _calculateRewardsPerToken(tokenToRewardsPerToken[campaignId], tokenToRewardsInterval[campaignId]).accumulated;
+        return _calculateRewardsPerCampaign(tokenToRewardsPerCampaign[campaignId], tokenToRewardsInterval[campaignId]).accumulated;
     }
 
     /// @notice Calculate and return current rewards for a user.
     function currentUserRewards(uint256 campaignId, address user) public view returns (uint256) {
         /// @dev This repeats the logic used on transactions, but doesn't update the storage.
         UserRewards memory accumulatedRewards_ = tokenToAccumulatedRewards[campaignId][user];
-        RewardsPerToken memory rewardsPerToken_ =
-            _calculateRewardsPerToken(tokenToRewardsPerToken[campaignId], tokenToRewardsInterval[campaignId]);
+        RewardsPerCampaign memory rewardsPerCampaign_ =
+            _calculateRewardsPerCampaign(tokenToRewardsPerCampaign[campaignId], tokenToRewardsInterval[campaignId]);
         return accumulatedRewards_.accumulated
-            + _calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerToken_.accumulated);
+            + _calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerCampaign_.accumulated);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                           ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/ 
+
+    /// @notice The amount of shares that the vault would
+    /// exchange for the amount of assets provided, in an
+    /// ideal scenario where all the conditions are met.
+    function convertToShares(uint256 assets) external view virtual returns (uint256 shares) {
+      shares = underlyingVault.convertToShares(assets);
+    }
+
+    /// @notice The amount of assets that the vault would
+    /// exchange for the amount of shares provided, in an
+    /// ideal scenario where all the conditions are met.
+    function convertToAssets(uint256 shares) external view virtual returns (uint256 assets) {
+      assets = underlyingVault.convertToAssets(shares);
+    }
+
+    /// @notice Total number of underlying assets that can
+    /// be deposited by `owner` into the Vault, where `owner`
+    /// corresponds to the input parameter `receiver` of a
+    /// `deposit` call.
+    function maxDeposit(address) external view virtual returns (uint256 maxAssets) {
+      maxAssets = underlyingVault.maxDeposit(address(this));
+    }
+
+    /// @notice Allows an on-chain or off-chain user to simulate
+    /// the effects of their deposit at the current block, given
+    /// current on-chain conditions.
+    function previewDeposit(uint256 assets) external view virtual returns (uint256 shares) {
+      shares = underlyingVault.previewDeposit(assets);
+    }
+
+    /// @notice Total number of underlying shares that can be minted
+    /// for `owner`, where `owner` corresponds to the input
+    /// parameter `receiver` of a `mint` call.
+    function maxMint(address) external view virtual returns (uint256 maxShares) {
+      maxShares = underlyingVault.maxMint(address(this));
+    }
+
+    /// @notice Allows an on-chain or off-chain user to simulate
+    /// the effects of their mint at the current block, given
+    /// current on-chain conditions.
+    function previewMint(uint256 shares) external view virtual returns (uint256 assets) {
+      assets = underlyingVault.previewMint(shares);
+    }
+
+    /// @notice Total number of underlying assets that can be
+    /// withdrawn from the Vault by `owner`, where `owner`
+    /// corresponds to the input parameter of a `withdraw` call.
+    function maxWithdraw(address) external view virtual returns (uint256 maxAssets) {
+      maxAssets = underlyingVault.maxWithdraw(address(this));
+    }
+
+    /// @notice Allows an on-chain or off-chain user to simulate
+    /// the effects of their withdrawal at the current block,
+    /// given current on-chain conditions.
+    function previewWithdraw(uint256 assets) external view virtual returns (uint256 shares) {
+      shares = underlyingVault.previewWithdraw(assets);
+    }
+
+    /// @notice Total number of underlying shares that can be
+    /// redeemed from the Vault by `owner`, where `owner` corresponds
+    /// to the input parameter of a `redeem` call.
+    function maxRedeem(address ) external view virtual returns (uint256 maxShares) {
+      maxShares = underlyingVault.maxRedeem(address(this));
+    }
+
+    /// @notice Allows an on-chain or off-chain user to simulate
+    /// the effects of their redeemption at the current block,
+    /// given current on-chain conditions.
+    function previewRedeem(uint256 shares) external view virtual returns (uint256 assets) {
+      assets = underlyingVault.previewRedeem(shares);
+    }
+
+
 }
