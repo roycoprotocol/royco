@@ -5,16 +5,20 @@ import { SafeCast } from "src/libraries/SafeCast.sol";
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
+import { LibString } from "lib/solady/src/utils/LibString.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 
 /// @title is ERC4626i
-contract ERC4626i is Owned(msg.sender) {
+contract ERC4626i is Owned(msg.sender), ERC20, ERC4626 {
     using SafeTransferLib for ERC20;
     using SafeCast for uint256;
 
     /*//////////////////////////////////////////////////////////////
                           EVENTS AND INTERFACE
     //////////////////////////////////////////////////////////////*/
+    error CampaignTooShort();
+    error CampaignNotStarted();
+    error IncorrectInterval();
 
     event RewardsSet(uint32 start, uint32 end, uint256 rate);
     event RewardCampaignAdded(uint256 campaign, address token);
@@ -27,6 +31,8 @@ contract ERC4626i is Owned(msg.sender) {
     //////////////////////////////////////////////////////////////*/
     uint256 public totalCampaigns;
     ERC4626 public underlyingVault;
+
+    uint256 constant MINIMUM_CAMPAIGN_DURATION = 7 days;
 
     struct RewardsInterval {
         uint32 start; // Start time for the current rewardsToken schedule
@@ -56,14 +62,11 @@ contract ERC4626i is Owned(msg.sender) {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(ERC20 _asset, ERC20[] memory _rewardTokens, string memory name, string memory symbol)
+    constructor(ERC4626 _underlyingVault)
+    ERC4626(_underlyingVault.asset(), LibString.concat("Incentivied", _underlyingVault.name()), LibString.concat(_underlyingVault.name(), "i"))
     {
+        underlyingVault = _underlyingVault;
         totalCampaigns = 1;
-        rewardTokens = _rewardTokens;
-    }
-
-    function totalAssets() view override public returns (uint256) {
-        return 0;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -72,8 +75,17 @@ contract ERC4626i is Owned(msg.sender) {
 
     /// @dev Set a rewards schedule
     function createRewardsCampaign(address token, uint256 start, uint256 end, uint256 totalRewards) external returns (uint256 campaignId) {
-        require(start > block.timestamp, "Campaing Not Started");
-        require(start < end, "Incorrect interval");
+        if (start < block.timestamp) {
+            revert CampaignNotStarted();
+        }
+
+        if (start > end) {
+            revert IncorrectInterval();
+        }
+
+        if (end - start < MINIMUM_CAMPAIGN_DURATION) {
+            revert CampaignTooShort();
+        }
 
         campaignId = totalCampaigns++;        
 
@@ -119,7 +131,7 @@ contract ERC4626i is Owned(msg.sender) {
     ) internal view returns (RewardsPerCampaign memory) {
         RewardsPerCampaign memory rewardsPerCampaignOut =
             RewardsPerCampaign(rewardsPerCampaignIn.accumulated, rewardsPerCampaignIn.lastUpdated);
-        uint256 totalSupply_ = totalSupply;
+        uint256 totalSupply_ = underlyingVault.totalSupply();
 
         // No changes if the program hasn't started
         if (block.timestamp < rewardsInterval_.start) return rewardsPerCampaignOut;
@@ -178,7 +190,7 @@ contract ERC4626i is Owned(msg.sender) {
 
         // Calculate and update the new value user reserves.
         userRewards_.accumulated +=
-            _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerCampaign_.accumulated).toUint128();
+            _calculateUserRewards(underlyingVault.balanceOf(user), userRewards_.checkpoint, rewardsPerCampaign_.accumulated).toUint128();
         userRewards_.checkpoint = rewardsPerCampaign_.accumulated;
 
         tokenToAccumulatedRewards[campaignId][user] = userRewards_;
@@ -214,29 +226,15 @@ contract ERC4626i is Owned(msg.sender) {
         }
     }
 
- /*////////////////////////////////////////////////////////
-                      Events
-    ////////////////////////////////////////////////////////*/
-
-    /// @notice `sender` has exchanged `assets` for `shares`,
-    /// and transferred those `shares` to `receiver`.
-    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
-
-    /// @notice `sender` has exchanged `shares` for `assets`,
-    /// and transferred those `assets` to `receiver`.
-    event Withdraw(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
-
     /*////////////////////////////////////////////////////////
                       Vault properties
     ////////////////////////////////////////////////////////*/
 
-    /// @notice The address of the underlying ERC20 token used for
-    /// the Vault for accounting, depositing, and withdrawing.
-    function asset() external view virtual returns (address asset);
-
     /// @notice Total amount of the underlying asset that
     /// is "managed" by Vault.
-    function totalAssets() external view virtual returns (uint256 totalAssets);
+    function totalAssets() public view override returns (uint256) {
+        return underlyingVault.convertToAssets(underlyingVault.balanceOf(address(this)));
+    }
 
     /*////////////////////////////////////////////////////////
                       Deposit/Withdrawal Logic
@@ -244,11 +242,15 @@ contract ERC4626i is Owned(msg.sender) {
 
     /// @notice Mints `shares` Vault shares to `receiver` by
     /// depositing exactly `assets` of underlying tokens.
-    function deposit(uint256 assets, address receiver) external virtual returns (uint256 shares);
+    function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
+
+    }
 
     /// @notice Mints exactly `shares` Vault shares to `receiver`
     /// by depositing `assets` of underlying tokens.
-    function mint(uint256 shares, address receiver) external virtual returns (uint256 assets);
+    function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
+
+    }
 
     /// @notice Redeems `shares` from `owner` and sends `assets`
     /// of underlying tokens to `receiver`.
@@ -256,7 +258,9 @@ contract ERC4626i is Owned(msg.sender) {
         uint256 assets,
         address receiver,
         address owner
-    ) external virtual returns (uint256 shares);
+    ) public override returns (uint256 shares) {
+
+    }
 
     /// @notice Redeems `shares` from `owner` and sends `assets`
     /// of underlying tokens to `receiver`.
@@ -264,7 +268,9 @@ contract ERC4626i is Owned(msg.sender) {
         uint256 shares,
         address receiver,
         address owner
-    ) external virtual returns (uint256 assets);
+    ) public override returns (uint256 assets) {
+
+    }
 
     /// @dev Mint tokens, after accumulating rewards for an user and update the rewards per token accumulator.
     function _mint(address to, uint256 amount) internal virtual override {
@@ -316,7 +322,12 @@ contract ERC4626i is Owned(msg.sender) {
         RewardsPerCampaign memory rewardsPerCampaign_ =
             _calculateRewardsPerCampaign(tokenToRewardsPerCampaign[campaignId], tokenToRewardsInterval[campaignId]);
         return accumulatedRewards_.accumulated
-            + _calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerCampaign_.accumulated);
+            + _calculateUserRewards(underlyingVault.balanceOf(user), accumulatedRewards_.checkpoint, rewardsPerCampaign_.accumulated);
+    }
+
+    function previewRewardsAfterDeposit(uint256 amount, uint256 campaignId, uint256 rate) public returns (uint256 incentiveRate) {
+       RewardsInterval memory interval = tokenToRewardsInterval[campaignId];
+       RewardsPerCampaign memory campaignRewards = tokenToRewardsPerCampaign[campaignId];
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -326,14 +337,14 @@ contract ERC4626i is Owned(msg.sender) {
     /// @notice The amount of shares that the vault would
     /// exchange for the amount of assets provided, in an
     /// ideal scenario where all the conditions are met.
-    function convertToShares(uint256 assets) external view virtual returns (uint256 shares) {
+    function convertToShares(uint256 assets) public view override returns (uint256 shares) {
       shares = underlyingVault.convertToShares(assets);
     }
 
     /// @notice The amount of assets that the vault would
     /// exchange for the amount of shares provided, in an
     /// ideal scenario where all the conditions are met.
-    function convertToAssets(uint256 shares) external view virtual returns (uint256 assets) {
+    function convertToAssets(uint256 shares) public view override returns (uint256 assets) {
       assets = underlyingVault.convertToAssets(shares);
     }
 
@@ -341,56 +352,56 @@ contract ERC4626i is Owned(msg.sender) {
     /// be deposited by `owner` into the Vault, where `owner`
     /// corresponds to the input parameter `receiver` of a
     /// `deposit` call.
-    function maxDeposit(address) external view virtual returns (uint256 maxAssets) {
+    function maxDeposit(address) public view override returns (uint256 maxAssets) {
       maxAssets = underlyingVault.maxDeposit(address(this));
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate
     /// the effects of their deposit at the current block, given
     /// current on-chain conditions.
-    function previewDeposit(uint256 assets) external view virtual returns (uint256 shares) {
+    function previewDeposit(uint256 assets) public view override returns (uint256 shares) {
       shares = underlyingVault.previewDeposit(assets);
     }
 
     /// @notice Total number of underlying shares that can be minted
     /// for `owner`, where `owner` corresponds to the input
     /// parameter `receiver` of a `mint` call.
-    function maxMint(address) external view virtual returns (uint256 maxShares) {
+    function maxMint(address) public view override returns (uint256 maxShares) {
       maxShares = underlyingVault.maxMint(address(this));
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate
     /// the effects of their mint at the current block, given
     /// current on-chain conditions.
-    function previewMint(uint256 shares) external view virtual returns (uint256 assets) {
+    function previewMint(uint256 shares) public view override returns (uint256 assets) {
       assets = underlyingVault.previewMint(shares);
     }
 
     /// @notice Total number of underlying assets that can be
     /// withdrawn from the Vault by `owner`, where `owner`
     /// corresponds to the input parameter of a `withdraw` call.
-    function maxWithdraw(address) external view virtual returns (uint256 maxAssets) {
+    function maxWithdraw(address) public view override returns (uint256 maxAssets) {
       maxAssets = underlyingVault.maxWithdraw(address(this));
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate
     /// the effects of their withdrawal at the current block,
     /// given current on-chain conditions.
-    function previewWithdraw(uint256 assets) external view virtual returns (uint256 shares) {
+    function previewWithdraw(uint256 assets) public view override returns (uint256 shares) {
       shares = underlyingVault.previewWithdraw(assets);
     }
 
     /// @notice Total number of underlying shares that can be
     /// redeemed from the Vault by `owner`, where `owner` corresponds
     /// to the input parameter of a `redeem` call.
-    function maxRedeem(address ) external view virtual returns (uint256 maxShares) {
+    function maxRedeem(address ) public view override returns (uint256 maxShares) {
       maxShares = underlyingVault.maxRedeem(address(this));
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate
     /// the effects of their redeemption at the current block,
     /// given current on-chain conditions.
-    function previewRedeem(uint256 shares) external view virtual returns (uint256 assets) {
+    function previewRedeem(uint256 shares) public view override returns (uint256 assets) {
       assets = underlyingVault.previewRedeem(shares);
     }
 
