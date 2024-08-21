@@ -62,6 +62,8 @@ contract ERC4626i is Owned(msg.sender), ERC20, ERC4626 {
     mapping(uint256 campaign => RewardsPerCampaign) public tokenToRewardsPerCampaign; // Accumulator to track rewards per token
     mapping(uint256 campaign  => mapping(address user => UserRewards)) public tokenToAccumulatedRewards; // Rewards accumulated per user
 
+    mapping(uint256 campaign => RewardsInterval) public feeEarningInterval;
+    mapping(uint256 campaign => RewardsPerCampaign) public feeRewardCampaign;
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
