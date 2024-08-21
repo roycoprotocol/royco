@@ -18,7 +18,7 @@ contract LPOrder is Clone, VM {
     //////////////////////////////////////////////////////////////*/
 
     error NotOwner();
-    error NotMarket();
+    error NotOrderbook();
     error WalletLocked();
 
     /// @notice Only the owner of the contract can call the function
@@ -32,68 +32,17 @@ contract LPOrder is Clone, VM {
     /// @notice Only the orderbook contract can call the function
     modifier onlyOrderbook() {
         if (msg.sender != orderbook()) {
-            revert NotMarket();
+            revert NotOrderbook();
         }
         _;
     }
 
     /// @notice The wallet cannot be locked
     modifier notLocked() {
-        if (lockedUntil > block.timestamp) {
+        if (lockedUntil() > block.timestamp) {
             revert WalletLocked();
         }
         _;
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            INITIALIZATION
-    //////////////////////////////////////////////////////////////*/
-    /// @dev Whether or not this order has been executed
-    bool public executed;
-    /// @dev All Markets this order is valid for
-    uint256[] private _allowedMarkets;
-    /// @dev The expected incentives for each market
-    uint256[] private _desiredIncentives;
-
-    /// @return An array of all valid markets for this order
-    function allowedMarkets() public view returns (uint256[] memory) {
-        return _allowedMarkets;
-    }
-
-    /// @return An array of each incentivePerAmount expected for each market
-    function desiredIncentives() public view returns (uint256[] memory) {
-        return _desiredIncentives;
-    }
-
-    /// @param markets The markets for which this order is valid
-    function initialize(uint256[] calldata markets, uint256[] calldata _expectedIncentives, uint256 _expiry)
-        external
-        onlyOrderbook
-    {
-        _allowedMarkets = markets;
-        expiry = _expiry;
-
-        /// Allowlist all markets
-        for (uint256 i; i < markets.length;) {
-            supportedMarkets[markets[i]] = true;
-            expectedIncentives[markets[i]] = _expectedIncentives[i];
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /// @param _marketId The market which the order was filled into
-    function fillOrder(uint256 _marketId) external onlyOrderbook {
-        marketId = _marketId;
-    }
-
-    /// @param newAddress The new address to sweep funds to
-    /// @param amountToSweep The amount of tokens to transfer to the new address
-    function fundSweepToNewOrder(address newAddress, uint256 amountToSweep) external onlyOrderbook {
-        ERC20 _depositToken = depositToken();
-        _depositToken.safeTransfer(newAddress, amountToSweep);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -102,6 +51,9 @@ contract LPOrder is Clone, VM {
 
     /// @dev The MarketId of the Market which this order has been fufilled by
     uint256 public marketId;
+
+    /// @dev Whether or not this order has been executed
+    bool public executed;
 
     /// @notice The address of the order creator (owner)
     function owner() public pure returns (address) {
@@ -113,63 +65,14 @@ contract LPOrder is Clone, VM {
         return _getArgAddress(20);
     }
 
-    /// @notice The deposit token being LP'ed
-    function depositToken() public pure returns (ERC20) {
-        return ERC20(_getArgAddress(40));
-    }
-
     /// @notice The amount of tokens to be LP'ed
     function amount() public pure returns (uint256) {
-        return _getArgUint256(60);
+        return _getArgUint256(40);
     }
 
-    /// @notice The max duration to lock for
-    function maxDuration() public pure returns (uint256) {
-        return _getArgUint256(92);
-    }
-
-    /// @notice Whether or not a market is supported by this order
-    mapping(uint256 marketId => bool) public supportedMarkets;
-    /// @notice Mappiing to determine how much incentives are wanted for a market
-    mapping(uint256 marketId => uint256 incentives) public expectedIncentives;
-
-    /*//////////////////////////////////////////////////////////////
-                             ORDER CONTROL
-    //////////////////////////////////////////////////////////////*/
-
-    /// @param newMarketId The MarketId to add an order for
-    /// @param incentives The requested incentives for the market
-    function addOrder(uint256 newMarketId, uint256 incentives) external onlyOwner {
-        require(supportedMarkets[newMarketId] == false, "Royco: Order Already Placed");
-        require(marketId == 0, "Royco: Order Already Filled");
-        supportedMarkets[newMarketId] = true;
-        expectedIncentives[newMarketId] = incentives;
-
-        _allowedMarkets.push(newMarketId);
-        _desiredIncentives.push(incentives);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                               LOCKING LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice The time until the wallet is locked.
-    uint256 public lockedUntil;
-
-    /// @notice Lock the wallet until a certain time.
-    function lockWallet(uint256 unlockTime) public onlyOrderbook {
-        lockedUntil = unlockTime;
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            CANCELLATION LOGIC
-    //////////////////////////////////////////////////////////////*/
-    /// @notice The order has been cancelled.
-    uint256 public expiry;
-
-    /// @dev Cancels an order by instantly setting it to expire
-    function cancel() public onlyOrderbook {
-        expiry = 0;
+    /// @notice The timestamp after which the wallet may be interacted with
+    function lockedUntil() public pure returns (uint256) {
+        return _getArgUint256(72);
     }
 
     /*//////////////////////////////////////////////////////////////
