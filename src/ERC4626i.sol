@@ -60,10 +60,18 @@ contract ERC4626i is Owned(msg.sender), ERC20 {
     /// @custom:field assets   The amount of assets (equivalent) withdrawn 
     /// @custom:field shares   The amount of shares (equivalent) redeemed
     event Withdraw(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
-    
+   
+    /// @custom:field sender     The user who selected the campaign
+    /// @custom:field campaignId The campaignId selected by the user
+    event RewardCampaignSelected(address indexed sender, uint256 indexed campaignId);
+    /// @custom:field sender     The user who selected the campaign
+    /// @custom:field campaignId The campaignId unselected by the user
+    event RewardCampaignUnselected(address indexed sender, uint256 indexed campaignId);
+
     error CampaignTooShort();
     error CampaignNotStarted();
     error IncorrectInterval();
+    error MaxCampaignsOptedInto();
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -79,43 +87,64 @@ contract ERC4626i is Owned(msg.sender), ERC20 {
 
     /// @dev A counter number used to generate campaignIds 
     uint256 internal totalCampaigns;
+    /// @dev The address which is allowed to claim protocol fees
+    address public protocolFeesTo;
     /// @dev The protocol fee taken out of incentive campaigns out of 1e18
     uint256 public protocolFee;
 
+    /// @custom:field start The start time for the reward campaign schedule
+    /// @custom:field end   End time for the reward campaign schedule 
+    /// @custom:field rate  Wei rewarded per second among all token holders
     struct RewardsInterval {
-        uint32 start; // Start time for the current rewardsToken schedule
-        uint32 end; // End time for the current rewardsToken schedule
-        uint96 rate; // Wei rewarded per second among all token holders
+        uint32 start; 
+        uint32 end;
+        uint96 rate; 
     }
-
+    
+    /// @custom:field accumulated Accumulated rewards per token for the interval, scaled up by WAD
+    /// @custom:field lastUpdate  Last time the rewards per token accumulator was updated 
     struct RewardsPerCampaign {
-        uint128 accumulated; // Accumulated rewards per token for the interval, scaled up by 1e18
-        uint32 lastUpdated; // Last time the rewards per token accumulator was updated
+        uint128 accumulated; 
+        uint32 lastUpdated;
     }
 
+    /// @custom:field accumulated The accumulated rewards for the user until the checkpoint
+    /// @custom:field checkpoint  RewardsPerCampagin the last time the user rewards were updated
     struct UserRewards {
-        uint128 accumulated; // Accumulated rewards for the user until the checkpoint
-        uint128 checkpoint; // RewardsPerCampaign the last time the user rewards were updated
+        uint128 accumulated; 
+        uint128 checkpoint;
     }
 
-    mapping(address user => uint256[5] campaignsOptedInto) public userSelectedCampaigns;
-
+    /// @dev Tracks which reward token is correlated with a given campaignId
     mapping(uint256 campaign => address token) public campaignToToken;
-    mapping(uint256 campaign => RewardsInterval) public tokenToRewardsInterval; // Interval in which rewards are accumulated by users
-    mapping(uint256 campaign => RewardsPerCampaign) public tokenToRewardsPerCampaign; // Accumulator to track rewards per token
-    mapping(uint256 campaign => mapping(address user => UserRewards)) public tokenToAccumulatedRewards; // Rewards accumulated per user
+    /// @dev Tracks the interval over which the campaign rewards depositors over
+    mapping(uint256 campaign => RewardsInterval) public tokenToRewardsInterval; 
+    /// @dev Tracks the token rewards distributed in a given campaign so far
+    mapping(uint256 campaign => RewardsPerCampaign) public tokenToRewardsPerCampaign; 
+    /// @dev Tracks how much rewards a user has claimed from a given campaign, and when
+    mapping(uint256 campaign => mapping(address user => UserRewards)) public tokenToAccumulatedRewards; 
 
-    mapping(uint256 campaign => RewardsInterval) public feeEarningInterval;
-    mapping(uint256 campaign => RewardsPerCampaign) public feeRewardCampaign;
+    /// @dev Mapping to track over how long fees will vested for a given campaign
+    mapping(uint256 campaign => RewardsInterval) public feeRewardInterval;
+    /// @dev Mappiing to track how many fees have actually vested for a given campaign
+    mapping(uint256 campaign => RewardsPerCampaign) public feeRewardsClaimed;
+
+
+    /// @dev A mapping we use to keep track of which rewardCampaigns we should be tracking for a given user
+    mapping(address user => uint256[5] campaignsOptedInto) public userSelectedCampaigns;
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
+    /// @param _underlyingVault The ERC4626 Vault to wrap
+    /// @param _protocolFee     The protocol fee to take from incentives, out of WAD
     constructor(ERC4626 _underlyingVault, uint256 _protocolFee)
         ERC20(LibString.concat("Incentivied", _underlyingVault.name()), LibString.concat(_underlyingVault.name(), "i"), 18)
     {
         underlyingVault = _underlyingVault;
         totalCampaigns = 1;
+
+        protocolFee = _protocolFee;
 
         depositAsset = _underlyingVault.asset();
         depositAsset.approve(address(underlyingVault), type(uint256).max);
@@ -125,7 +154,13 @@ contract ERC4626i is Owned(msg.sender), ERC20 {
                               NEW CAMPAIGN
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev Set a rewards schedule
+    /// @dev Create a rewards campaign for all users
+    /// @param token       The token to give depositors
+    /// @param start        When the rewards campaign should begin
+    /// @param end          When the rewards campaign should end 
+    /// @param totalRewards The total amount of rewards tokens to give out
+    ///
+    /// @return campaignId The amount of token rewards to give out to depositors
     function createRewardsCampaign(address token, uint256 start, uint256 end, uint256 totalRewards)
         external
         returns (uint256 campaignId)
@@ -149,32 +184,63 @@ contract ERC4626i is Owned(msg.sender), ERC20 {
         
         campaignToToken[campaignId] = token;
         ERC20(token).safeTransferFrom(msg.sender, address(this), totalRewards);
+        
+        uint256 rate = totalRewards / (end - start);
 
         RewardsInterval memory rewardsInterval = tokenToRewardsInterval[campaignId];
-
-        // A new rewards program can be set if one is not running
-        // Update the rewards per token so that we don't lose any rewards
-        _updateRewardsPerCampaign(campaignId);
-
-        uint256 rate = totalRewards / (end - start);
 
         rewardsInterval.start = start.toUint32();
         rewardsInterval.end = end.toUint32();
         rewardsInterval.rate = rate.toUint96();
+        
+        uint256 feeRate = feeTaken / (end - start);
+        
+        RewardsInterval memory feeInterval = feeRewardInterval[campaignId];
 
-        tokenToRewardsPerCampaign[campaignId].lastUpdated = start.toUint32();
+        feeInterval.start = start.toUint32();
+        feeInterval.end = end.toUint32();
+        feeInterval.rate = feeRate.toUint96();
 
+        feeRewardsClaimed[campaignId].lastUpdated = start.toUint32();
+
+        /// Update the campaign at the end
+        _updateRewardsPerCampaign(campaignId);
         emit RewardsSet(start.toUint32(), end.toUint32(), rate);
     }
 
-    function optIntoCampaign(uint256 campaignId, uint256 index) external {
+    /// @param campaignId The campaign to opt out of
+    function optIntoCampaign(uint256 campaignId) external {
         updateUserCampaigns(msg.sender);
 
-        userSelectedCampaigns[msg.sender][index] = campaignId;
+        for (uint i; i < 5; i++) {
+          if (userSelectedCampaigns[msg.sender][i] == 0) {
+            userSelectedCampaigns[msg.sender][i] = campaignId;
+            break;
+          }
+
+          if (i == 4) {
+            revert MaxCampaignsOptedInto();
+          }
+        }
+
+        emit RewardCampaignSelected(msg.sender, campaignId);
     }
 
-    function optOutOfCampaign(uint256 campaignId) external {
+    /// @param campaignId The campaignId to opt out of
+    /// @param index The index of the campaignId to remove
+    function optOutOfCampaign(uint256 campaignId, uint256 index) external {
+        updateUserCampaigns(msg.sender);
 
+        if (index == 4) {
+          delete userSelectedCampaigns[msg.sender][4];
+          return;
+        }
+
+        for (uint i = index; i < userSelectedCampaigns[msg.sender].length - 1; i++) {
+          userSelectedCampaigns[msg.sender][i] = userSelectedCampaigns[msg.sender][i + 1];
+        }
+
+        emit RewardCampaignUnselected(msg.sender, campaignId);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -289,7 +355,6 @@ contract ERC4626i is Owned(msg.sender), ERC20 {
             );
     }
 
-    ///
     function previewRewardsAfterDeposit(uint256 amount, uint256 campaignId)
         public
         view
@@ -299,6 +364,40 @@ contract ERC4626i is Owned(msg.sender), ERC20 {
         RewardsPerCampaign memory campaignRewards = tokenToRewardsPerCampaign[campaignId];
 
         return interval.rate * (campaignRewards.accumulated * amount) / WAD;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            FEE CLAIM LOGIC
+    //////////////////////////////////////////////////////////////*/
+    /// @param newProtooclFeeTo The address to send protocol fees towards
+    function changeProtocolFeeTo(address newProtocolFeeTo) onlyOwner external {
+      protocolFeesTo = newProtocolFeeTo;  
+    }
+
+    /// @param campaignId The campaign to claim rewardsFees for
+    function claimProtoocolFees(uint256 campaignId) external {
+      RewardsInterval memory feeInterval = feeRewardInterval[campaignId];
+      RewardsPerCampaign memory feeRewards = feeRewardsClaimed[campaignId];
+      
+      ERC20 token = campaignToToken[campaignId];
+      uint256 elapsed = feeInterval.end - feeRewards.lastUpdated;
+      uint256 amountToSend = elapsed * feeInterval.rate;
+
+      feeRewardsClaimed[campaignId].lastUpdated = block.timestamp;
+      token.transfer(protocolFeesTo, amountToSend);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                          ERC4626I EXTENSIONS
+    //////////////////////////////////////////////////////////////*/
+    function depositVaultTokens(uint256 amount, address receiver, address referral) external {
+      underlyingVault.transferFrom(msg.sender, address(this), amount);
+      _mint(receiver, amount);
+    }
+  
+    function withdrawVaultTokens(uint256 amount, address receiver, address referral) external {
+      underlyingVault.transfer(receiver, amount);
+      _burn(msg.sender, amount);
     }
 
     /*//////////////////////////////////////////////////////////////
