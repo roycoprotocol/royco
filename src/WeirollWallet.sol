@@ -9,9 +9,9 @@ import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 
 /// @title OrderFactory
 /// @author Royco
-/// @notice LPOrder implementation contract.
-///   Implements a simple LP order to supply an asset for a given action
-contract LPOrder is Clone, VM {
+/// @notice WeirollWallet implementation contract.
+///   Implements a simple smart contract wallet that can execute Weiroll VM commands
+contract WeirollWallet is Clone, VM {
     using SafeTransferLib for ERC20;
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS

@@ -7,7 +7,7 @@ import {ClonesWithImmutableArgs} from "lib/clones-with-immutable-args/src/Clones
 import {WeirollWallet} from "src/WeirollWallet.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 
-contract VaultOrderbook {
+contract RecipeOrderbook {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for ERC20;
 
@@ -37,6 +37,7 @@ contract VaultOrderbook {
     struct WeirollMarket {
         ERC20 inputToken;
         uint256 lockupTime;
+        uint256 frontendFee;
         Recipe depositRecipe;
         Recipe withdrawRecipe;
     }
@@ -50,6 +51,8 @@ contract VaultOrderbook {
     uint256 public numOrders;
     uint256 public numMarkets;
 
+    address public feeSetter;
+
     uint256 public protocolFee; // 1e18 == 100% fee
     uint256 public minimumFrontendFee; // 1e18 == 100% fee
 
@@ -57,15 +60,23 @@ contract VaultOrderbook {
     mapping(uint256 => IPOrder) public orderIDToIPOrder;
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
-    constructor(address weirollWalletImplementation, protocolFee, minimumFrontendFee) {
+    constructor(address weirollWalletImplementation, protocolFee, minimumFrontendFee, feeSetter) {
         WEIROLL_WALLET_IMPLEMENTATION = weirollWalletImplementation;
         protocolFee = weirollWalletImplementation;
         minimumFrontendFee = minimumFrontendFee;
+        feeSetter = feeSetter;
 
         // Redundant
         numOrders = 0;
         numMarkets = 0;
     }
+
+    event MarketCreated(
+        uint256 indexed marketID,
+        address indexed inputToken,
+        uint256 lockupTime,
+        uint256 frontendFee
+    );
 
     /// @custom:field orderID Set to numOrders - 1 on order creation (zero-indexed)
     /// @custom:field targetVault The address of the vault where the input tokens will be deposited
@@ -85,7 +96,7 @@ contract VaultOrderbook {
         uint256 quantity
     );
 
-    event IPOrderCreated( //TODO: should frontendFee be emitted here?
+    event IPOrderCreated(
         uint256 indexed IPOrderID,
         uint256 indexed targetMarketID,
         address indexed ip,
@@ -95,7 +106,13 @@ contract VaultOrderbook {
         uint256 quantity
     );
 
+    event IPOrderFilled(uint256 indexed orderID, address indexed lp, uint256 quantity);
     event LPOrderFilled(uint256 indexed orderID, address indexed ip, uint256 quantity);
+
+    event IPOrderCancelled(uint256 indexed orderID);
+    event LPOrderCancelled(uint256 indexed orderID);
+
+    // TODO claim fees event
 
     // Errors //TODO clean up
     error OrderExpired();
@@ -109,6 +126,36 @@ contract VaultOrderbook {
     error NotEnoughBaseAssetInVault();
     error InsufficientApproval();
     error ArrayLengthMismatch();
+    error FrontendFeeTooLow();
+    
+    /// @notice Create a new recipe market
+    /// @param inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
+    /// @param lockupTime The time in seconds that the user's weiroll wallet will be locked up for after deposit
+    /// @param frontendFee The fee that the frontend will take from the user's weiroll wallet, 1e18 == 100% fee
+    /// @param depositRecipe The weiroll script that will be executed after the inputToken is transferred to the wallet
+    /// @param withdrawRecipe The weiroll script that may be executed after lockupTime has passed to unwind a user's position
+    function createMarket(
+        address inputToken,
+        uint256 lockupTime,
+        uint256 frontendFee,
+        Recipe depositRecipe,
+        Recipe withdrawRecipe
+    ) public returns (uint256) {
+        if (frontendFee < minimumFrontendFee) {
+            revert FrontendFeeTooLow();
+        }
+
+        marketIDToWeirollMarket[numMarkets] = WeirollMarket(
+            ERC20(inputToken),
+            lockupTime,
+            frontendFee,
+            depositRecipe,
+            withdrawRecipe
+        );
+
+        emit MarketCreated(numMarkets, inputToken, lockupTime, frontendFee);
+        return (numMarkets++);
+    }
 
     /// @dev Setting an expiry of 0 means the order never expires
     function createLPOrder(

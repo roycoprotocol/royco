@@ -29,18 +29,22 @@ contract VaultOrderbook {
     /// @custom:field expiry The timestamp after which the order is considered expired
     /// @custom:field price The desired rewards per input token (per second if a Vault market)
     /// @custom:field quantity The amount of input tokens to be deposited
-    event LPOrderCreated( //TODO offered/requested paradigm
+    event LPOrderCreated(
         uint256 indexed orderID,
         address indexed targetVault,
         address indexed lp,
         address fundingVault,
         uint256 expiry,
-        address[] tokens,
-        uint256[] prices,
+        address[] tokensRequested,
+        uint256[] tokenRatesRequested,
         uint256 quantity
     );
 
+    event LPOrderCancelled(uint256 indexed orderID);
+
     event LPOrderFilled(uint256 indexed orderID, address indexed targetVault, address indexed lp, uint256 quantity);
+
+    // TODO claim fees event
 
     // Errors
     error OrderExpired();
