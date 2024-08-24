@@ -60,23 +60,24 @@ contract RecipeOrderbook {
     mapping(uint256 => IPOrder) public orderIDToIPOrder;
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
-    constructor(address weirollWalletImplementation, protocolFee, minimumFrontendFee, feeSetter) {
-        WEIROLL_WALLET_IMPLEMENTATION = weirollWalletImplementation;
-        protocolFee = weirollWalletImplementation;
-        minimumFrontendFee = minimumFrontendFee;
-        feeSetter = feeSetter;
+    constructor(
+        address _weirollWalletImplementation,
+        uint256 _protocolFee,
+        uint256 _minimumFrontendFee,
+        address _feeSetter
+    ) {
+        //TODO: convert feeSetter to ownable2step
+        WEIROLL_WALLET_IMPLEMENTATION = _weirollWalletImplementation;
+        protocolFee = _protocolFee;
+        minimumFrontendFee = _minimumFrontendFee;
+        feeSetter = _feeSetter;
 
         // Redundant
         numOrders = 0;
         numMarkets = 0;
     }
 
-    event MarketCreated(
-        uint256 indexed marketID,
-        address indexed inputToken,
-        uint256 lockupTime,
-        uint256 frontendFee
-    );
+    event MarketCreated(uint256 indexed marketID, address indexed inputToken, uint256 lockupTime, uint256 frontendFee);
 
     /// @custom:field orderID Set to numOrders - 1 on order creation (zero-indexed)
     /// @custom:field targetVault The address of the vault where the input tokens will be deposited
@@ -127,7 +128,7 @@ contract RecipeOrderbook {
     error InsufficientApproval();
     error ArrayLengthMismatch();
     error FrontendFeeTooLow();
-    
+
     /// @notice Create a new recipe market
     /// @param inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
     /// @param lockupTime The time in seconds that the user's weiroll wallet will be locked up for after deposit
@@ -138,20 +139,15 @@ contract RecipeOrderbook {
         address inputToken,
         uint256 lockupTime,
         uint256 frontendFee,
-        Recipe depositRecipe,
-        Recipe withdrawRecipe
+        Recipe calldata depositRecipe,
+        Recipe calldata withdrawRecipe
     ) public returns (uint256) {
         if (frontendFee < minimumFrontendFee) {
             revert FrontendFeeTooLow();
         }
 
-        marketIDToWeirollMarket[numMarkets] = WeirollMarket(
-            ERC20(inputToken),
-            lockupTime,
-            frontendFee,
-            depositRecipe,
-            withdrawRecipe
-        );
+        marketIDToWeirollMarket[numMarkets] =
+            WeirollMarket(ERC20(inputToken), lockupTime, frontendFee, depositRecipe, withdrawRecipe);
 
         emit MarketCreated(numMarkets, inputToken, lockupTime, frontendFee);
         return (numMarkets++);
@@ -207,7 +203,7 @@ contract RecipeOrderbook {
         if (expiry != 0 && expiry < block.timestamp) {
             revert CannotPlaceExpiredOrder();
         }
-        if (tokens.length != amounts.length) {
+        if (tokensOffered.length != amountsOffered.length) {
             revert ArrayLengthMismatch();
         }
 
@@ -219,7 +215,7 @@ contract RecipeOrderbook {
         order.tokensOffered = tokensOffered;
         for (uint256 i = 0; i < tokensOffered.length; ++i) {
             order.tokenAmountsOffered[tokensOffered[i]] = amountsOffered[i];
-            ERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), amountsOffered[i]); //TODO: handle points
+            ERC20(tokensOffered[i]).safeTransferFrom(msg.sender, address(this), amountsOffered[i]); //TODO: handle points
                 //TODO take fees
         }
         return (numOrders++);
@@ -227,7 +223,7 @@ contract RecipeOrderbook {
 
     function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault) public {
         IPOrder storage order = orderIDToIPOrder[orderID];
-        WeirollMarket market = marketIDToWeirollMarket[order.targetMarketID];
+        WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
 
         if (order.expiry != 0 && block.timestamp >= order.expiry) {
             revert OrderExpired();
@@ -251,20 +247,20 @@ contract RecipeOrderbook {
             WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime))
         );
 
-        ERC4626(order.fundingVault).withdraw(fillAmount, address(wallet), order.lp);
+        ERC4626(fundingVault).withdraw(fillAmount, address(wallet), msg.sender); //TODO: deposit straight from erc20
 
-        wallet.executeWeiroll(market.weirollCommands, market.weirollState);
+        wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
     }
 
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
-    function fillLPOrder(LPOrder order, uint256 fillAmount, address frontendFeeRecipient) public {
+    function fillLPOrder(LPOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public {
         if (order.expiry != 0 && block.timestamp >= order.expiry) revert OrderExpired();
 
         bytes32 orderHash = getOrderHash(order);
         if (fillAmount > orderHashToRemainingQuantity[orderHash]) revert NotEnoughRemainingQuantity();
         orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
-        uint256 len = order.tokensRequested;
+        uint256 len = order.tokensRequested.length ;
         for (uint256 i = 0; i < len; ++i) {
             //safetransfer the token to the LP
             ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, order.tokenAmountsRequested[i]);
@@ -275,7 +271,7 @@ contract RecipeOrderbook {
             );
         }
 
-        WeirollMarket market = marketIDToWeirollMarket[order.marketId];
+        WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
         uint256 unlockTime = block.timestamp + market.lockupTime;
         WeirollWallet wallet = WeirollWallet(
             WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime))
@@ -283,7 +279,7 @@ contract RecipeOrderbook {
 
         ERC4626(order.fundingVault).withdraw(fillAmount, address(wallet), order.lp);
 
-        wallet.executeWeiroll(market.weirollCommands, market.weirollState);
+        wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
     }
 
     function getOrderHash(LPOrder memory order) public pure returns (bytes32) {

@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol";
+import {ERC4626i} from "src/ERC4626i.sol";
 
 contract VaultOrderbook {
     struct LPOrder {
@@ -111,23 +112,23 @@ contract VaultOrderbook {
 
         uint256 len = order.tokens.length;
         for (uint256 i = 0; i < len; ++i) {
-            if (ERC4626i(order.targetVault).previewRewards(order.tokens[i]) < order.prices[i]) {
-                //TODO: update with 4626i preview function signature, post-deposit rates
-                revert OrderConditionsNotMet();
-            }
+            // if (ERC4626i(order.targetVault).previewRewards(order.tokens[i]) < order.prices[i]) { //TODO: connect with 4626i preview function
+            //     //TODO: update with 4626i preview function signature, post-deposit rates
+            //     revert OrderConditionsNotMet();
+            // }
         }
 
         // If no revert yet, the order is within its conditions
 
         // Withdraw from the funding vault
-        ERC4626(order.fundingVault).withdraw(order.quantity, address(this), order.lp);
+        ERC4626(order.fundingVault).withdraw(remainingQuantity, address(this), order.lp);
 
         // Deposit into the target vault
-        ERC4626i(order.targetVault).deposit(order.quantity, order.lp); //TODO: update with 4626i deposit function signature
+        ERC4626i(order.targetVault).deposit(remainingQuantity, order.lp); //TODO: update with 4626i deposit function signature
 
         orderHashToRemainingQuantity[orderHash] = 0;
 
-        emit LPOrderFilled(order.orderID, order.targetVault, order.lp, order.quantity);
+        emit LPOrderFilled(order.orderID, order.targetVault, order.lp, remainingQuantity);
     }
 
     function allocateOrders(LPOrder[] memory orders) public {
