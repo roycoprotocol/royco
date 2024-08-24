@@ -93,6 +93,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         uint32 end;
         uint96 rate;
         uint96 protocolFeeRate;
+        uint96 referralFee;
     }
 
     /// @custom:field accumulated Accumulated rewards per token for the interval, scaled up by WAD
@@ -123,7 +124,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @dev Mapping to track over how long fees will vested for a given campaign
     mapping(uint256 campaign => RewardsInterval) public feeRewardInterval;
     /// @dev Mappiing to track how many fees have actually vested for a given campaign
-    mapping(uint256 campaign => RewardsPerCampaign) public feeRewardsClaimed;
+    mapping(uint256 campaign => uint256 lastUpdated) public feeRewardsClaimed;
 
     /// @dev The user who referred someone for a given campaign
     mapping(uint256 campaign => mapping(address user => address referrer)) public referralsPerUser;
@@ -200,9 +201,9 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         rewardsInterval.end = end.toUint32();
         rewardsInterval.rate = rate.toUint96();
         rewardsInterval.protocolFeeRate = protocolFeeRate.toUint96();
-        rewardsInterval.referralFeeRate = referralFeeRate.toUint96();
+        rewardsInterval.referralFee = referralFee.toUint96();
 
-        feeRewardsClaimed[campaignId].lastUpdated = start.toUint32();
+        feeRewardsClaimed[campaignId] = start.toUint32();
 
         /// Update the campaign at the end
         _updateRewardsPerCampaign(campaignId);
@@ -279,12 +280,6 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         // Calculate and update the new value of the accumulator, scaled up for precision
         rewardsPerCampaignOut.accumulated =
             (rewardsPerCampaignIn.accumulated + WAD * elapsed * rewardsInterval_.rate / totalSupply_).toUint128();
-        // Update protocol fees
-        rewardsPerCampaignOut.accumulated =
-            (rewardsPerCampaignIn.protocolFeesAccumulated + WAD * elapsed * rewardsInterval_.protocolFeeRate / totalSupply_).toUint128();
-        // Update referral fees
-        rewardsPerCampaignOut.accumulated =
-            (rewardsPerCampaignIn.referralFeesAccumulated + WAD * elapsed * rewardsInterval_.referralFeeRate / totalSupply_).toUint128();
 
         return rewardsPerCampaignOut;
     }
@@ -361,6 +356,9 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
 
         ERC20 token = campaignToToken[campaignId];
         token.safeTransfer(to, amount);
+        
+        address referrer = referralsPerUser[campaignId][msg.sender];
+        token.safeTransfer(referrer, amount);
 
         emit Claimed(campaignId, address(token), from, to, amount);
     }
@@ -429,14 +427,14 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @param campaignId The campaign to claim rewardsFees for
     function claimProtocolFees(uint256 campaignId) external {
         RewardsInterval memory feeInterval = feeRewardInterval[campaignId];
-        RewardsPerCampaign memory feeRewards = feeRewardsClaimed[campaignId];
+        uint256 lastUpdated = feeRewardsClaimed[campaignId]; 
 
         ERC20 token = campaignToToken[campaignId];
-        uint256 elapsed = feeInterval.end - feeRewards.lastUpdated;
-        uint256 amountToSend = elapsed * feeInterval.rate;
+        uint256 elapsed = (feeInterval.end - lastUpdated);
+        uint256 amountOwed = (elapsed * feeInterval.protocolFeeRate);
 
-        feeRewardsClaimed[campaignId].lastUpdated = uint32(block.timestamp);
-        token.transfer(protocolFeesTo, amountToSend);
+        feeRewardsClaimed[campaignId] = block.timestamp;
+        token.transfer(protocolFeesTo, amountOwed);
     }
 
     /*//////////////////////////////////////////////////////////////
