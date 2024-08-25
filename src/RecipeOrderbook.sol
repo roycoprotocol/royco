@@ -6,10 +6,13 @@ import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
 import {ClonesWithImmutableArgs} from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 import {WeirollWallet} from "src/WeirollWallet.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
+import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
 
-contract RecipeOrderbook {
+contract RecipeOrderbook is Ownable2Step {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     struct LPOrder {
         uint256 orderID;
@@ -25,8 +28,10 @@ contract RecipeOrderbook {
         uint256 targetMarketID;
         uint256 expiry;
         uint256 quantity;
+        uint256 remainingQuantity;
         address[] tokensOffered;
         mapping(address => uint256) tokenAmountsOffered;
+        mapping(address => uint256) tokenToFrontendFeeAmount;
     }
 
     struct Recipe {
@@ -51,7 +56,7 @@ contract RecipeOrderbook {
     uint256 public numOrders;
     uint256 public numMarkets;
 
-    address public feeSetter;
+    address public protocolFeeRecipient;
 
     uint256 public protocolFee; // 1e18 == 100% fee
     uint256 public minimumFrontendFee; // 1e18 == 100% fee
@@ -60,17 +65,12 @@ contract RecipeOrderbook {
     mapping(uint256 => IPOrder) public orderIDToIPOrder;
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
-    constructor(
-        address _weirollWalletImplementation,
-        uint256 _protocolFee,
-        uint256 _minimumFrontendFee,
-        address _feeSetter
-    ) {
-        //TODO: convert feeSetter to ownable2step
+    constructor(address _weirollWalletImplementation, uint256 _protocolFee, uint256 _minimumFrontendFee, address _owner)
+        Ownable(_owner)
+    {
         WEIROLL_WALLET_IMPLEMENTATION = _weirollWalletImplementation;
         protocolFee = _protocolFee;
         minimumFrontendFee = _minimumFrontendFee;
-        feeSetter = _feeSetter;
 
         // Redundant
         numOrders = 0;
@@ -189,13 +189,13 @@ contract RecipeOrderbook {
         return (numOrders++);
     }
 
-    // @dev IP must approve all tokens to be spent by the orderbook before calling this function
+    /// @dev IP must approve all tokens to be spent by the orderbook before calling this function
     function createIPOrder(
         uint256 targetMarketID,
         uint256 quantity,
         uint256 expiry,
         address[] memory tokensOffered,
-        uint256[] memory amountsOffered
+        uint256[] memory tokenAmounts
     ) public returns (uint256) {
         if (targetMarketID >= numMarkets) {
             revert MarketDoesNotExist();
@@ -203,7 +203,7 @@ contract RecipeOrderbook {
         if (expiry != 0 && expiry < block.timestamp) {
             revert CannotPlaceExpiredOrder();
         }
-        if (tokensOffered.length != amountsOffered.length) {
+        if (tokensOffered.length != tokenAmounts.length) {
             revert ArrayLengthMismatch();
         }
 
@@ -211,24 +211,36 @@ contract RecipeOrderbook {
 
         order.targetMarketID = targetMarketID;
         order.quantity = quantity;
+        order.remainingQuantity = quantity;
         order.expiry = expiry;
         order.tokensOffered = tokensOffered;
         for (uint256 i = 0; i < tokensOffered.length; ++i) {
-            order.tokenAmountsOffered[tokensOffered[i]] = amountsOffered[i];
-            ERC20(tokensOffered[i]).safeTransferFrom(msg.sender, address(this), amountsOffered[i]); //TODO: handle points
-                //TODO take fees
+            uint256 amount = tokenAmounts[i];
+            uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
+            uint256 frontendFeeAmount = amount.mulWadDown(marketIDToWeirollMarket[targetMarketID].frontendFee);
+            uint256 incentiveAmount = amount - protocolFeeAmount - frontendFeeAmount;
+
+            order.tokenAmountsOffered[tokensOffered[i]] = incentiveAmount;
+
+            order.tokenToFrontendFeeAmount[tokensOffered[i]] = frontendFeeAmount;
+            // Take protocol fee
+            ERC20(tokensOffered[i]).safeTransferFrom(msg.sender, protocolFeeRecipient, protocolFeeAmount);
+            // Transfer frontend fee + incentiveAmount to orderbook
+            ERC20(tokensOffered[i]).safeTransferFrom(msg.sender, address(this), incentiveAmount + frontendFeeAmount); //TODO: handle points
         }
         return (numOrders++);
     }
 
-    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault) public {
+    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient)
+        public
+    {
         IPOrder storage order = orderIDToIPOrder[orderID];
         WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
 
         if (order.expiry != 0 && block.timestamp >= order.expiry) {
             revert OrderExpired();
         }
-        if (order.quantity < fillAmount) {
+        if (order.remainingQuantity < fillAmount) {
             revert NotEnoughRemainingQuantity();
         }
         if (market.inputToken != ERC4626(fundingVault).asset()) {
@@ -238,16 +250,28 @@ contract RecipeOrderbook {
             revert CannotPlaceZeroQuantityOrder();
         }
 
-        for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
-            ERC20(order.tokensOffered[i]).safeTransfer(msg.sender, order.tokenAmountsOffered[order.tokensOffered[i]]); //TODO divide by fill size over total size OR (to shield against precision issues) -- convert all to rates
-        }
+        order.remainingQuantity -= fillAmount;
 
         uint256 unlockTime = block.timestamp + market.lockupTime;
         WeirollWallet wallet = WeirollWallet(
             WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime))
         );
 
-        ERC4626(fundingVault).withdraw(fillAmount, address(wallet), msg.sender); //TODO: deposit straight from erc20
+        for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
+            address token = order.tokensOffered[i];
+            uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
+            uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
+            uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
+
+            ERC20(token).safeTransfer(msg.sender, incentiveAmount); //TODO: forfeit ordertype
+            ERC20(token).safeTransfer(frontendFeeRecipient, frontendFeeAmount);
+        }
+
+        if (fundingVault != address(0)) {
+            ERC20(market.inputToken).safeTransferFrom(address(wallet), msg.sender, fillAmount);
+        } else {
+            ERC4626(fundingVault).withdraw(fillAmount, address(wallet), msg.sender);
+        }
 
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
     }
@@ -260,14 +284,14 @@ contract RecipeOrderbook {
         if (fillAmount > orderHashToRemainingQuantity[orderHash]) revert NotEnoughRemainingQuantity();
         orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
-        uint256 len = order.tokensRequested.length ;
+        uint256 len = order.tokensRequested.length;
         for (uint256 i = 0; i < len; ++i) {
             //safetransfer the token to the LP
             ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, order.tokenAmountsRequested[i]);
 
             //safetransfer the fee to the frontendFeeRecipient
             ERC20(order.tokensRequested[i]).safeTransferFrom(
-                msg.sender, frontendFeeRecipient, order.tokenAmountsRequested[i] * minimumFrontendFee / PRECISION
+                msg.sender, frontendFeeRecipient, order.tokenAmountsRequested[i].mulWadDown(minimumFrontendFee)
             );
         }
 
@@ -277,9 +301,25 @@ contract RecipeOrderbook {
             WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime))
         );
 
-        ERC4626(order.fundingVault).withdraw(fillAmount, address(wallet), order.lp);
+        if (order.fundingVault == address(0)) {
+            ERC20(market.inputToken).safeTransferFrom(order.lp, address(wallet), fillAmount);
+        } else {
+            ERC4626(order.fundingVault).withdraw(fillAmount, address(wallet), order.lp);
+        }
 
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
+    }
+
+    function setProtocolFeeRecipient(address _protocolFeeRecipient) public onlyOwner {
+        protocolFeeRecipient = _protocolFeeRecipient;
+    }
+
+    function setProtocolFee(uint256 _protocolFee) public onlyOwner {
+        protocolFee = _protocolFee;
+    }
+
+    function setMinimumFrontendFee(uint256 _minimumFrontendFee) public onlyOwner {
+        minimumFrontendFee = _minimumFrontendFee;
     }
 
     function getOrderHash(LPOrder memory order) public pure returns (bytes32) {
