@@ -356,7 +356,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
 
         ERC20 token = campaignToToken[campaignId];
         token.safeTransfer(to, amount);
-        
+
         address referrer = referralsPerUser[campaignId][msg.sender];
         token.safeTransfer(referrer, amount);
 
@@ -408,14 +408,23 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /*//////////////////////////////////////////////////////////////
                             FEE CLAIM LOGIC
     //////////////////////////////////////////////////////////////*/
+    error FeeSetTooHigh();
 
     /// @dev newReferralFee The new referral fee to be charged
     function setReferralFee(uint256 newReferralFee) external onlyOwner {
+        if (newReferralFee > WAD) {
+            revert FeeSetTooHigh();
+        }
+
         referralFee = newReferralFee;
     }
 
     /// @dev newProtocolFee The new protocol fee to be charged
     function setProtocolFee(uint256 newProtocolFee) external onlyOwner {
+        if (newProtocolFee > WAD) {
+            revert FeeSetTooHigh();
+        }
+
         protocolFee = newProtocolFee;
     }
 
@@ -427,7 +436,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @param campaignId The campaign to claim rewardsFees for
     function claimProtocolFees(uint256 campaignId) external {
         RewardsInterval memory feeInterval = feeRewardInterval[campaignId];
-        uint256 lastUpdated = feeRewardsClaimed[campaignId]; 
+        uint256 lastUpdated = feeRewardsClaimed[campaignId];
 
         ERC20 token = campaignToToken[campaignId];
         uint256 elapsed = (feeInterval.end - lastUpdated);
