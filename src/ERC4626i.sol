@@ -195,7 +195,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         uint256 rate = totalRewards / (end - start);
         uint256 protocolFeeRate = protocolFeeTaken / (end - start);
 
-        RewardsInterval memory rewardsInterval = tokenToRewardsInterval[campaignId];
+        RewardsInterval storage rewardsInterval = tokenToRewardsInterval[campaignId];
 
         rewardsInterval.start = start.toUint32();
         rewardsInterval.end = end.toUint32();
