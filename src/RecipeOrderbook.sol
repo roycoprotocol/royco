@@ -260,7 +260,7 @@ contract RecipeOrderbook {
         if (fillAmount > orderHashToRemainingQuantity[orderHash]) revert NotEnoughRemainingQuantity();
         orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
-        uint256 len = order.tokensRequested.length ;
+        uint256 len = order.tokensRequested.length;
         for (uint256 i = 0; i < len; ++i) {
             //safetransfer the token to the LP
             ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, order.tokenAmountsRequested[i]);

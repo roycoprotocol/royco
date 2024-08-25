@@ -1,37 +1,100 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-contract Points {
+import {ERC4626i} from "src/ERC4626i.sol";
+import {RecipeOrderbook} from "src/RecipeOrderbook.sol";
+
+import {Owned} from "lib/solmate/src/auth/Owned.sol";
+
+/// @title Points
+/// @author CopyPaste, corddry
+/// @dev A simple program for running points programs
+contract Points is Owned(msg.sender) {
+    /*//////////////////////////////////////////////////////////////
+                              CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+    /// @param _name The name of the points program
+    /// @param _symbol The symbol for the points program
+    /// @param _decimals The amount of decimals per 1 point
+    /// @param _allowedVault The vault allowed to mint and use these points
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint256 _decimals,
+        ERC4626i _allowedVault,
+        RecipeOrderbook _orderbook
+    ) external {
+        name = _name;
+        symbol = _symbol;
+        decimals = _decimals;
+
+        allowedVault = _allowedVault;
+        orderbook = _orderbook;
+    }
+
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
-
-    event Transfer(address indexed from, address indexed to, uint256 amount);
-
-    // event Approval(address indexed owner, address indexed spender, uint256 amount);
+    event Award(address indexed to, address indexed amount, uint256 campaignId);
 
     /*//////////////////////////////////////////////////////////////
-                            METADATA STORAGE
+                                STORAGE
     //////////////////////////////////////////////////////////////*/
+    /// @dev The allowed vault to call this contract
+    ERC4626i public immutable allowedVault;
+    /// @dev The RecipeOrderbook for IP Orders
+    RecipeOrderbook public immutable orderbook;
 
+    /// @dev The name of the points program
     string public name;
-
+    /// @dev The symbol for the points program
     string public symbol;
+    /// @dev We track all points logic using base 1
+    uint256 public decimals;
+    /// @dev Track which campaignIds are allowed to mint
+    mapping(uint256 campaignId => bool allowed) public allowedCampaigns;
 
-    uint8 public immutable decimals;
+    /*//////////////////////////////////////////////////////////////
+                              POINTS AUTH
+    //////////////////////////////////////////////////////////////*/
+    /// @param start The start date of the campaign
+    /// @param end The end date of the campaign
+    /// @param totalRewards The total amount of points to distribute
+    function createPointsRewardsCampaign(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
+        uint256 campaignId = allowedVault.totalCampaignIds() + 1;
+        allowedCampaigns[campaignId] = true;
 
-    address public immutable owner;
+        uint256 newCampaign = allowedVault.createRewardsCampaign(address(this), start, end, totalRewards);
 
-    constructor(string memory _name, string memory _symbol, address _owner) {
-        name = _name;
-        symbol = _symbol;
-        decimals = 18;
-        owner = _owner;
+        /// Safe check for redundancy
+        require(newCampaign, campaignId);
     }
 
-    function transfer(address to, uint256 amount) public virtual returns (bool success) {
-        require(msg.sender == owner, "UNAUTHORIZED");
-        success = true;
-        emit Transfer(msg.sender, to, amount);
+    function createIPOrderWithPoints() external onlyOwner {}
+
+    error CampaignNotAuthorized();
+    error OnlyIncentivizedVault();
+
+    /// @param campaignId The campaignId being supplied
+    modifier onlyAllowedCampaigns(uint256 campaignId) {
+        if (msg.sender != address(allowedVault)) {
+            revert OnlyIncentivizedVault();
+        }
+
+        if (!allowedCampaigns[campaignId]) {
+            revert CampaignNotAuthorized();
+        }
+        _;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                 POINTS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @param to The address to mint points to
+    /// @param campaignId The campaignId to mint points for
+    function award(address to, uint256 amount, uint256 campaignId) external onlyAllowedCampaigns(campaignId) {
+        emit Award(to, amount, campaignId);
     }
 }
