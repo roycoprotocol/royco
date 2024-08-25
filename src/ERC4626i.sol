@@ -76,7 +76,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     uint256 constant MINIMUM_CAMPAIGN_DURATION = 7 days;
 
     /// @dev A counter number used to generate campaignIds
-    uint256 internal totalCampaigns;
+    uint256 public totalCampaigns;
     /// @dev The address which is allowed to claim protocol fees
     address public protocolFeesTo;
     /// @dev The protocol fee taken out of incentive campaigns out of 1e18

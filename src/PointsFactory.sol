@@ -3,6 +3,9 @@ pragma solidity ^0.8.0;
 
 import {Points} from "src/Points.sol";
 
+import { ERC4626i } from "src/ERC4626i.sol";
+import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
+
 /// @title PointsFactory
 /// @author CopyPaste, corddry
 /// @dev A simple program for creating points programs
@@ -21,8 +24,8 @@ contract PointsFactory {
         ERC4626i _allowedVault,
         RecipeOrderbook _orderbook
     ) external returns (Points points) {
-        points = new Points(_name, _decimals, decimals, _allowedVault, _orderbook);
+        points = new Points(_name, _symbol, decimals, _allowedVault, _orderbook);
 
-        emit NewPointsProgram(points, _name, _symbol, address(allowedVault), address(orderbook));
+        emit NewPointsProgram(points, _name, _symbol, address(_allowedVault), address(_orderbook));
     }
 }
