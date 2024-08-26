@@ -1,6 +1,32 @@
 [profile.default]
+solc_version = '0.8.25'
 src = "src"
 out = "out"
 libs = ["lib"]
+optimizer = true
+optimizer_runs = 1_000_000
+bytecode_hash = "none"
+cbor_metadata = false
+sparse_mode = false
+build_info = true
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+via_ir = true
+fuzz_runs = 500
+deny_warnings = false
+
+[profile.default.optimizer_details]
+constantOptimizer = true
+yul = true
+
+[profile.default.optimizer_details.yulDetails]
+stackAllocation = true
+
+[fmt]
+line_length = 160
+bracket_spacing = true
+number_underscore = "thousands"
+wrap_comments = true
+int_types = "long"
+multiline_func_header = "all"
+quote_style = "double"
+ignore = ["libs/*","*.t.sol"]
