@@ -20,6 +20,7 @@ contract WeirollWallet is Clone, VM {
     error NotOwner();
     error NotOrderbook();
     error WalletLocked();
+    error WalletNotForfeitable();
 
     /// @notice Only the owner of the contract can call the function
     modifier onlyOwner() {
@@ -39,7 +40,7 @@ contract WeirollWallet is Clone, VM {
 
     /// @notice The wallet cannot be locked
     modifier notLocked() {
-        if (lockedUntil() > block.timestamp) {
+        if (!forfeited && lockedUntil() > block.timestamp) {
             revert WalletLocked();
         }
         _;
@@ -49,11 +50,17 @@ contract WeirollWallet is Clone, VM {
                                STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev The MarketId of the Market which this order has been fufilled by
-    uint256 public marketId;
-
     /// @dev Whether or not this order has been executed
     bool public executed;
+
+    bool public forfeited;
+    address[] public unlockRewardTokens;
+    uint256[] public unlockRewardAmounts;
+    address public forfeitRecipient;
+
+    function forfeit() public onlyOrderbook {
+        forfeited = true;
+    }
 
     /// @notice The address of the order creator (owner)
     function owner() public pure returns (address) {
@@ -73,6 +80,11 @@ contract WeirollWallet is Clone, VM {
     /// @notice The timestamp after which the wallet may be interacted with
     function lockedUntil() public pure returns (uint256) {
         return _getArgUint256(72);
+    }
+
+    /// @notice Returns whether or not the wallet is forfeitable
+    function isForfeitable() public pure returns (bool) {
+        return _getArgUint8(104) != 0;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -116,7 +128,7 @@ contract WeirollWallet is Clone, VM {
         // Execute the call.
         (bool success, bytes memory result) = to.call{value: value}(data);
         if (!success) {
-            revert("Generic execute proxy failed"); //TODO: Better revert message (stringify result?)
+            revert("Generic execute proxy failed");
         }
         return result;
     }

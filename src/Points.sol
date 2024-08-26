@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { ERC4626i } from "src/ERC4626i.sol";
-import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
+import {ERC4626i} from "src/ERC4626i.sol";
+import {RecipeOrderbook} from "src/RecipeOrderbook.sol";
 
-import { Owned } from "lib/solmate/src/auth/Owned.sol";
-import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import {Owned} from "lib/solmate/src/auth/Owned.sol";
+import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 
 /// @title Points
 /// @author CopyPaste, corddry
@@ -37,7 +37,7 @@ contract Points is Owned(msg.sender) {
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
-    event Award(address indexed to, uint256 indexed amount, uint256 indexed campaignId);
+    event Award(address indexed to, uint256 indexed amount);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -55,6 +55,8 @@ contract Points is Owned(msg.sender) {
     uint256 public decimals;
     /// @dev Track which campaignIds are allowed to mint
     mapping(uint256 campaignId => bool allowed) public allowedCampaigns;
+    /// @dev Track which RecipeOrderbook IPs are allowed to mint
+    mapping(address => bool) public allowedIPs;
 
     /*//////////////////////////////////////////////////////////////
                               POINTS AUTH
@@ -72,10 +74,20 @@ contract Points is Owned(msg.sender) {
         require(newCampaign == campaignId);
     }
 
-    function createIPOrderWithPoints() external onlyOwner {}
+    /// @param ip The incentive provider address to allow to mint points
+    function addAllowedIP(address ip) external onlyOwner {
+        allowedIPs[ip] = true;
+    }
+
+    /// @param ip The incentive provider address to disallow to mint points
+    function removeAllowedIP(address ip) external onlyOwner {
+        allowedIPs[ip] = false;
+    }
 
     error CampaignNotAuthorized();
     error OnlyIncentivizedVault();
+    error OnlyRecipeOrderbook();
+    error NotAllowedIP();
 
     /// @param campaignId The campaignId being supplied
     modifier onlyAllowedCampaigns(uint256 campaignId) {
@@ -89,6 +101,18 @@ contract Points is Owned(msg.sender) {
         _;
     }
 
+    /// @dev only the orderbook can call this function
+    /// @param ip The address to check if allowed
+    modifier onlyRecipeOrderbookAllowedIP(address ip) {
+        if (msg.sender != address(orderbook)) {
+            revert OnlyRecipeOrderbook();
+        }
+        if (!allowedIPs[ip]) {
+            revert NotAllowedIP();
+        }
+        _;
+    }
+
     /*//////////////////////////////////////////////////////////////
                                  POINTS
     //////////////////////////////////////////////////////////////*/
@@ -96,6 +120,10 @@ contract Points is Owned(msg.sender) {
     /// @param to The address to mint points to
     /// @param campaignId The campaignId to mint points for
     function award(address to, uint256 amount, uint256 campaignId) external onlyAllowedCampaigns(campaignId) {
-        emit Award(to, amount, campaignId);
+        emit Award(to, amount);
+    }
+
+    function award(address to, uint256 amount, address ip) external onlyRecipeOrderbookAllowedIP(ip) {
+        emit Award(to, amount);
     }
 }
