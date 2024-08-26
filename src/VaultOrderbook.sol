@@ -111,13 +111,13 @@ contract VaultOrderbook is Ownable2Step {
             revert ArrayLengthMismatch();
         }
 
-        address targetBaseToken = ERC4626(targetVault).asset();
+        ERC20 targetBaseToken = ERC4626(targetVault).asset();
         // If placing the order without a funding vault...
         if (fundingVault == address(0)) {
-            if (ERC20(targetBaseToken).balanceOf(msg.sender) < quantity) {
+            if (targetBaseToken.balanceOf(msg.sender) < quantity) {
                 revert NotEnoughBaseAsset();
             }
-            if (ERC20(targetBaseToken).allowance(msg.sender, address(this)) < quantity) {
+            if (targetBaseToken.allowance(msg.sender, address(this)) < quantity) {
                 revert InsufficientApproval();
             }
         } else {
@@ -165,16 +165,16 @@ contract VaultOrderbook is Ownable2Step {
             revert NotEnoughRemainingQuantity();
         }
 
-        // Cache array length for gas savings //TODO: does this actually save anything in modern solidity?
+        // Cache array length for gas savings
         uint256 len = order.tokensRequested.length;
         // Iterate over each token the LP requested
         for (uint256 i = 0; i < len; ++i) {
             // Ensure that the LP could deposit quantity base tokens into the vault and still receive the desired reward rate
-            // if (iERC4626i(order.targetVault).previewDepositpreviewRewardsAfterDeposit(order.tokens[i]) < order.tokenRatesRequested[i]) { //TODO: connect with 4626i preview function
+            // if (ERC4626i(order.targetVault).previewRewardsAfterDeposit(order.tokens[i], quantity) < order.tokenRatesRequested[i]) {
             //     revert OrderConditionsNotMet();
             // }
         }
-
+        
         // If transaction has not reverted yet, the order is within its conditions
 
         // Reduce the remaining quantity of the order

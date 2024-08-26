@@ -8,6 +8,9 @@ import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {LibString} from "lib/solady/src/utils/LibString.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+
+import { console } from "forge-std/console.sol";
 
 /// @title ERC4626i
 /// @author CopyPaste, corddry
@@ -61,11 +64,11 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     error IncorrectInterval();
     error MaxCampaignsOptedInto();
     error NotReferrer();
+    error OnlyProtocolFeeTo();
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
     /// @dev The underlying ERC4626 Vault deposits are routed to
-
     ERC4626 public underlyingVault;
     /// @dev The actual asset being deposited into the underlying vault
     ERC20 public immutable depositAsset;
@@ -88,43 +91,36 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @custom:field start The start time for the reward campaign schedule
     /// @custom:field end   End time for the reward campaign schedule
     /// @custom:field rate  Wei rewarded per second among all token holders
-    struct RewardsInterval {
+    /// @custom:field protocolFee The protocolFee taken out of the campaign rewards
+    /// @custom:field referralFee The referralFee taken out of the campaign rewards
+    /// @custom:field accumulated Accumulated rewards per token for the interval, scaled up by WAD
+    /// @custom:field lastUpdate  Last time the rewards per token accumulator was updated
+    struct CampaignData {
         uint32 start;
         uint32 end;
         uint96 rate;
         uint96 protocolFeeRate;
         uint96 referralFee;
-    }
-
-    /// @custom:field accumulated Accumulated rewards per token for the interval, scaled up by WAD
-    /// @custom:field protocolFeesAccumulated The accumulated protocol fees for the interval, scaled up by WAD
-    /// @custom:field referralFeesAccumulated The accumulated referral fees for the interval, scaled up by WAD
-    /// @custom:field lastUpdate  Last time the rewards per token accumulator was updated
-    struct RewardsPerCampaign {
-        uint128 accumulated;
-        uint32 lastUpdated;
+        uint256 accumulated;
+        uint64 lastUpdated;
+        ERC20 rewardToken;
     }
 
     /// @custom:field accumulated The accumulated rewards for the user until the checkpoint
     /// @custom:field checkpoint  RewardsPerCampagin the last time the user rewards were updated
     struct UserRewards {
-        uint128 accumulated;
-        uint128 checkpoint;
+        uint256 accumulated;
+        uint256 checkpoint;
+        uint64 lastUpdated;
     }
 
-    /// @dev Tracks which reward token is correlated with a given campaignId
-    mapping(uint256 campaign => ERC20) public campaignToToken;
-    /// @dev Tracks the interval over which the campaign rewards depositors over
-    mapping(uint256 campaign => RewardsInterval) public tokenToRewardsInterval;
     /// @dev Tracks the token rewards distributed in a given campaign so far
-    mapping(uint256 campaign => RewardsPerCampaign) public tokenToRewardsPerCampaign;
+    mapping(uint256 campaign => CampaignData) public campaignIdToData;
     /// @dev Tracks how much rewards a user has claimed from a given campaign, and when
-    mapping(uint256 campaign => mapping(address user => UserRewards)) public tokenToAccumulatedRewards;
+    mapping(uint256 campaign => mapping(address user => UserRewards)) public campaignToUserRewards;
 
-    /// @dev Mapping to track over how long fees will vested for a given campaign
-    mapping(uint256 campaign => RewardsInterval) public feeRewardInterval;
     /// @dev Mappiing to track how many fees have actually vested for a given campaign
-    mapping(uint256 campaign => uint256 lastUpdated) public feeRewardsClaimed;
+    mapping(uint256 campaign => uint256 lastUpdated) public feeRewardsLastClaimed;
 
     /// @dev The user who referred someone for a given campaign
     mapping(uint256 campaign => mapping(address user => address referrer)) public referralsPerUser;
@@ -182,7 +178,6 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
 
         /// Set the initial IDs of the campaign
         campaignId = totalCampaigns++;
-        campaignToToken[campaignId] = token;
 
         /// Fund the Campaign
         token.safeTransferFrom(msg.sender, address(this), totalRewards);
@@ -193,20 +188,17 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         totalRewards -= protocolFeeTaken + referralFeeTaken;
 
         uint256 rate = totalRewards / (end - start);
-        uint256 protocolFeeRate = protocolFeeTaken / (end - start);
 
-        RewardsInterval storage rewardsInterval = tokenToRewardsInterval[campaignId];
+        CampaignData storage data = campaignIdToData[campaignId];
 
-        rewardsInterval.start = start.toUint32();
-        rewardsInterval.end = end.toUint32();
-        rewardsInterval.rate = rate.toUint96();
-        rewardsInterval.protocolFeeRate = protocolFeeRate.toUint96();
-        rewardsInterval.referralFee = referralFee.toUint96();
+        data.start = start.toUint32();
+        data.end = end.toUint32();
+        data.rate = rate.toUint96();
+        data.rewardToken = token;
+        data.protocolFeeRate = (protocolFeeTaken / (end - start)).toUint96();
+        data.referralFee = referralFee.toUint96();
+        data.lastUpdated = (block.timestamp).toUint64();
 
-        feeRewardsClaimed[campaignId] = start.toUint32();
-
-        /// Update the campaign at the end
-        _updateRewardsPerCampaign(campaignId);
         emit RewardsSet(start.toUint32(), end.toUint32(), rate);
     }
 
@@ -250,159 +242,64 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
                              CAMPAIGN MATH
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Update the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.
-    /// @param rewardsPerCampaignIn The rewards data for the campaign
-    /// @param rewardsInterval_   The interval which the rewards campaign is distributed across
-    ///
-    /// @return The updated rewards campaign data
-    function _calculateRewardsPerCampaign(
-        RewardsPerCampaign memory rewardsPerCampaignIn,
-        RewardsInterval memory rewardsInterval_
-    ) internal view returns (RewardsPerCampaign memory) {
-        RewardsPerCampaign memory rewardsPerCampaignOut =
-            RewardsPerCampaign(rewardsPerCampaignIn.accumulated, rewardsPerCampaignIn.lastUpdated);
-        uint256 totalSupply_ = underlyingVault.totalSupply();
+    /// @param campaignId The campaign to update 
+    /// @param user The user to update rewards on beahlf of
+    function updateUserRewards(uint256 campaignId, address user) public {
+      updateRewardCampaign(campaignId);
 
-        // No changes if the program hasn't started
-        if (block.timestamp < rewardsInterval_.start) return rewardsPerCampaignOut;
+      CampaignData storage _campaignData = campaignIdToData[campaignId];
+      UserRewards storage userData = campaignToUserRewards[campaignId][user];
+      
+      uint256 _end = _campaignData.end;
+      uint256 lastCheckpoint = block.timestamp;
+      if (lastCheckpoint > _end) {
+        lastCheckpoint = _end;
+      }
 
-        // Stop accumulating at the end of the rewards interval
-        uint256 updateTime = block.timestamp < rewardsInterval_.end ? block.timestamp : rewardsInterval_.end;
-        uint256 elapsed = updateTime - rewardsPerCampaignIn.lastUpdated;
+      uint256 elapsed = lastCheckpoint - userData.lastUpdated;
 
-        // No changes if no time has passed
-        if (elapsed == 0) return rewardsPerCampaignOut;
-        rewardsPerCampaignOut.lastUpdated = updateTime.toUint32();
-
-        // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
-        if (totalSupply_ == 0) return rewardsPerCampaignOut;
-
-        // Calculate and update the new value of the accumulator, scaled up for precision
-        rewardsPerCampaignOut.accumulated =
-            (rewardsPerCampaignIn.accumulated + WAD * elapsed * rewardsInterval_.rate / totalSupply_).toUint128();
-
-        return rewardsPerCampaignOut;
+      userData.accumulated = (balanceOf[user] * elapsed * _campaignData.rate) / WAD;
+      userData.lastUpdated = lastCheckpoint.toUint64();
     }
 
-    /// @notice Calculate the rewards accumulated by a stake between two checkpoints.
-    /// @param stake_ The weight of a persons reward stake
-    /// @param earlierCheckpoint The starting time of the interval to calculate for
-    /// @param latterCheckpoint The ending time of the interval to calculate for
-    function _calculateUserRewards(uint256 stake_, uint256 earlierCheckpoint, uint256 latterCheckpoint)
-        internal
-        pure
-        returns (uint256)
-    {
-        return stake_ * (latterCheckpoint - earlierCheckpoint) / WAD; // We must scale down the rewards by WAD
-    }
+    /// @param campaignId The campaignId to update
+    function updateRewardCampaign(uint256 campaignId) public {
+      CampaignData storage _campaignData = campaignIdToData[campaignId];
+      
+      uint256 _end = _campaignData.end;
+      uint256 lastCheckpoint = block.timestamp;
+      if (lastCheckpoint > _end) {
+        lastCheckpoint = _end;
+      }
 
-    /// @notice Update and return the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.
-    /// @param campaignId The id of the campaign to update rewards data for
-    ///
-    /// @return The updated rewards campaign data
-    function _updateRewardsPerCampaign(uint256 campaignId) internal returns (RewardsPerCampaign memory) {
-        RewardsInterval memory rewardsInterval = tokenToRewardsInterval[campaignId];
+      uint256 elapsed = lastCheckpoint - _campaignData.lastUpdated;
 
-        RewardsPerCampaign memory rewardsPerCampaignIn = tokenToRewardsPerCampaign[campaignId];
-        RewardsPerCampaign memory rewardsPerCampaignOut =
-            _calculateRewardsPerCampaign(rewardsPerCampaignIn, rewardsInterval);
-
-        // We skip the storage changes if already updated in the same block, or if the program has ended and was updated at the end
-        if (rewardsPerCampaignIn.lastUpdated == rewardsPerCampaignOut.lastUpdated) return rewardsPerCampaignOut;
-
-        tokenToRewardsPerCampaign[campaignId] = rewardsPerCampaignOut;
-
-        address token = address(campaignToToken[campaignId]);
-        emit RewardsCampaignUpdated(campaignId, token, rewardsPerCampaignOut.accumulated);
-
-        return rewardsPerCampaignOut;
-    }
-
-    /// @notice Calculate and store current rewards for an user. Checkpoint the rewardsPerCampaign value with the user.
-    /// @param campaignId The campaignId to update a users rewards for
-    /// @param user The users whose info to update
-    ///
-    /// @return The updated UserRewards Struct
-    function _updateUserRewards(uint256 campaignId, address user) internal returns (UserRewards memory) {
-        RewardsPerCampaign memory rewardsPerCampaign_ = _updateRewardsPerCampaign(campaignId);
-        UserRewards memory userRewards_ = tokenToAccumulatedRewards[campaignId][user];
-
-        // We skip the storage changes if there are no changes to the rewards per token accumulator
-        if (userRewards_.checkpoint == rewardsPerCampaign_.accumulated) return userRewards_;
-
-        // Calculate and update the new value user reserves.
-        uint128 newUserAcc = _calculateUserRewards(
-            underlyingVault.balanceOf(user), userRewards_.checkpoint, rewardsPerCampaign_.accumulated
-        ).toUint128();
-
-        referralIncentives[user][campaignId] = newUserAcc * referralFee / WAD;
-
-        userRewards_.accumulated += newUserAcc;
-        userRewards_.checkpoint = rewardsPerCampaign_.accumulated;
-
-        tokenToAccumulatedRewards[campaignId][user] = userRewards_;
-
-        address token = address(campaignToToken[campaignId]);
-        emit UserRewardsUpdated(campaignId, token, user, userRewards_.accumulated, userRewards_.checkpoint);
-
-        return userRewards_;
-    }
-
-    /// @notice Claim rewards for an user
-    /// @param campaignId The campaignId to claim rewards from
-    function _claim(uint256 campaignId, address from, address to, uint256 amount) internal virtual {
-        _updateUserRewards(campaignId, from);
-        tokenToAccumulatedRewards[campaignId][from].accumulated -= amount.toUint128();
-
-        ERC20 token = campaignToToken[campaignId];
-        token.safeTransfer(to, amount);
-
-        address referrer = referralsPerUser[campaignId][msg.sender];
-        token.safeTransfer(referrer, amount);
-
-        emit Claimed(campaignId, address(token), from, to, amount);
-    }
-
-    /// @notice Calculate and return current rewards per token.
-    function currentRewardsPerCampaign(uint256 campaignId) public view returns (uint256) {
-        return _calculateRewardsPerCampaign(tokenToRewardsPerCampaign[campaignId], tokenToRewardsInterval[campaignId])
-            .accumulated;
-    }
-
-    /// @notice Calculate and return current rewards for a user.
-    /// @param campaignId The campaign to calculate rewards for
-    /// @param user The user to fetch rewards for
-    function currentUserRewards(uint256 campaignId, address user) public view returns (uint256) {
-        /// @dev This repeats the logic used on transactions, but doesn't update the storage.
-        UserRewards memory accumulatedRewards_ = tokenToAccumulatedRewards[campaignId][user];
-        RewardsPerCampaign memory rewardsPerCampaign_ =
-            _calculateRewardsPerCampaign(tokenToRewardsPerCampaign[campaignId], tokenToRewardsInterval[campaignId]);
-        return accumulatedRewards_.accumulated
-            + _calculateUserRewards(
-                underlyingVault.balanceOf(user), accumulatedRewards_.checkpoint, rewardsPerCampaign_.accumulated
-            );
-    }
-
-    /// @param amount The amount of ERC4626 Tokens to deposit
-    /// @param campaignId The campaignId to deposit into
-    ///
-    /// @return incentiveRate The rate at which rewards accumulate
-    function previewRewardsAfterDeposit(uint256 amount, uint256 campaignId)
-        public
-        view
-        returns (uint256 incentiveRate)
-    {
-        RewardsInterval memory interval = tokenToRewardsInterval[campaignId];
-        RewardsPerCampaign memory campaignRewards = tokenToRewardsPerCampaign[campaignId];
-
-        return interval.rate * (campaignRewards.accumulated * amount) / WAD;
+      _campaignData.accumulated += (elapsed * totalSupply * uint256(_campaignData.rate)) / WAD;
+      _campaignData.lastUpdated = lastCheckpoint.toUint64();
     }
 
     /// @notice Claim all of one reward token for the caller
-    function claim(uint256 campaignId, address to) public virtual returns (uint256 claimed) {
-        claimed = currentUserRewards(campaignId, msg.sender);
+    /// 
+    /// @return claimed The amount of tokens awarded
+    function claim(uint256 campaignId, address to) public returns (uint256 claimed) {
+        updateUserRewards(campaignId, msg.sender);
+        CampaignData storage _campaignData = campaignIdToData[campaignId];
 
-        _claim(campaignId, msg.sender, to, claimed);
+        ERC20 token = _campaignData.rewardToken;
+
+        UserRewards storage userData = campaignToUserRewards[campaignId][msg.sender];
+        
+        uint256 tokensVestedSoFar = (_campaignData.rate * (_campaignData.lastUpdated - _campaignData.start)) / WAD;
+        claimed = userData.accumulated * tokensVestedSoFar / _campaignData.accumulated; 
+
+        token.safeTransfer(to, claimed);
+
+        address referrer = referralsPerUser[campaignId][msg.sender];
+
+        uint256 referralClaimed = (claimed * referralFee) / (WAD - _campaignData.referralFee);
+        token.safeTransfer(referrer, referralClaimed);
+
+        emit Claimed(campaignId, address(token), msg.sender, to, claimed);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -435,15 +332,23 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
 
     /// @param campaignId The campaign to claim rewardsFees for
     function claimProtocolFees(uint256 campaignId) external {
-        RewardsInterval memory feeInterval = feeRewardInterval[campaignId];
-        uint256 lastUpdated = feeRewardsClaimed[campaignId];
+        if (msg.sender != protocolFeesTo) {
+          revert OnlyProtocolFeeTo();
+        }
 
-        ERC20 token = campaignToToken[campaignId];
-        uint256 elapsed = (feeInterval.end - lastUpdated);
-        uint256 amountOwed = (elapsed * feeInterval.protocolFeeRate);
+        CampaignData storage _campaignData = campaignIdToData[campaignId];
+        uint256 lastUpdated = feeRewardsLastClaimed[campaignId];
 
-        feeRewardsClaimed[campaignId] = block.timestamp;
-        token.transfer(protocolFeesTo, amountOwed);
+        uint256 elapsed = (_campaignData.end - lastUpdated);
+        uint256 amountOwed = (elapsed * _campaignData.protocolFeeRate);
+
+        if (block.timestamp > _campaignData.end) {
+          feeRewardsLastClaimed[campaignId] = _campaignData.end;
+        } else {
+          feeRewardsLastClaimed[campaignId] = block.timestamp;
+        }
+
+        _campaignData.rewardToken.safeTransfer(protocolFeesTo, amountOwed);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -453,20 +358,6 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @param referrer The address who referred the user
     function updateReferral(uint256 campaignId, address referrer) external {
         referralsPerUser[campaignId][msg.sender] = referrer;
-    }
-
-    /// @param user The user whom msg.sender has referred
-    /// @param campaignId The rewards campaign to claim their incentives from
-    function claimReferralFees(address user, uint256 campaignId) external {
-        if (referralsPerUser[campaignId][user] != msg.sender) {
-            revert NotReferrer();
-        }
-
-        uint256 referralIncentivesOwed = referralIncentives[user][campaignId];
-        ERC20 token = campaignToToken[campaignId];
-
-        referralIncentives[user][campaignId] = 0;
-        token.safeTransfer(msg.sender, referralIncentivesOwed);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -492,10 +383,13 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @param user The user to update their campaigns
-    function updateUserCampaigns(address user) internal {
+    function updateUserCampaigns(address user) public {
         for (uint8 i = 0; i < userSelectedCampaigns[user].length;) {
             uint256 campaignId = userSelectedCampaigns[user][i];
-            _updateUserRewards(campaignId, user);
+            if (campaignId == 0) {
+                break;
+            }
+            updateUserRewards(campaignId, user);
 
             unchecked {
                 ++i;
