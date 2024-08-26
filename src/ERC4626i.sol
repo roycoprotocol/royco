@@ -10,6 +10,7 @@ import {LibString} from "lib/solady/src/utils/LibString.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import {PointsFactory} from "src/PointsFactory.sol";
+import {Points} from "src/Points.sol";
 
 import {console} from "forge-std/console.sol";
 
@@ -305,8 +306,8 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         uint256 referralClaimed = (claimed * referralFee) / (WAD - _campaignData.referralFee);
 
         if (pointsFactory.isPointsProgram(address(token))) {
-            pointsFactory.award(to, claimed, campaignId);
-            pointsFactory.award(referrer, referralClaimed, campaignId);
+            Points(address(token)).award(to, claimed, campaignId);
+            Points(address(token)).award(referrer, referralClaimed, campaignId);
         } else {
             token.safeTransfer(to, claimed);
             token.safeTransfer(referrer, referralClaimed);
@@ -372,7 +373,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
 
         ERC20 token = campaignToToken[campaignId];
         if (pointsFactory.isPointsProgram(address(token))) {
-            pointsFactory.award(protocolFeesTo, amountOwed, campaignId);
+            Points(address(token)).award(protocolFeesTo, amountOwed, campaignId);
         } else {
             token.safeTransfer(protocolFeesTo, amountOwed);
         }

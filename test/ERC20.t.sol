@@ -23,7 +23,7 @@ contract ERC20Test is Test {
     address public constant REFERRAL_USER = address(0x33f123);
 
     function setUp() public {
-        testFactory = new ERC4626iFactory(0.05e18, 0.05e18);
+        testFactory = new ERC4626iFactory(0.05e18, 0.05e18, address(0));
         token = testFactory.createIncentivizedVault(testVault);
     }
 

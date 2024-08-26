@@ -29,11 +29,11 @@ contract ERC4626iTest is Test {
 
 
     function setUp() public {
-        testFactory = new ERC4626iFactory(0.05e18, 0.05e18);
+        testFactory = new ERC4626iFactory(0.05e18, 0.05e18, address(0));
     }
 
     function testConstructor(uint128 initialProtocolFee, uint128 initialReferralFee) public {
-        ERC4626iFactory newTestFactory = new ERC4626iFactory(initialProtocolFee, initialReferralFee);
+        ERC4626iFactory newTestFactory = new ERC4626iFactory(initialProtocolFee, initialReferralFee, address(0));
 
         assertEq(newTestFactory.defaultProtocolFee(), initialProtocolFee);
         assertEq(newTestFactory.defaultReferralFee(), initialReferralFee);
