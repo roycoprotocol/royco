@@ -14,13 +14,13 @@ contract RecipeOrderbook is Ownable2Step {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    /// @custom:field orderID Set to numOrders - 1 on order creation (zero-indexed)
+    /// @custom:field orderID Set to numLPOrders - 1 on order creation (zero-indexed)
     /// @custom:field targetMarketID The ID of the weiroll market which will be executed on fill
     /// @custom:field lp The address of the liquidity provider
     /// @custom:field fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @custom:field expiry The timestamp after which the order is considered expired
     /// @custom:field tokensRequested The incentive tokens requested by the LP
-    /// @custom:field tokenRatesRequested The desired rewards per input token per second
+    /// @custom:field tokenAmountsRequested The desired rewards per input token
     struct LPOrder {
         uint256 orderID;
         uint256 targetMarketID;
@@ -55,6 +55,40 @@ contract RecipeOrderbook is Ownable2Step {
         bytes[] weirollState;
     }
 
+    // enum RewardStyle {
+    //     Upfront,
+    //     Arrear,
+    //     Forfeitable
+    // }
+
+    // struct LockedRewardParams {
+    //     address[] tokens;
+    //     uint256[] amounts;
+    //     address ip;
+    // }
+
+    // mapping (address => LockedRewardParams) public weirollWalletToLockedRewardParams;
+
+    // // mapping(address => address[]) public weirollWalletToLockedRewards;
+    // // mapping(address => uint256[]) public weirollWalletToLockedRewardAmounts;
+
+    // function forfeit(address weirollWallet) public {
+    //     if (WeirollWallet(weirollWallet).owner() != msg.sender) {
+    //         revert NotOwner();
+    //     }
+    //     WeirollWallet(weirollWallet).forfeit();
+
+    //     //return the locked rewards to the LP
+
+    //     // zero out the mappings
+    //     delete weirollWallettoLockedRewards[wallet];
+    //     delete weirollWalletToLockedRewardAmounts[wallet];
+    // }
+    
+    // function claim(address weirollWallet) public {
+        
+    // }
+
     /// @custom:field inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
     /// @custom:field lockupTime The time in seconds that the user's weiroll wallet will be locked up for after deposit
     /// @custom:field frontendFee The fee that the frontend will take from IP incentives, 1e18 == 100% fee
@@ -66,6 +100,7 @@ contract RecipeOrderbook is Ownable2Step {
         uint256 frontendFee;
         Recipe depositRecipe;
         Recipe withdrawRecipe;
+        // RewardStyle rewardStyle;
     }
 
     /// @notice The address of the WeirollWallet implementation contract for use with ClonesWithImmutableArgs
@@ -104,7 +139,8 @@ contract RecipeOrderbook is Ownable2Step {
         minimumFrontendFee = _minimumFrontendFee;
 
         // Redundant
-        numOrders = 0;
+        numLPOrders = 0;
+        numIPOrders = 0;
         numMarkets = 0;
     }
 
@@ -114,13 +150,13 @@ contract RecipeOrderbook is Ownable2Step {
     /// @custom:field frontendFee The fee paid to the frontend out of IP incentives
     event MarketCreated(uint256 indexed marketID, address indexed inputToken, uint256 lockupTime, uint256 frontendFee);
 
-    /// @param orderID Set to numOrders - 1 on order creation (zero-indexed), ordered separately for LP and IP orders
+    /// @param orderID Set to numLPOrders - 1 on order creation (zero-indexed), ordered separately for LP and IP orders
     /// @param targetMarketID The ID of the weiroll market which will be executed on fill
     /// @param lp The address of the liquidity provider
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param expiry The timestamp after which the order is considered expired
     /// @param tokensRequested The incentive tokens requested by the LP
-    /// @param tokenRatesRequested The desired rewards per input token per second
+    /// @param tokenAmountsRequested The desired rewards per input token
     /// @param quantity The total amount of input tokens to be deposited
     event LPOrderCreated(
         uint256 indexed orderID,
@@ -133,7 +169,7 @@ contract RecipeOrderbook is Ownable2Step {
         uint256 quantity
     );
 
-    /// @param orderID Set to numOrders - 1 on order creation (zero-indexed), ordered separately for LP and IP orders
+    /// @param orderID Set to numIPOrders - 1 on order creation (zero-indexed), ordered separately for LP and IP orders
     /// @param targetMarketID The ID of the weiroll market which will be executed on fill
     /// @param ip The address of the incentive provider
     /// @param expiry The timestamp after which the order is considered expired
@@ -167,19 +203,28 @@ contract RecipeOrderbook is Ownable2Step {
 
     // TODO claim fees event
 
-    // Errors //TODO clean up
+    /// @notice emitted when trying to fill an order that has expired
     error OrderExpired();
+    /// @notice emitted when trying to fill an order with more input tokens than the remaining order quantity
     error NotEnoughRemainingQuantity();
+    /// @notice emitted when the base asset of the target vault and the funding vault do not match
     error MismatchedBaseAsset();
-    // error OrderDoesNotExist();
+    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet
+    error NotEnoughBaseAsset();
+    /// @notice emitted if a market with the given ID does not exist
     error MarketDoesNotExist();
+    /// @notice emitted when trying to place an order with an expiry in the past
     error CannotPlaceExpiredOrder();
-    // error OrderConditionsNotMet();
+    /// @notice emitted when trying to place an order with a quantity of 0
     error CannotPlaceZeroQuantityOrder();
-    error NotEnoughBaseAssetInVault();
+    /// @notice emitted when trying to fill an order with a token that has not been approved
     error InsufficientApproval();
+    /// @notice emitted when token and amount arrays are not the same length
     error ArrayLengthMismatch();
+    /// @notice emitted when the frontend fee is below the minimum
     error FrontendFeeTooLow();
+    /// @notice emitted when trying to forfeit a wallet that is not owned by the caller
+    error NotOwner();
 
     /// @notice Create a new recipe market
     /// @param inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
@@ -222,6 +267,10 @@ contract RecipeOrderbook is Ownable2Step {
         address[] memory tokensRequested,
         uint256[] memory tokenAmountsRequested
     ) public returns (uint256) {
+        // Check market exists
+        if (targetMarketID >= numMarkets) {
+            revert MarketDoesNotExist();
+        }
         // Check order isn't expired (expiries of 0 live forever)
         if (expiry != 0 && expiry < block.timestamp) {
             revert CannotPlaceExpiredOrder();
@@ -247,7 +296,7 @@ contract RecipeOrderbook is Ownable2Step {
         } else {
             // If placing the order with a funding vault...
             if (quantity > ERC4626(fundingVault).maxWithdraw(msg.sender)) {
-                revert NotEnoughBaseAssetInVault();
+                revert NotEnoughBaseAsset();
             }
             if (
                 ERC4626(fundingVault).allowance(msg.sender, address(this))
@@ -274,9 +323,9 @@ contract RecipeOrderbook is Ownable2Step {
 
         // Map the order hash to the order quantity
         LPOrder memory order =
-            LPOrder(numOrders, targetMarketID, msg.sender, fundingVault, expiry, tokensRequested, tokenAmountsRequested);
+            LPOrder(numLPOrders, targetMarketID, msg.sender, fundingVault, expiry, tokensRequested, tokenAmountsRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
-        return (numOrders++);
+        return (numLPOrders++);
     }
 
     /// @notice Create a new IP order, transferring the IP's incentives to the orderbook and putting all the order params in contract storage
@@ -307,7 +356,7 @@ contract RecipeOrderbook is Ownable2Step {
         }
 
         // Create the order
-        IPOrder storage order = orderIDToIPOrder[numOrders];
+        IPOrder storage order = orderIDToIPOrder[numIPOrders];
         order.targetMarketID = targetMarketID;
         order.quantity = quantity;
         order.remainingQuantity = quantity;
@@ -330,9 +379,9 @@ contract RecipeOrderbook is Ownable2Step {
             ERC20(tokensOffered[i]).safeTransferFrom(msg.sender, address(this), incentiveAmount + frontendFeeAmount); //TODO: handle points
         }
 
-        emit IPOrderCreated(numOrders, targetMarketID, msg.sender, expiry, tokensOffered, tokenAmounts, quantity);
+        emit IPOrderCreated(numIPOrders, targetMarketID, msg.sender, expiry, tokensOffered, tokenAmounts, quantity);
 
-        return (numOrders++);
+        return (numIPOrders++);
     }
 
     /// @notice Fill an IP order, transferring the IP's incentives to the LP, withdrawing the LP from their funding vault into a fresh weiroll wallet, and executing the weiroll recipe
