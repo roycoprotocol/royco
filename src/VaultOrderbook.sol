@@ -6,6 +6,8 @@ import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol";
 import {ERC4626i} from "src/ERC4626i.sol";
 import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
+import { console } from "forge-std/console.sol";
+
 contract VaultOrderbook is Ownable2Step {
     /// @custom:field orderID Set to numOrders - 1 on order creation (zero-indexed)
     /// @custom:field targetVault The address of the vault where the input tokens will be deposited
@@ -112,7 +114,7 @@ contract VaultOrderbook is Ownable2Step {
         if (tokensRequested.length != tokenRatesRequested.length) {
             revert ArrayLengthMismatch();
         }
-
+        
         ERC20 targetBaseToken = ERC4626(targetVault).asset();
         // If placing the order without a funding vault...
         if (fundingVault == address(0)) {
@@ -143,7 +145,7 @@ contract VaultOrderbook is Ownable2Step {
         LPOrder memory order =
             LPOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
-        // Return the new order's ID and increment the order counter
+        // Return the new order's ID and increment the order counter 
         return (numOrders++);
     }
 
@@ -170,7 +172,6 @@ contract VaultOrderbook is Ownable2Step {
             revert NotEnoughRemainingQuantity();
         }
 
-
         for (uint i; i < order.tokenRatesRequested.length; ++i) {
           tokenToRate[order.tokensRequested[i]] = order.tokenRatesRequested[i];
         }
@@ -181,7 +182,14 @@ contract VaultOrderbook is Ownable2Step {
             uint256 rate = ERC4626i(order.targetVault).previewRateAfterDeposit(campaignIds[i], quantity);
             tokenToRate[order.tokensRequested[i]] += rate;
         }
-        
+
+        for (uint i; i < order.tokenRatesRequested.length; ++i) {
+            if (order.tokenRatesRequested[i] > tokenToRate[order.tokensRequested[i]]) {
+                revert OrderConditionsNotMet();
+            }
+
+            delete tokenToRate[order.tokensRequested[i]];
+        }        
         // If transaction has not reverted yet, the order is within its conditions
 
         // Reduce the remaining quantity of the order
@@ -190,11 +198,12 @@ contract VaultOrderbook is Ownable2Step {
         // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (order.fundingVault == address(0)) {
             // Transfer the base asset from the LP to the orderbook
-            ERC20(ERC4626(order.targetVault).asset()).transferFrom(order.lp, address(this), quantity);
+            ERC4626(order.targetVault).asset().transferFrom(order.lp, address(this), quantity);
         } else {
             // Withdraw from the funding vault to the orderbook
             ERC4626(order.fundingVault).withdraw(quantity, address(this), order.lp);
         }
+        ERC4626(order.targetVault).asset().approve(order.targetVault, quantity);
 
         // Deposit into the target vault
         ERC4626(order.targetVault).deposit(quantity, order.lp);
