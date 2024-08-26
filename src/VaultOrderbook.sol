@@ -6,8 +6,6 @@ import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol";
 import {ERC4626i} from "src/ERC4626i.sol";
 import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
-import { console } from "forge-std/console.sol";
-
 contract VaultOrderbook is Ownable2Step {
     /// @custom:field orderID Set to numOrders - 1 on order creation (zero-indexed)
     /// @custom:field targetVault The address of the vault where the input tokens will be deposited

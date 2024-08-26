@@ -481,7 +481,7 @@ contract RecipeOrderbook is Ownable2Step {
 
         // If the fundingVault is set to 0, fund the fill directly via the base asset
         if (fundingVault != address(0)) {
-            ERC20(market.inputToken).safeTransferFrom(address(wallet), msg.sender, fillAmount);
+            ERC20(market.inputToken).safeTransferFrom(msg.sender, address(wallet), fillAmount);
         } else {
             // Withdraw the LP from the funding vault into the wallet
             ERC4626(fundingVault).withdraw(fillAmount, address(wallet), msg.sender);

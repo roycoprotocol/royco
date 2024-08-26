@@ -10,12 +10,16 @@ import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
 import {ERC4626i} from "src/ERC4626i.sol";
 import {ERC4626iFactory} from "src/ERC4626iFactory.sol";
 
+import { PointsFactory } from "src/PointsFactory.sol";
+
 import {Test} from "forge-std/Test.sol";
 
 contract ERC4626iTest is Test {
     ERC20 token = ERC20(address(new MockERC20("Mock Token", "MOCK")));
     ERC4626 testVault = ERC4626(address(new MockERC4626(token)));
     ERC4626i testIncentivizedVault;
+
+    PointsFactory pointsFactory = new PointsFactory();
 
     ERC4626iFactory testFactory;
 
@@ -29,7 +33,7 @@ contract ERC4626iTest is Test {
 
 
     function setUp() public {
-        testFactory = new ERC4626iFactory(0.05e18, 0.05e18, address(0));
+        testFactory = new ERC4626iFactory(0.05e18, 0.05e18, address(pointsFactory));
     }
 
     function testConstructor(uint128 initialProtocolFee, uint128 initialReferralFee) public {

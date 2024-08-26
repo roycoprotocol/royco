@@ -12,8 +12,6 @@ import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import {PointsFactory} from "src/PointsFactory.sol";
 import {Points} from "src/Points.sol";
 
-import {console} from "forge-std/console.sol";
-
 /// @title ERC4626i
 /// @author CopyPaste, corddry
 /// @dev Contract to wrap ERC4626 Vaults in an interface which allows the creation of incentive campaigns
