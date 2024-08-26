@@ -284,13 +284,13 @@ contract RecipeOrderbook is Ownable2Step {
             revert ArrayLengthMismatch();
         }
 
-        address targetBaseToken = marketIDToWeirollMarket[targetMarketID].inputToken;
+        ERC20 targetBaseToken = marketIDToWeirollMarket[targetMarketID].inputToken;
         // If placing the order without a funding vault...
         if (fundingVault == address(0)) {
-            if (ERC20(targetBaseToken).balanceOf(msg.sender) < quantity) {
+            if (targetBaseToken.balanceOf(msg.sender) < quantity) {
                 revert NotEnoughBaseAsset();
             }
-            if (ERC20(targetBaseToken).allowance(msg.sender, address(this)) < quantity) {
+            if (targetBaseToken.allowance(msg.sender, address(this)) < quantity) {
                 revert InsufficientApproval();
             }
         } else {
