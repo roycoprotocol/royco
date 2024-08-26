@@ -85,7 +85,7 @@ contract VaultOrderbook is Ownable2Step {
 
     /// @dev Setting an expiry of 0 means the order never expires
     /// @param targetVault The address of the vault where the liquidity will be deposited
-    /// @param fundingVault The address of the vault where the liquidity will be withdrawn from
+    /// @param fundingVault The address of the vault where the liquidity will be withdrawn from, if set to 0, the LP will deposit the base asset directly
     /// @param quantity The total amount of the base asset to be withdrawn from the funding vault
     /// @param expiry The timestamp after which the order is considered expired
     /// @param tokensRequested The incentive tokens requested by the LP in order to fill the order
@@ -134,9 +134,12 @@ contract VaultOrderbook is Ownable2Step {
         }
 
         // Emit the order creation event, used for matching orders
-        emit LPOrderCreated(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity);
+        emit LPOrderCreated(
+            numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity
+        );
         // Set the quantity of the order
-        LPOrder memory order = LPOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
+        LPOrder memory order =
+            LPOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
         // Return the new order's ID and increment the order counter
         return (numOrders++);
