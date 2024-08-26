@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {ERC4626i} from "src/ERC4626i.sol";
-import {RecipeOrderbook} from "src/RecipeOrderbook.sol";
+import { ERC4626i } from "src/ERC4626i.sol";
+import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
 
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 
 /// @title Points
 /// @author CopyPaste, corddry
@@ -24,7 +25,7 @@ contract Points is Owned(msg.sender) {
         uint256 _decimals,
         ERC4626i _allowedVault,
         RecipeOrderbook _orderbook
-    ) external {
+    ) {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
@@ -36,7 +37,7 @@ contract Points is Owned(msg.sender) {
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
-    event Award(address indexed to, address indexed amount, uint256 campaignId);
+    event Award(address indexed to, uint256 indexed amount, uint256 indexed campaignId);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -62,13 +63,13 @@ contract Points is Owned(msg.sender) {
     /// @param end The end date of the campaign
     /// @param totalRewards The total amount of points to distribute
     function createPointsRewardsCampaign(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
-        uint256 campaignId = allowedVault.totalCampaignIds() + 1;
+        uint256 campaignId = allowedVault.totalCampaigns() + 1;
         allowedCampaigns[campaignId] = true;
 
-        uint256 newCampaign = allowedVault.createRewardsCampaign(address(this), start, end, totalRewards);
+        uint256 newCampaign = allowedVault.createRewardsCampaign(ERC20(address(this)), start, end, totalRewards);
 
         /// Safe check for redundancy
-        require(newCampaign, campaignId);
+        require(newCampaign == campaignId);
     }
 
     function createIPOrderWithPoints() external onlyOwner {}
