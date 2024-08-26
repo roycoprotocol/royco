@@ -103,7 +103,6 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         uint96 referralFee;
         uint256 accumulated;
         uint64 lastUpdated;
-        ERC20 rewardToken;
     }
 
     /// @custom:field accumulated The accumulated rewards for the user until the checkpoint
@@ -114,6 +113,8 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         uint64 lastUpdated;
     }
 
+    /// @dev Campaign to Reward Tokens 
+    mapping(uint256 campaign => ERC20) public campaignToToken;
     /// @dev Tracks the token rewards distributed in a given campaign so far
     mapping(uint256 campaign => CampaignData) public campaignIdToData;
     /// @dev Tracks how much rewards a user has claimed from a given campaign, and when
@@ -190,11 +191,11 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         uint256 rate = totalRewards / (end - start);
 
         CampaignData storage data = campaignIdToData[campaignId];
+        campaignToToken[campaignId] = token;
 
         data.start = start.toUint32();
         data.end = end.toUint32();
         data.rate = rate.toUint96();
-        data.rewardToken = token;
         data.protocolFeeRate = (protocolFeeTaken / (end - start)).toUint96();
         data.referralFee = referralFee.toUint96();
         data.lastUpdated = (block.timestamp).toUint64();
@@ -241,7 +242,6 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /*//////////////////////////////////////////////////////////////
                              CAMPAIGN MATH
     //////////////////////////////////////////////////////////////*/
-
     /// @param campaignId The campaign to update 
     /// @param user The user to update rewards on beahlf of
     function updateUserRewards(uint256 campaignId, address user) public {
@@ -285,13 +285,15 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         updateUserRewards(campaignId, msg.sender);
         CampaignData storage _campaignData = campaignIdToData[campaignId];
 
-        ERC20 token = _campaignData.rewardToken;
+        ERC20 token = campaignToToken[campaignId];
 
         UserRewards storage userData = campaignToUserRewards[campaignId][msg.sender];
         
-        uint256 tokensVestedSoFar = (_campaignData.rate * (_campaignData.lastUpdated - _campaignData.start)) / WAD;
-        claimed = userData.accumulated * tokensVestedSoFar / _campaignData.accumulated; 
+        uint256 tokensVestedSoFar = (_campaignData.rate * (_campaignData.lastUpdated - _campaignData.start));
+        if (tokensVestedSoFar == 0) return 0;
 
+        claimed = userData.accumulated * tokensVestedSoFar / _campaignData.accumulated; 
+        
         token.safeTransfer(to, claimed);
 
         address referrer = referralsPerUser[campaignId][msg.sender];
@@ -300,6 +302,16 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         token.safeTransfer(referrer, referralClaimed);
 
         emit Claimed(campaignId, address(token), msg.sender, to, claimed);
+    }
+
+    /// @param campaignId The campaign you are depositing into 
+    /// @param amount The amount of tokens to deposit 
+    /// 
+    /// @return rate The rate of tokens being rewarded
+    function previewRateAfterDeposit(uint256 campaignId, uint256 amount) view public returns (uint256 rate) {
+      CampaignData storage _campaignData = campaignIdToData[campaignId];
+  
+      return _campaignData.rate * amount / WAD;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -348,7 +360,8 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
           feeRewardsLastClaimed[campaignId] = block.timestamp;
         }
 
-        _campaignData.rewardToken.safeTransfer(protocolFeesTo, amountOwed);
+        ERC20 token = campaignToToken[campaignId];
+        token.safeTransfer(protocolFeesTo, amountOwed);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -387,7 +400,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         for (uint8 i = 0; i < userSelectedCampaigns[user].length;) {
             uint256 campaignId = userSelectedCampaigns[user][i];
             if (campaignId == 0) {
-                break;
+                return;
             }
             updateUserRewards(campaignId, user);
 
