@@ -19,7 +19,7 @@ contract PointsFactoryTest is Test {
     function setUp() public {
         factory = new PointsFactory();
         mockVault = ERC4626i(address(new MockERC4626i()));
-        mockOrderbook = new RecipeOrderbook(address(0), 0, 0, address(0x1));
+        mockOrderbook = new RecipeOrderbook(address(0), 0, 0, address(0x1), address(0x2));
 
         points = factory.createPointsProgram("Test Points", "TP", 18, mockVault, mockOrderbook);
     }

@@ -11,6 +11,12 @@ import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import {Points} from "src/Points.sol";
 import {PointsFactory} from "src/PointsFactory.sol";
 
+enum RewardStyle {
+    Upfront,
+    Arrear,
+    Forfeitable
+}
+
 contract RecipeOrderbook is Ownable2Step {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for ERC20;
@@ -56,12 +62,6 @@ contract RecipeOrderbook is Ownable2Step {
     struct Recipe {
         bytes32[] weirollCommands;
         bytes[] weirollState;
-    }
-
-    enum RewardStyle {
-        Upfront,
-        Arrear,
-        Forfeitable
     }
 
     struct LockedRewardParams {
