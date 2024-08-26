@@ -7,6 +7,7 @@ import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
 
 import {ERC4626i} from "src/ERC4626i.sol";
+import {PointsFactory} from "src/PointsFactory.sol";
 
 /// @title ERC4626iFactory
 /// @author CopyPaste, corddry
@@ -15,14 +16,17 @@ contract ERC4626iFactory is Owned(msg.sender) {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(uint256 startingProtocolFee, uint256 startingReferralFee) {
+    constructor(uint256 startingProtocolFee, uint256 startingReferralFee, address pointsFactoryAddress) {
         defaultProtocolFee = startingProtocolFee;
         defaultReferralFee = startingReferralFee;
+        pointsFactory = pointsFactoryAddress;
     }
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
+
+    address public pointsFactory;
 
     /// @dev MakerDAO Constant for a 1e18 Scalar
     uint256 constant WAD = 1e18;

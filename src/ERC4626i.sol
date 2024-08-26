@@ -8,9 +8,10 @@ import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {LibString} from "lib/solady/src/utils/LibString.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
-import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
+import {PointsFactory} from "src/PointsFactory.sol";
 
-import { console } from "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 
 /// @title ERC4626i
 /// @author CopyPaste, corddry
@@ -72,6 +73,8 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     ERC4626 public underlyingVault;
     /// @dev The actual asset being deposited into the underlying vault
     ERC20 public immutable depositAsset;
+    /// @dev The PointsFactory contract to create new Points contracts
+    PointsFactory public pointsFactory;
 
     /// @dev The MakerDAO constant for
     uint256 constant WAD = 1e18;
@@ -113,7 +116,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         uint64 lastUpdated;
     }
 
-    /// @dev Campaign to Reward Tokens 
+    /// @dev Campaign to Reward Tokens
     mapping(uint256 campaign => ERC20) public campaignToToken;
     /// @dev Tracks the token rewards distributed in a given campaign so far
     mapping(uint256 campaign => CampaignData) public campaignIdToData;
@@ -137,7 +140,8 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @param _underlyingVault The ERC4626 Vault to wrap
     /// @param _protocolFee     The protocol fee to take from incentives, out of WAD
     /// @param _referralFee     The fee taken out of incentives for the person who referred a given user
-    constructor(ERC4626 _underlyingVault, uint256 _protocolFee, uint256 _referralFee)
+    /// @param _pointsFactory   The address of the PointsFactory contract
+    constructor(ERC4626 _underlyingVault, uint256 _protocolFee, uint256 _referralFee, address _pointsFactory)
         ERC20(LibString.concat("Incentivied", _underlyingVault.name()), LibString.concat(_underlyingVault.name(), "i"), 18)
     {
         underlyingVault = _underlyingVault;
@@ -148,6 +152,8 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
 
         depositAsset = _underlyingVault.asset();
         depositAsset.approve(address(underlyingVault), type(uint256).max);
+
+        pointsFactory = PointsFactory(_pointsFactory);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -181,7 +187,9 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         campaignId = totalCampaigns++;
 
         /// Fund the Campaign
-        token.safeTransferFrom(msg.sender, address(this), totalRewards);
+        if (!pointsFactory.isPointsProgram(address(token))) {
+            token.safeTransferFrom(msg.sender, address(this), totalRewards);
+        }
 
         uint256 protocolFeeTaken = totalRewards * protocolFee / WAD;
         uint256 referralFeeTaken = totalRewards * referralFee / WAD;
@@ -242,44 +250,43 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /*//////////////////////////////////////////////////////////////
                              CAMPAIGN MATH
     //////////////////////////////////////////////////////////////*/
-    /// @param campaignId The campaign to update 
+    /// @param campaignId The campaign to update
     /// @param user The user to update rewards on beahlf of
     function updateUserRewards(uint256 campaignId, address user) public {
-      updateRewardCampaign(campaignId);
+        updateRewardCampaign(campaignId);
 
-      CampaignData storage _campaignData = campaignIdToData[campaignId];
-      UserRewards storage userData = campaignToUserRewards[campaignId][user];
-      
-      uint256 _end = _campaignData.end;
-      uint256 lastCheckpoint = block.timestamp;
-      if (lastCheckpoint > _end) {
-        lastCheckpoint = _end;
-      }
+        CampaignData storage _campaignData = campaignIdToData[campaignId];
+        UserRewards storage userData = campaignToUserRewards[campaignId][user];
 
-      uint256 elapsed = lastCheckpoint - userData.lastUpdated;
+        uint256 _end = _campaignData.end;
+        uint256 lastCheckpoint = block.timestamp;
+        if (lastCheckpoint > _end) {
+            lastCheckpoint = _end;
+        }
 
-      userData.accumulated = (balanceOf[user] * elapsed * _campaignData.rate) / WAD;
-      userData.lastUpdated = lastCheckpoint.toUint64();
+        uint256 elapsed = lastCheckpoint - userData.lastUpdated;
+
+        userData.accumulated = (balanceOf[user] * elapsed * _campaignData.rate) / WAD;
+        userData.lastUpdated = lastCheckpoint.toUint64();
     }
 
     /// @param campaignId The campaignId to update
     function updateRewardCampaign(uint256 campaignId) public {
-      CampaignData storage _campaignData = campaignIdToData[campaignId];
-      
-      uint256 _end = _campaignData.end;
-      uint256 lastCheckpoint = block.timestamp;
-      if (lastCheckpoint > _end) {
-        lastCheckpoint = _end;
-      }
+        CampaignData storage _campaignData = campaignIdToData[campaignId];
 
-      uint256 elapsed = lastCheckpoint - _campaignData.lastUpdated;
+        uint256 _end = _campaignData.end;
+        uint256 lastCheckpoint = block.timestamp;
+        if (lastCheckpoint > _end) {
+            lastCheckpoint = _end;
+        }
 
-      _campaignData.accumulated += (elapsed * totalSupply * uint256(_campaignData.rate)) / WAD;
-      _campaignData.lastUpdated = lastCheckpoint.toUint64();
+        uint256 elapsed = lastCheckpoint - _campaignData.lastUpdated;
+
+        _campaignData.accumulated += (elapsed * totalSupply * uint256(_campaignData.rate)) / WAD;
+        _campaignData.lastUpdated = lastCheckpoint.toUint64();
     }
 
     /// @notice Claim all of one reward token for the caller
-    /// 
     /// @return claimed The amount of tokens awarded
     function claim(uint256 campaignId, address to) public returns (uint256 claimed) {
         updateUserRewards(campaignId, msg.sender);
@@ -288,30 +295,33 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         ERC20 token = campaignToToken[campaignId];
 
         UserRewards storage userData = campaignToUserRewards[campaignId][msg.sender];
-        
+
         uint256 tokensVestedSoFar = (_campaignData.rate * (_campaignData.lastUpdated - _campaignData.start));
         if (tokensVestedSoFar == 0) return 0;
 
-        claimed = userData.accumulated * tokensVestedSoFar / _campaignData.accumulated; 
-        
-        token.safeTransfer(to, claimed);
+        claimed = userData.accumulated * tokensVestedSoFar / _campaignData.accumulated;
 
         address referrer = referralsPerUser[campaignId][msg.sender];
-
         uint256 referralClaimed = (claimed * referralFee) / (WAD - _campaignData.referralFee);
-        token.safeTransfer(referrer, referralClaimed);
+
+        if (pointsFactory.isPointsProgram(address(token))) {
+            pointsFactory.award(to, claimed, campaignId);
+            pointsFactory.award(referrer, referralClaimed, campaignId);
+        } else {
+            token.safeTransfer(to, claimed);
+            token.safeTransfer(referrer, referralClaimed);
+        }
 
         emit Claimed(campaignId, address(token), msg.sender, to, claimed);
     }
 
-    /// @param campaignId The campaign you are depositing into 
-    /// @param amount The amount of tokens to deposit 
-    /// 
+    /// @param campaignId The campaign you are depositing into
+    /// @param amount The amount of tokens to deposit
     /// @return rate The rate of tokens being rewarded
-    function previewRateAfterDeposit(uint256 campaignId, uint256 amount) view public returns (uint256 rate) {
-      CampaignData storage _campaignData = campaignIdToData[campaignId];
-  
-      return _campaignData.rate * amount / WAD;
+    function previewRateAfterDeposit(uint256 campaignId, uint256 amount) public view returns (uint256 rate) {
+        CampaignData storage _campaignData = campaignIdToData[campaignId];
+
+        return _campaignData.rate * amount / WAD;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -345,7 +355,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @param campaignId The campaign to claim rewardsFees for
     function claimProtocolFees(uint256 campaignId) external {
         if (msg.sender != protocolFeesTo) {
-          revert OnlyProtocolFeeTo();
+            revert OnlyProtocolFeeTo();
         }
 
         CampaignData storage _campaignData = campaignIdToData[campaignId];
@@ -355,13 +365,17 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
         uint256 amountOwed = (elapsed * _campaignData.protocolFeeRate);
 
         if (block.timestamp > _campaignData.end) {
-          feeRewardsLastClaimed[campaignId] = _campaignData.end;
+            feeRewardsLastClaimed[campaignId] = _campaignData.end;
         } else {
-          feeRewardsLastClaimed[campaignId] = block.timestamp;
+            feeRewardsLastClaimed[campaignId] = block.timestamp;
         }
 
         ERC20 token = campaignToToken[campaignId];
-        token.safeTransfer(protocolFeesTo, amountOwed);
+        if (pointsFactory.isPointsProgram(address(token))) {
+            pointsFactory.award(protocolFeesTo, amountOwed, campaignId);
+        } else {
+            token.safeTransfer(protocolFeesTo, amountOwed);
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
