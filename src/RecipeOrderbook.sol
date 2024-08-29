@@ -553,6 +553,46 @@ contract RecipeOrderbook is Ownable2Step {
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
     }
 
+    /// @notice Cancel an LP order, setting the remaining quantity available to fill to 0
+    function cancelLPOrder(LPOrder calldata order) public {
+        if (order.lp != msg.sender) revert NotOwner();
+
+        // Check that the order isn't already filled, expired, or cancelled
+        if (order.expiry != 0 && block.timestamp >= order.expiry) revert OrderExpired();
+        bytes32 orderHash = getOrderHash(order);
+        if (orderHashToRemainingQuantity[orderHash] == 0) revert NotEnoughRemainingQuantity();
+
+        // Zero out the remaining quantity
+        orderHashToRemainingQuantity[orderHash] = 0;
+
+        emit LPOrderCancelled(order.orderID);
+    }
+
+    /// @notice Cancel an LP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
+    function cancelIPOrder(uint256 orderID) public {
+        IPOrder storage order = orderIDToIPOrder[orderID];
+        if (order.ip != msg.sender) revert NotOwner();
+
+        // Check that the order isn't already filled, expired, or cancelled
+        if (order.expiry != 0 && block.timestamp >= order.expiry) revert OrderExpired();
+        if (order.remainingQuantity == 0) revert NotEnoughRemainingQuantity();
+
+        // Cache the remaining quantity and zero it out to prevent re-entry
+        uint256 remainingQuantity = order.remainingQuantity;
+        order.remainingQuantity = 0;
+
+        emit IPOrderCancelled(orderID);
+
+        // Transfer the remaining incentives back to the IP
+        for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
+            // Calculate the incentives which are still available for takeback
+            address token = order.tokensOffered[i];
+            uint256 percentFill = remainingQuantity.divWadDown(order.quantity);
+            uint256 incentivesRemaining = order.tokenAmountsOffered[token].mulWadDown(percentFill);
+            ERC20(token).safeTransfer(order.ip, incentivesRemaining);
+        }
+    }
+
     /// @notice For wallets of Forfeitable markets, an IP can call this function to forgoe their rewards and unlock their wallet
     function forfeit(address weirollWallet) public {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {
