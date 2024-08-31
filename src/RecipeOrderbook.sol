@@ -464,7 +464,11 @@ contract RecipeOrderbook is Ownable2Step {
                 uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
                 uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
 
-                ERC20(token).safeTransfer(msg.sender, incentiveAmount);
+                if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
+                  Points(token).award(order.targetMarketID, msg.sender, incentiveAmount);
+                } else {
+                  ERC20(token).safeTransfer(msg.sender, incentiveAmount);
+                }
 
                 accountFee(frontendFeeRecipient, token, frontendFeeAmount, order.ip);
             }
