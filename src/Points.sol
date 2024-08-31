@@ -118,11 +118,15 @@ contract Points is Owned(msg.sender) {
     //////////////////////////////////////////////////////////////*/
 
     /// @param to The address to mint points to
+    /// @param amount  The amount of points to award to the `to` address
     /// @param campaignId The campaignId to mint points for
     function award(address to, uint256 amount, uint256 campaignId) external onlyAllowedCampaigns(campaignId) {
         emit Award(to, amount);
     }
 
+    /// @param to The address to mint points to
+    /// @param amount  The amount of points to award to the `to` address
+    /// @param ip The incentive provider attempting to ming the points
     function award(address to, uint256 amount, address ip) external onlyRecipeOrderbookAllowedIP(ip) {
         emit Award(to, amount);
     }
