@@ -55,6 +55,10 @@ contract WeirollWallet is Clone, VM {
     address public forfeitRecipient;
 
     function forfeit() public onlyOrderbook {
+        if (!isForfeitable()) {
+          revert WalletNotForfeitable();
+        }
+
         forfeited = true;
     }
 
