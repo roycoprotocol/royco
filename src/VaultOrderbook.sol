@@ -112,27 +112,10 @@ contract VaultOrderbook is Ownable2Step {
         if (tokensRequested.length != tokenRatesRequested.length) {
             revert ArrayLengthMismatch();
         }
-        
-        ERC20 targetBaseToken = ERC4626(targetVault).asset();
-        // If placing the order without a funding vault...
-        if (fundingVault == address(0)) {
-            if (targetBaseToken.balanceOf(msg.sender) < quantity) {
-                revert NotEnoughBaseAsset();
-            }
-            if (targetBaseToken.allowance(msg.sender, address(this)) < quantity) {
-                revert InsufficientApproval();
-            }
-        } else {
-            // If placing the order with a funding vault...
-            if (quantity > ERC4626(fundingVault).maxWithdraw(msg.sender)) {
-                revert NotEnoughBaseAsset();
-            }
-            if (ERC4626(fundingVault).allowance(msg.sender, address(this)) < quantity) {
-                revert InsufficientApproval();
-            }
-            if (targetBaseToken != ERC4626(fundingVault).asset()) {
-                revert MismatchedBaseAsset();
-            }
+        // Check assets match in-kind
+        // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
+        if (fundingVault != address(0) && ERC4626(targetVault).asset() != ERC4626(fundingVault).asset()) {
+          revert MismatchedBaseAsset();
         }
 
         // Emit the order creation event, used for matching orders
