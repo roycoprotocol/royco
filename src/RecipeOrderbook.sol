@@ -97,9 +97,9 @@ contract RecipeOrderbook is Ownable2Step {
     /// @notice The number of unique weiroll markets added
     uint256 public numMarkets;
 
-    /// @notice The percent deducted from the IP's incentive amount and sent to protocolFeeRecipient
+    /// @notice The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant
     uint256 public protocolFee; // 1e18 == 100% fee
-    address public protocolFeeRecipient;
+    address public protocolFeeClaimant;
 
     /// @notice Markets can opt into a higher frontend fee to incentivize quick discovery but cannot go below this minimum
     uint256 public minimumFrontendFee; // 1e18 == 100% fee
@@ -114,7 +114,7 @@ contract RecipeOrderbook is Ownable2Step {
     mapping(address => LockedRewardParams) internal weirollWalletToLockedRewardParams;
 
     /// @param _weirollWalletImplementation The address of the WeirollWallet implementation contract
-    /// @param _protocolFee The percent deducted from the IP's incentive amount and sent to protocolFeeRecipient
+    /// @param _protocolFee The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant
     /// @param _minimumFrontendFee The minimum frontend fee that a market can set
     /// @param _owner The address that will be set as the owner of the contract
     constructor(
@@ -200,7 +200,7 @@ contract RecipeOrderbook is Ownable2Step {
     /// @param LPOrderID The ID of the LP order that was cancelled
     event LPOrderCancelled(uint256 indexed LPOrderID);
 
-    event FeesClaimed(address indexed recipient, uint256 amount);
+    event FeesClaimed(address indexed claimant, uint256 amount);
 
     /// @notice emitted when trying to fill an order that has expired
     error OrderExpired();
@@ -378,7 +378,7 @@ contract RecipeOrderbook is Ownable2Step {
 
             order.tokenToFrontendFeeAmount[tokensOffered[i]] = frontendFeeAmount;
             // Take protocol fee
-            accountFee(protocolFeeRecipient, tokensOffered[i], protocolFeeAmount, msg.sender);
+            accountFee(protocolFeeClaimant, tokensOffered[i], protocolFeeAmount, msg.sender);
             // Check if not points
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(tokensOffered[i])) {
                 // Transfer frontend fee + incentiveAmount to orderbook
@@ -391,7 +391,7 @@ contract RecipeOrderbook is Ownable2Step {
         return (numIPOrders++);
     }
 
-    mapping(address => mapping(address => uint256)) public feeRecipientToTokenToAmount;
+    mapping(address => mapping(address => uint256)) public feeClaimantToTokenToAmount;
 
     function accountFee(address recipient, address token, uint256 amount, address ip) internal {
         //check to see the token is actually a points campaign
@@ -399,15 +399,15 @@ contract RecipeOrderbook is Ownable2Step {
             // Points cannot be claimed and are rather directly awarded
             Points(token).award(recipient, amount, ip);
         } else {
-            feeRecipientToTokenToAmount[recipient][token] += amount;
+            feeClaimantToTokenToAmount[recipient][token] += amount;
         }
     }
 
     function claimFees(address token, address to) public {
-        uint256 amount = feeRecipientToTokenToAmount[msg.sender][token];
-        feeRecipientToTokenToAmount[to][token] = 0;
+        uint256 amount = feeClaimantToTokenToAmount[msg.sender][token];
+        feeClaimantToTokenToAmount[to][token] = 0;
         ERC20(token).safeTransfer(to, amount);
-        emit FeesClaimed(to, amount);
+        emit FeesClaimed(msg.sender, amount);
     }
 
     /// @notice Fill an IP order, transferring the IP's incentives to the LP, withdrawing the LP from their funding vault into a fresh weiroll wallet, and executing the weiroll recipe
@@ -634,12 +634,12 @@ contract RecipeOrderbook is Ownable2Step {
     }
 
     /// @notice sets the protocol fee recipient, taken on all fills
-    function setProtocolFeeRecipient(address _protocolFeeRecipient) public onlyOwner {
-        protocolFeeRecipient = _protocolFeeRecipient;
+    function setProtocolFeeClaimant(address _protocolFeeClaimant_ public onlyOwner {
+        protocolFeeClaimant = _protocolFeeClaimant;
     }
 
     /// @notice sets the protocol fee rate, taken on all fills
-    /// @param _protocolFee The percent deducted from the IP's incentive amount and sent to protocolFeeRecipient, 1e18 == 100% fee
+    /// @param _protocolFee The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant, 1e18 == 100% fee
     function setProtocolFee(uint256 _protocolFee) public onlyOwner {
         protocolFee = _protocolFee;
     }
