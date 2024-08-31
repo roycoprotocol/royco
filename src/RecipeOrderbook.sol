@@ -127,6 +127,7 @@ contract RecipeOrderbook is Ownable2Step {
         WEIROLL_WALLET_IMPLEMENTATION = _weirollWalletImplementation;
         POINTS_FACTORY = _pointsFactory;
         protocolFee = _protocolFee;
+        protocolFeeRecipient = _owner;
         minimumFrontendFee = _minimumFrontendFee;
 
         // Redundant
