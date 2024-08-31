@@ -156,6 +156,20 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
+                           FEE CONTROL LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @param newDefaultProtocolFee The new fee to set on default for the protocol 
+    function updateDefaultProtocolFee(uint256 newDefaultProtocolFee) external onlyOwner {
+        protocolFee = newDefaultProtocolFee;
+    }
+    
+    /// @param newDefaultReferralFee The new fee to set on default for referrals
+    function updateDefaultReferralFee(uint256 newDefaultReferralFee) external onlyOwner {
+        referralFee = newDefaultReferralFee;
+    }
+
+    /*//////////////////////////////////////////////////////////////
                               NEW CAMPAIGN
     //////////////////////////////////////////////////////////////*/
 

@@ -64,6 +64,21 @@ contract ERC4626iTest is Test {
 
         vm.startPrank(REGULAR_USER);
         vm.expectRevert("UNAUTHORIZED");
+        iVault.updateDefaultProtocolFee(newProtocolFee);
+        vm.expectRevert("UNAUTHORIZED");
+        iVault.updateDefaultReferralFee(newReferralFee);
+        vm.stopPrank();
+
+        vm.prank(iVault.owner());
+        iVault.updateDefaultProtocolFee(newProtocolFee);
+        assertEq(iVault.protocolFee(), newProtocolFee);
+
+        vm.prank(iVault.owner());
+        iVault.updateDefaultReferralFee(newReferralFee);
+        assertEq(iVault.referralFee(), newReferralFee);
+
+        vm.startPrank(REGULAR_USER);
+        vm.expectRevert("UNAUTHORIZED");
         testFactory.updateReferralFee(testVault, newReferralFee);
         vm.expectRevert("UNAUTHORIZED");
         testFactory.updateProtocolFee(testVault, newProtocolFee);
