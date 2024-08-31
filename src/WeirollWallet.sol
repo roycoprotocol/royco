@@ -3,16 +3,12 @@ pragma solidity ^0.8.0;
 
 import {VM} from "lib/weiroll/contracts/VM.sol";
 import {Clone} from "lib/clones-with-immutable-args/src/Clone.sol";
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 
 /// @title OrderFactory
 /// @author Royco
 /// @notice WeirollWallet implementation contract.
 ///   Implements a simple smart contract wallet that can execute Weiroll VM commands
 contract WeirollWallet is Clone, VM {
-    using SafeTransferLib for ERC20;
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
