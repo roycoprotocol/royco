@@ -140,6 +140,7 @@ contract RecipeOrderbook is Ownable2Step {
     /// @custom:field inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
     /// @custom:field lockupTime The time in seconds that the user's weiroll wallet will be locked up for after deposit
     /// @custom:field frontendFee The fee paid to the frontend out of IP incentives
+    /// @custom:field rewardStyle Whether the rewards are paid at the beginning, locked until the end, or forfeitable until the end
     event MarketCreated(
         uint256 indexed marketID,
         address indexed inputToken,
