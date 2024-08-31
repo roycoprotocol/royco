@@ -90,7 +90,7 @@ contract ERC4626iFactory is Owned(msg.sender) {
             revert VaultAlreadyDeployed();
         }
 
-        incentivizedVault = new ERC4626i(vault, defaultProtocolFee, defaultProtocolFee, pointsFactory);
+        incentivizedVault = new ERC4626i(vault, defaultProtocolFee, defaultReferralFee, pointsFactory);
         incentivizedVaults[vault] = incentivizedVault;
 
         emit VaultCreated(vault, incentivizedVault);

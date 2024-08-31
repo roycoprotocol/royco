@@ -25,7 +25,7 @@ contract ERC4626iTest is Test {
 
     uint256 constant WAD = 1e18;
 
-    uint256 constant DEFAULT_REFERRAL_FEE = 0.05e18;
+    uint256 constant DEFAULT_REFERRAL_FEE = 0.025e18;
     uint256 constant DEFAULT_PROTOCOL_FEE = 0.05e18;
 
     address public constant REGULAR_USER = address(0xbeef);
@@ -33,7 +33,7 @@ contract ERC4626iTest is Test {
 
 
     function setUp() public {
-        testFactory = new ERC4626iFactory(0.05e18, 0.05e18, address(pointsFactory));
+        testFactory = new ERC4626iFactory(DEFAULT_PROTOCOL_FEE, DEFAULT_REFERRAL_FEE, address(pointsFactory));
     }
 
     function testConstructor(uint128 initialProtocolFee, uint128 initialReferralFee) public {
