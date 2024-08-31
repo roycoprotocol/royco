@@ -391,7 +391,7 @@ contract RecipeOrderbook is Ownable2Step {
 
     function claimFees(address token, address to) public {
         uint256 amount = feeClaimantToTokenToAmount[msg.sender][token];
-        feeClaimantToTokenToAmount[to][token] = 0;
+        feeClaimantToTokenToAmount[msg.sender][token] = 0;
         ERC20(token).safeTransfer(to, amount);
         emit FeesClaimed(msg.sender, amount);
     }
