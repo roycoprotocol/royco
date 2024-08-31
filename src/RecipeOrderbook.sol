@@ -416,7 +416,7 @@ contract RecipeOrderbook is Ownable2Step {
             revert OrderExpired();
         }
         // Check that the order has enough remaining quantity
-        if (order.remainingQuantity < fillAmount) {
+        if (order.remainingQuantity < fillAmount && fillAmount != type(uint256).max) {
             revert NotEnoughRemainingQuantity();
         }
         // Check that the order's base asset matches the market's base asset
