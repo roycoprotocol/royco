@@ -320,13 +320,14 @@ contract RecipeOrderbook is Ownable2Step {
     /// @param expiry The timestamp after which the order is considered expired
     /// @param tokensOffered The incentive token addresses offered by the IP
     /// @param tokenAmounts The amount of each token offered by the IP
+    /// @return marketID ID of the newly created market
     function createIPOrder(
         uint256 targetMarketID,
         uint256 quantity,
         uint256 expiry,
         address[] memory tokensOffered,
         uint256[] memory tokenAmounts
-    ) public returns (uint256) {
+    ) public returns (uint256 marketID) {
         // Check that the target market exists
         if (targetMarketID >= numMarkets) {
             revert MarketDoesNotExist();
