@@ -4,9 +4,12 @@ pragma solidity ^0.8.0;
 import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol";
 import {ERC4626i} from "src/ERC4626i.sol";
+import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 contract VaultOrderbook is Ownable2Step {
+    using SafeTransferLib for ERC20;
+
     /// @custom:field orderID Set to numOrders - 1 on order creation (zero-indexed)
     /// @custom:field targetVault The address of the vault where the input tokens will be deposited
     /// @custom:field lp The address of the liquidity provider
@@ -179,12 +182,12 @@ contract VaultOrderbook is Ownable2Step {
         // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (order.fundingVault == address(0)) {
             // Transfer the base asset from the LP to the orderbook
-            ERC4626(order.targetVault).asset().transferFrom(order.lp, address(this), quantity);
+            ERC4626(order.targetVault).asset().safeTransferFrom(order.lp, address(this), quantity);
         } else {
             // Withdraw from the funding vault to the orderbook
             ERC4626(order.fundingVault).withdraw(quantity, address(this), order.lp);
         }
-        ERC4626(order.targetVault).asset().approve(order.targetVault, quantity);
+        ERC4626(order.targetVault).asset().safeApprove(order.targetVault, quantity);
 
         // Deposit into the target vault
         ERC4626(order.targetVault).deposit(quantity, order.lp);
