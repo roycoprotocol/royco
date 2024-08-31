@@ -64,14 +64,11 @@ contract Points is Owned(msg.sender) {
     /// @param start The start date of the campaign
     /// @param end The end date of the campaign
     /// @param totalRewards The total amount of points to distribute
-    function createPointsRewardsCampaign(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
-        uint256 campaignId = allowedVault.totalCampaigns() + 1;
-        allowedCampaigns[campaignId] = true;
-
-        uint256 newCampaign = allowedVault.createRewardsCampaign(ERC20(address(this)), start, end, totalRewards);
-
-        /// Safe check for redundancy
-        require(newCampaign == campaignId);
+    /// 
+    /// @return newCampaignId The Id of the newly created rewards campaign
+    function createPointsRewardsCampaign(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner returns (uint256 newCampaignId){
+        newCampaignId = allowedVault.createRewardsCampaign(ERC20(address(this)), start, end, totalRewards);
+        allowedCampaigns[newCampaignId] = true;
     }
 
     /// @param ip The incentive provider address to allow to mint points
