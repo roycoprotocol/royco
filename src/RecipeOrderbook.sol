@@ -106,7 +106,7 @@ contract RecipeOrderbook is Ownable2Step {
 
     /// @notice Holds all WeirollMarket structs
     mapping(uint256 => WeirollMarket) public marketIDToWeirollMarket;
-    /// @notice Holds all LPOrder structs
+    /// @notice Holds all IPOrder structs
     mapping(uint256 => IPOrder) public orderIDToIPOrder;
     /// @notice Tracks the unfilled quantity of each LP order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
