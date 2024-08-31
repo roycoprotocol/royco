@@ -127,7 +127,7 @@ contract RecipeOrderbook is Ownable2Step {
         WEIROLL_WALLET_IMPLEMENTATION = _weirollWalletImplementation;
         POINTS_FACTORY = _pointsFactory;
         protocolFee = _protocolFee;
-        protocolFeeRecipient = _owner;
+        protocolFeeClaimant = _owner;
         minimumFrontendFee = _minimumFrontendFee;
 
         // Redundant
@@ -226,6 +226,8 @@ contract RecipeOrderbook is Ownable2Step {
     error NotOwner();
     /// @notice emitted when trying to claim rewards of a wallet that is locked
     error WalletLocked();
+    /// @notice Emitted when trying to start a rewards campaign with a non-existant token 
+    error TokenDoesNotExist();
 
     /// @notice Create a new recipe market
     /// @param inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
@@ -289,7 +291,8 @@ contract RecipeOrderbook is Ownable2Step {
             revert ArrayLengthMismatch();
         }
 
-        if (marketIDToWeirollMarket[targetMarketID].inputToken != ERC4626(fundingVault).asset()) {
+        // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
+        if (fundingVault != address(0) && marketIDToWeirollMarket[targetMarketID].inputToken != ERC4626(fundingVault).asset()) {
           revert MismatchedBaseAsset();
         }
 
@@ -367,7 +370,7 @@ contract RecipeOrderbook is Ownable2Step {
                 // Transfer frontend fee + protocol fee + incentiveAmount to orderbook
                 address token = tokensOffered[i];
                 // SafeTransferFrom does not check if a token address has any code, so we need to check it manually to prevent token deployment frontrunning
-                if (token.code.length == 0) revert;
+                if (token.code.length == 0) revert TokenDoesNotExist();
                 ERC20(tokensOffered[i]).safeTransferFrom(msg.sender, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
             }
         }
@@ -409,7 +412,7 @@ contract RecipeOrderbook is Ownable2Step {
         WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
 
         // Check that the order isn't expired
-        if (order.expiry != 0 && block.timestamp >= order.expiry) {
+        if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
         }
         // Check that the order has enough remaining quantity
@@ -620,7 +623,7 @@ contract RecipeOrderbook is Ownable2Step {
     }
 
     /// @notice sets the protocol fee recipient, taken on all fills
-    function setProtocolFeeClaimant(address _protocolFeeClaimant_ public onlyOwner {
+    function setProtocolFeeClaimant(address _protocolFeeClaimant) public onlyOwner {
         protocolFeeClaimant = _protocolFeeClaimant;
     }
 
