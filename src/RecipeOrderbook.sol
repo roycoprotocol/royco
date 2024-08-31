@@ -365,7 +365,7 @@ contract RecipeOrderbook is Ownable2Step {
             // Check if not points
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(tokensOffered[i])) {
                 // Transfer frontend fee + incentiveAmount to orderbook
-                ERC20(tokensOffered[i]).safeTransferFrom(msg.sender, address(this), incentiveAmount + frontendFeeAmount);
+                ERC20(tokensOffered[i]).safeTransferFrom(msg.sender, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
             }
         }
 
