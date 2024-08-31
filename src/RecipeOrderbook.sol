@@ -364,7 +364,10 @@ contract RecipeOrderbook is Ownable2Step {
             accountFee(protocolFeeClaimant, tokensOffered[i], protocolFeeAmount, msg.sender);
             // Check if not points
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(tokensOffered[i])) {
-                // Transfer frontend fee + incentiveAmount to orderbook
+                // Transfer frontend fee + protocol fee + incentiveAmount to orderbook
+                address token = tokensOffered[i];
+                // SafeTransferFrom does not check if a token address has any code, so we need to check it manually to prevent token deployment frontrunning
+                if (token.code.length == 0) revert;
                 ERC20(tokensOffered[i]).safeTransferFrom(msg.sender, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
             }
         }
