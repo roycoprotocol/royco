@@ -10,7 +10,6 @@ import {RecipeOrderbook} from "src/RecipeOrderbook.sol";
 /// @author CopyPaste, corddry
 /// @dev A simple program for creating points programs
 contract PointsFactory {
-    address[] public pointsPrograms;
     mapping(address => bool) public isPointsProgram;
 
     event NewPointsProgram(Points indexed points, string name, string symbol, address allowedVault, address orderbook);
@@ -28,7 +27,6 @@ contract PointsFactory {
         RecipeOrderbook _orderbook
     ) external returns (Points points) {
         points = new Points(_name, _symbol, _decimals, _allowedVault, _orderbook);
-        pointsPrograms.push(address(points));
         isPointsProgram[address(points)] = true;
 
         emit NewPointsProgram(points, _name, _symbol, address(_allowedVault), address(_orderbook));

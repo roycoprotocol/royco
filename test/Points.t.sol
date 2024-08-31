@@ -27,7 +27,6 @@ contract PointsFactoryTest is Test {
     function testCreatePointsProgram() public {
         Points points2 = factory.createPointsProgram("Test Points", "TP", 18, mockVault, mockOrderbook);
 
-        assertEq(factory.pointsPrograms(1), address(points2));
         assertTrue(factory.isPointsProgram(address(points2)));
 
         assertEq(points2.name(), "Test Points");
@@ -40,11 +39,6 @@ contract PointsFactoryTest is Test {
     function testMultiplePointsPrograms() public {
         factory.createPointsProgram("Test Points 1", "TP1", 18, mockVault, mockOrderbook);
         factory.createPointsProgram("Test Points 2", "TP2", 18, mockVault, mockOrderbook);
-
-        assertEq(factory.pointsPrograms(0), address(factory.pointsPrograms(0)));
-        assertEq(factory.pointsPrograms(1), address(factory.pointsPrograms(1)));
-        assertTrue(factory.isPointsProgram(address(factory.pointsPrograms(0))));
-        assertTrue(factory.isPointsProgram(address(factory.pointsPrograms(1))));
     }
 
       function testCreatePointsRewardsCampaign() public {
