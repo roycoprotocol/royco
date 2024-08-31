@@ -122,7 +122,7 @@ contract WeirollWallet is Clone, VM {
     /// @param to The address to call
     /// @param value The ether value of the execution
     /// @param data The data to pass along with the call
-    function execute(address to, uint256 value, bytes memory data) public onlyOwner notLocked returns (bytes memory) {
+    function execute(address to, uint256 value, bytes memory data) public payable onlyOwner notLocked returns (bytes memory) {
         // Prevent people from approving w/e then rugging during vesting
         require(executed, "Royco: Order unfilled");
         // Execute the call.
