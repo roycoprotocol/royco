@@ -233,6 +233,8 @@ contract RecipeOrderbook is Ownable2Step {
     /// @param frontendFee The fee that the frontend will take from the user's weiroll wallet, 1e18 == 100% fee
     /// @param depositRecipe The weiroll script that will be executed after the inputToken is transferred to the wallet
     /// @param withdrawRecipe The weiroll script that may be executed after lockupTime has passed to unwind a user's position
+    /// @custom:field rewardStyle Whether the rewards are paid at the beginning, locked until the end, or forfeitable until the end
+    /// @return marketID ID of the newly created market
     function createMarket(
         address inputToken,
         uint256 lockupTime,
@@ -261,6 +263,7 @@ contract RecipeOrderbook is Ownable2Step {
     /// @param expiry The timestamp after which the order is considered expired
     /// @param tokensRequested The incentive token addresses requested by the LP in order to satisfy the order
     /// @param tokenAmountsRequested The amount of each token requested by the LP in order to satisfy the order
+    /// @return orderID ID of the newly created order
     function createLPOrder(
         uint256 targetMarketID,
         address fundingVault,
@@ -268,7 +271,7 @@ contract RecipeOrderbook is Ownable2Step {
         uint256 expiry,
         address[] memory tokensRequested,
         uint256[] memory tokenAmountsRequested
-    ) public returns (uint256) {
+    ) public returns (uint256 orderID) {
         // Check market exists
         if (targetMarketID >= numMarkets) {
             revert MarketDoesNotExist();
@@ -286,29 +289,8 @@ contract RecipeOrderbook is Ownable2Step {
             revert ArrayLengthMismatch();
         }
 
-        ERC20 targetBaseToken = marketIDToWeirollMarket[targetMarketID].inputToken;
-        // If placing the order without a funding vault...
-        if (fundingVault == address(0)) {
-            if (targetBaseToken.balanceOf(msg.sender) < quantity) {
-                revert NotEnoughBaseAsset();
-            }
-            if (targetBaseToken.allowance(msg.sender, address(this)) < quantity) {
-                revert InsufficientApproval();
-            }
-        } else {
-            // If placing the order with a funding vault...
-            if (quantity > ERC4626(fundingVault).maxWithdraw(msg.sender)) {
-                revert NotEnoughBaseAsset();
-            }
-            if (
-                ERC4626(fundingVault).allowance(msg.sender, address(this))
-                    < ERC4626(fundingVault).previewWithdraw(quantity)
-            ) {
-                revert InsufficientApproval();
-            }
-            if (targetBaseToken != ERC4626(fundingVault).asset()) {
-                revert MismatchedBaseAsset();
-            }
+        if (marketIDToWeirollMarket[targetMarketID].inputToken != ERC4626(fundingVault).asset()) {
+          revert MismatchedBaseAsset();
         }
 
         /// @dev LPOrder events are stored in events and do not exist onchain outside of the orderHashToRemainingQuantity mapping
