@@ -138,7 +138,7 @@ contract VaultOrderbook is Ownable2Step {
     /// @notice allocate a specific quantity of a given order
     function allocateOrder(LPOrder memory order, uint256[] memory campaignIds, uint256 quantity) public {
         // Check for order expiry, 0 expiries live forever
-        if (order.expiry != 0 && block.timestamp >= order.expiry) {
+        if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
         }
 

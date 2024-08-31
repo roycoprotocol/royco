@@ -78,6 +78,16 @@ contract VaultOrderbookTest is Test {
             tokenRatesRequested
         );
 
+        // NOTE - Testcase added to address bug of expiry at timestamp, should not revert
+        orderbook.createLPOrder(
+            address(targetVault),
+            address(0),
+            100 * 1e18,
+            block.timestamp,
+            tokensRequested,
+            tokenRatesRequested
+        );
+
         vm.stopPrank();
     }
 
