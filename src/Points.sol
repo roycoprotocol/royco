@@ -123,7 +123,7 @@ contract Points is Owned(msg.sender) {
 
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
-    /// @param ip The incentive provider attempting to ming the points
+    /// @param ip The incentive provider attempting to mint the points
     function award(address to, uint256 amount, address ip) external onlyRecipeOrderbookAllowedIP(ip) {
         emit Award(to, amount);
     }

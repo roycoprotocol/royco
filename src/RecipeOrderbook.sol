@@ -249,6 +249,8 @@ contract RecipeOrderbook is Ownable2Step {
             revert FrontendFeeTooLow();
         }
 
+
+
         marketIDToWeirollMarket[numMarkets] =
             WeirollMarket(ERC20(inputToken), lockupTime, frontendFee, depositRecipe, withdrawRecipe, rewardStyle);
 
@@ -465,7 +467,7 @@ contract RecipeOrderbook is Ownable2Step {
                 uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
 
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
-                  Points(token).award(order.targetMarketID, msg.sender, incentiveAmount);
+                  Points(token).award(msg.sender, incentiveAmount, order.ip);
                 } else {
                   ERC20(token).safeTransfer(msg.sender, incentiveAmount);
                 }
@@ -475,7 +477,7 @@ contract RecipeOrderbook is Ownable2Step {
         }
 
         // If the fundingVault is set to 0, fund the fill directly via the base asset
-        if (fundingVault != address(0)) {
+        if (fundingVault == address(0)) {
             ERC20(market.inputToken).safeTransferFrom(msg.sender, address(wallet), fillAmount);
         } else {
             // Withdraw the LP from the funding vault into the wallet
