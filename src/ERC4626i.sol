@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {SafeCast} from "src/libraries/SafeCast.sol";
+import {SafeCast} from "./libraries/SafeCast.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
-import {IERC4626} from "src/interfaces/IERC4626.sol";
+import {IERC4626} from "./interfaces/IERC4626.sol";
 import {LibString} from "lib/solady/src/utils/LibString.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
-import {PointsFactory} from "src/PointsFactory.sol";
-import {Points} from "src/Points.sol";
+import {PointsFactory} from "./PointsFactory.sol";
+import {Points} from "./Points.sol";
 
 /// @title ERC4626i
 /// @author CopyPaste, corddry

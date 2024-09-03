@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol";
-import {ERC4626i} from "src/ERC4626i.sol";
+import {ERC4626i} from "./ERC4626i.sol";
 import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 contract VaultOrderbook is Ownable2Step {

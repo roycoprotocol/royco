@@ -1,0 +1,13 @@
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@prb/test/=lib/staking/lib/prb-test/src/
+@solmate/=lib/staking/lib/solmate/src/
+clones-with-immutable-args/=lib/clones-with-immutable-args/src/
+ds-test/=lib/solmate/lib/ds-test/src/
+erc4626-tests/=lib/erc4626-tests/
+forge-std/=lib/forge-std/src/
+openzeppelin-contracts/=lib/openzeppelin-contracts/
+prb-test/=lib/staking/lib/prb-test/src/
+solady/=lib/solady/src/
+solmate/=lib/solmate/src/
+staking/=lib/staking/
+weiroll/=lib/weiroll/contracts/

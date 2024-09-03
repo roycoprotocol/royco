@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
 import {ClonesWithImmutableArgs} from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
-import {WeirollWallet} from "src/WeirollWallet.sol";
+import {WeirollWallet} from "./WeirollWallet.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
-import {Points} from "src/Points.sol";
-import {PointsFactory} from "src/PointsFactory.sol";
+import {Points} from "./Points.sol";
+import {PointsFactory} from "./PointsFactory.sol";
 
 enum RewardStyle {
     Upfront,

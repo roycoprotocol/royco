@@ -7,8 +7,8 @@ import {MockERC4626} from "test/mocks/MockERC4626.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
 
-import {ERC4626i} from "src/ERC4626i.sol";
-import {ERC4626iFactory} from "src/ERC4626iFactory.sol";
+import {ERC4626i} from "../src/ERC4626i.sol";
+import {ERC4626iFactory} from "../src/ERC4626iFactory.sol";
 
 import {Test} from "forge-std/Test.sol";
 

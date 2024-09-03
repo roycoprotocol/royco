@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {Points} from "src/Points.sol";
+import {Points} from "./Points.sol";
 
-import {ERC4626i} from "src/ERC4626i.sol";
-import {RecipeOrderbook} from "src/RecipeOrderbook.sol";
+import {ERC4626i} from "./ERC4626i.sol";
+import {RecipeOrderbook} from "./RecipeOrderbook.sol";
 
 /// @title PointsFactory
 /// @author CopyPaste, corddry

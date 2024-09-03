@@ -6,8 +6,8 @@ import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
 
-import {ERC4626i} from "src/ERC4626i.sol";
-import {PointsFactory} from "src/PointsFactory.sol";
+import {ERC4626i} from "./ERC4626i.sol";
+import {PointsFactory} from "./PointsFactory.sol";
 
 /// @title ERC4626iFactory
 /// @author CopyPaste, corddry
