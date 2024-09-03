@@ -620,7 +620,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
 
-    function claim(address weirollWallet, address to) public {
+    function claim(address weirollWallet, address to) lock public {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {
             revert NotOwner();
         }
@@ -629,12 +629,17 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
         LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];
         for (uint256 i = 0; i < params.tokens.length; i++) {
+            /// This is pre-emptive to protect against re-entrancy in some cases
+            uint256 amount = params.amounts[i];
+            params.amount[i] = 0;
+            
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
-                Points(params.tokens[i]).award(to, params.amounts[i], params.ip);
+                Points(params.tokens[i]).award(to, amount, params.ip);
             } else {
-                ERC20(params.tokens[i]).safeTransfer(to, params.amounts[i]);
+                ERC20(params.tokens[i]).safeTransfer(to, amount);
             }
         }
+
         // zero out the mapping
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
