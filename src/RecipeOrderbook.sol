@@ -9,6 +9,7 @@ import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import {Points} from "src/Points.sol";
+import { ReentrancyGuard } from "lib/solmate/src/utils/ReentrancyGuard.sol";
 import {PointsFactory} from "src/PointsFactory.sol";
 
 enum RewardStyle {
@@ -17,7 +18,7 @@ enum RewardStyle {
     Forfeitable
 }
 
-contract RecipeOrderbook is Ownable2Step {
+contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -598,7 +599,7 @@ contract RecipeOrderbook is Ownable2Step {
     }
 
     /// @notice For wallets of Forfeitable markets, an IP can call this function to forgoe their rewards and unlock their wallet
-    function forfeit(address weirollWallet) public {
+    function forfeit(address weirollWallet) lock public {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {
             revert NotOwner();
         }
@@ -607,8 +608,11 @@ contract RecipeOrderbook is Ownable2Step {
         //return the locked rewards to the LP
         LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];
         for (uint256 i = 0; i < params.tokens.length; i++) {
+            /// This is pre-emptive to protect against re-entrancy in some cases
+            uint256 amount = params.amounts[i];
+            params.amount[i] = 0;
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
-                ERC20(params.tokens[i]).safeTransfer(params.ip, params.amounts[i]);
+                ERC20(params.tokens[i]).safeTransfer(params.ip, amount);
             }
         }
 
