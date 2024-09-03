@@ -598,7 +598,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
     }
 
-    /// @notice For wallets of Forfeitable markets, an IP can call this function to forgoe their rewards and unlock their wallet
+    /// @notice For wallets of Forfeitable markets, an LP can call this function to forgo their rewards and unlock their wallet
     function forfeit(address weirollWallet) lock public {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {
             revert NotOwner();
