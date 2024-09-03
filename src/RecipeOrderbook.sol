@@ -421,6 +421,10 @@ contract RecipeOrderbook is Ownable2Step {
         if (order.remainingQuantity < fillAmount && fillAmount != type(uint256).max) {
             revert NotEnoughRemainingQuantity();
         }
+        if (fillAmount == type(uint256).max) {
+          fillAmount = orderHashToRemainingQuantity[orderHash];
+        }
+
         // Check that the order's base asset matches the market's base asset
         if (market.inputToken != ERC4626(fundingVault).asset()) {
             revert MismatchedBaseAsset();
@@ -492,7 +496,10 @@ contract RecipeOrderbook is Ownable2Step {
         if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
 
         bytes32 orderHash = getOrderHash(order);
-        if (fillAmount > orderHashToRemainingQuantity[orderHash]) revert NotEnoughRemainingQuantity();
+        if (fillAmount > orderHashToRemainingQuantity[orderHash] && fillAmount != type(uint256).max) revert NotEnoughRemainingQuantity();
+        if (fillAmount == type(uint256).max) {
+          fillAmount = orderHashToRemainingQuantity[orderHash];
+        }
         orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
         WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
