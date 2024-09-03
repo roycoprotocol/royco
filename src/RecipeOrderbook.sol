@@ -489,7 +489,7 @@ contract RecipeOrderbook is Ownable2Step {
 
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
     function fillLPOrder(LPOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public {
-        if (order.expiry != 0 && block.timestamp >= order.expiry) revert OrderExpired();
+        if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
 
         bytes32 orderHash = getOrderHash(order);
         if (fillAmount > orderHashToRemainingQuantity[orderHash]) revert NotEnoughRemainingQuantity();
@@ -555,7 +555,7 @@ contract RecipeOrderbook is Ownable2Step {
         if (order.lp != msg.sender) revert NotOwner();
 
         // Check that the order isn't already filled, expired, or cancelled
-        if (order.expiry != 0 && block.timestamp >= order.expiry) revert OrderExpired();
+        if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
         bytes32 orderHash = getOrderHash(order);
         if (orderHashToRemainingQuantity[orderHash] == 0) revert NotEnoughRemainingQuantity();
 
@@ -571,7 +571,7 @@ contract RecipeOrderbook is Ownable2Step {
         if (order.ip != msg.sender) revert NotOwner();
 
         // Check that the order isn't already filled, expired, or cancelled
-        if (order.expiry != 0 && block.timestamp >= order.expiry) revert OrderExpired();
+        if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
         if (order.remainingQuantity == 0) revert NotEnoughRemainingQuantity();
 
         // Cache the remaining quantity and zero it out to prevent re-entry
