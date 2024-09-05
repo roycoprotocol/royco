@@ -227,6 +227,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     error TokenDoesNotExist();
     /// @notice Emitted when sum of protocolFee and frontendFee is greater than 100% (1e18)
     error TotalFeeTooHigh();
+    /// @notice emitted when trying to fill an order that doesn't exist anymore/yet
+    error CannotFillZeroQuantityOrder();
 
     /// @notice Create a new recipe market
     /// @param inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
@@ -493,6 +495,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         if (fillAmount == type(uint256).max) {
             fillAmount = orderHashToRemainingQuantity[orderHash];
         }
+        if (fillAmount == 0) {
+          revert CannotFillZeroQuantityOrder();
+        }
+
         orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
         WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
