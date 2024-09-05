@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
-import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
-import {ClonesWithImmutableArgs} from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
-import {WeirollWallet} from "src/WeirollWallet.sol";
-import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
-import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
-import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
-import {Points} from "src/Points.sol";
+import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
+import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
+import { WeirollWallet } from "src/WeirollWallet.sol";
+import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
+import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+import { Points } from "src/Points.sol";
 import { ReentrancyGuard } from "lib/solmate/src/utils/ReentrancyGuard.sol";
-import {PointsFactory} from "src/PointsFactory.sol";
+import { PointsFactory } from "src/PointsFactory.sol";
 
 enum RewardStyle {
     Upfront,
@@ -124,7 +124,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 _minimumFrontendFee,
         address _owner,
         address _pointsFactory
-    ) Ownable(_owner) {
+    )
+        Ownable(_owner)
+    {
         WEIROLL_WALLET_IMPLEMENTATION = _weirollWalletImplementation;
         POINTS_FACTORY = _pointsFactory;
         protocolFee = _protocolFee;
@@ -142,13 +144,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @custom:field lockupTime The time in seconds that the user's weiroll wallet will be locked up for after deposit
     /// @custom:field frontendFee The fee paid to the frontend out of IP incentives
     /// @custom:field rewardStyle Whether the rewards are paid at the beginning, locked until the end, or forfeitable until the end
-    event MarketCreated(
-        uint256 indexed marketID,
-        address indexed inputToken,
-        uint256 lockupTime,
-        uint256 frontendFee,
-        RewardStyle rewardStyle
-    );
+    event MarketCreated(uint256 indexed marketID, address indexed inputToken, uint256 lockupTime, uint256 frontendFee, RewardStyle rewardStyle);
 
     /// @param orderID Set to numLPOrders - 1 on order creation (zero-indexed), ordered separately for LP and IP orders
     /// @param targetMarketID The ID of the weiroll market which will be executed on fill
@@ -227,8 +223,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     error NotOwner();
     /// @notice emitted when trying to claim rewards of a wallet that is locked
     error WalletLocked();
-    /// @notice Emitted when trying to start a rewards campaign with a non-existant token 
+    /// @notice Emitted when trying to start a rewards campaign with a non-existant token
     error TokenDoesNotExist();
+    /// @notice Emitted when sum of protocolFee and frontendFee is greater than 100% (1e18)
+    error TotalFeeTooHigh();
 
     /// @notice Create a new recipe market
     /// @param inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
@@ -245,15 +243,18 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         Recipe calldata depositRecipe,
         Recipe calldata withdrawRecipe,
         RewardStyle rewardStyle
-    ) public returns (uint256) {
+    )
+        public
+        returns (uint256)
+    {
         if (frontendFee < minimumFrontendFee) {
             revert FrontendFeeTooLow();
+        } else if ((frontendFee + protocolFee) > 1e18) {
+            // Sum of fees is too high
+            revert TotalFeeTooHigh();
         }
 
-
-
-        marketIDToWeirollMarket[numMarkets] =
-            WeirollMarket(ERC20(inputToken), lockupTime, frontendFee, depositRecipe, withdrawRecipe, rewardStyle);
+        marketIDToWeirollMarket[numMarkets] = WeirollMarket(ERC20(inputToken), lockupTime, frontendFee, depositRecipe, withdrawRecipe, rewardStyle);
 
         emit MarketCreated(numMarkets, inputToken, lockupTime, frontendFee, rewardStyle);
         return (numMarkets++);
@@ -276,7 +277,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 expiry,
         address[] memory tokensRequested,
         uint256[] memory tokenAmountsRequested
-    ) public returns (uint256 orderID) {
+    )
+        public
+        returns (uint256 orderID)
+    {
         // Check market exists
         if (targetMarketID >= numMarkets) {
             revert MarketDoesNotExist();
@@ -296,25 +300,14 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
         // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
         if (fundingVault != address(0) && marketIDToWeirollMarket[targetMarketID].inputToken != ERC4626(fundingVault).asset()) {
-          revert MismatchedBaseAsset();
+            revert MismatchedBaseAsset();
         }
 
         /// @dev LPOrder events are stored in events and do not exist onchain outside of the orderHashToRemainingQuantity mapping
-        emit LPOrderCreated(
-            numLPOrders,
-            targetMarketID,
-            msg.sender,
-            fundingVault,
-            expiry,
-            tokensRequested,
-            tokenAmountsRequested,
-            quantity
-        );
+        emit LPOrderCreated(numLPOrders, targetMarketID, msg.sender, fundingVault, expiry, tokensRequested, tokenAmountsRequested, quantity);
 
         // Map the order hash to the order quantity
-        LPOrder memory order = LPOrder(
-            numLPOrders, targetMarketID, msg.sender, fundingVault, expiry, tokensRequested, tokenAmountsRequested
-        );
+        LPOrder memory order = LPOrder(numLPOrders, targetMarketID, msg.sender, fundingVault, expiry, tokensRequested, tokenAmountsRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
         return (numLPOrders++);
     }
@@ -333,7 +326,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 expiry,
         address[] memory tokensOffered,
         uint256[] memory tokenAmounts
-    ) public returns (uint256 marketID) {
+    )
+        public
+        returns (uint256 marketID)
+    {
         // Check that the target market exists
         if (targetMarketID >= numMarkets) {
             revert MarketDoesNotExist();
@@ -402,14 +398,13 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         emit FeesClaimed(msg.sender, amount);
     }
 
-    /// @notice Fill an IP order, transferring the IP's incentives to the LP, withdrawing the LP from their funding vault into a fresh weiroll wallet, and executing the weiroll recipe
+    /// @notice Fill an IP order, transferring the IP's incentives to the LP, withdrawing the LP from their funding vault into a fresh weiroll wallet, and
+    /// executing the weiroll recipe
     /// @param orderID The ID of the IP order to fill
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient)
-        public
-    {
+    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public {
         // Retreive the IPOrder and WeirollMarket structs
         IPOrder storage order = orderIDToIPOrder[orderID];
         WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
@@ -423,7 +418,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             revert NotEnoughRemainingQuantity();
         }
         if (fillAmount == type(uint256).max) {
-          fillAmount = order.remainingQuantity;
+            fillAmount = order.remainingQuantity;
         }
 
         // Check that the order's base asset matches the market's base asset
@@ -442,11 +437,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 unlockTime = block.timestamp + market.lockupTime;
 
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
-        WeirollWallet wallet = WeirollWallet(
-            WEIROLL_WALLET_IMPLEMENTATION.clone(
-                abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable)
-            )
-        );
+        WeirollWallet wallet =
+            WeirollWallet(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable)));
 
         if (market.rewardStyle == RewardStyle.Forfeitable || market.rewardStyle == RewardStyle.Arrear) {
             LockedRewardParams memory params;
@@ -472,9 +464,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
 
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
-                  Points(token).award(msg.sender, incentiveAmount, order.ip);
+                    Points(token).award(msg.sender, incentiveAmount, order.ip);
                 } else {
-                  ERC20(token).safeTransfer(msg.sender, incentiveAmount);
+                    ERC20(token).safeTransfer(msg.sender, incentiveAmount);
                 }
 
                 accountFee(frontendFeeRecipient, token, frontendFeeAmount, order.ip);
@@ -499,7 +491,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         bytes32 orderHash = getOrderHash(order);
         if (fillAmount > orderHashToRemainingQuantity[orderHash] && fillAmount != type(uint256).max) revert NotEnoughRemainingQuantity();
         if (fillAmount == type(uint256).max) {
-          fillAmount = orderHashToRemainingQuantity[orderHash];
+            fillAmount = orderHashToRemainingQuantity[orderHash];
         }
         orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
@@ -507,11 +499,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
         uint256 unlockTime = block.timestamp + market.lockupTime;
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
-        WeirollWallet wallet = WeirollWallet(
-            WEIROLL_WALLET_IMPLEMENTATION.clone(
-                abi.encodePacked(order.lp, address(this), fillAmount, unlockTime, forfeitable)
-            )
-        );
+        WeirollWallet wallet =
+            WeirollWallet(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime, forfeitable)));
 
         if (market.rewardStyle == RewardStyle.Forfeitable || market.rewardStyle == RewardStyle.Arrear) {
             LockedRewardParams memory params;
@@ -529,16 +518,12 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                     Points(order.tokensRequested[i]).award(order.lp, order.tokenAmountsRequested[i], msg.sender);
                 } else {
                     //safetransfer the token to the LP
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(
-                        msg.sender, order.lp, order.tokenAmountsRequested[i]
-                    );
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, order.tokenAmountsRequested[i]);
                 }
             } else {
                 //safetransfer the token to the orderbook
                 if (!PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(
-                        msg.sender, address(this), order.tokenAmountsRequested[i]
-                    );
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), order.tokenAmountsRequested[i]);
                 }
             }
 
@@ -599,7 +584,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice For wallets of Forfeitable markets, an LP can call this function to forgo their rewards and unlock their wallet
-    function forfeit(address weirollWallet) nonReentrant public {
+    function forfeit(address weirollWallet) public nonReentrant {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {
             revert NotOwner();
         }
@@ -620,7 +605,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
 
-    function claim(address weirollWallet, address to) nonReentrant public {
+    function claim(address weirollWallet, address to) public nonReentrant {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {
             revert NotOwner();
         }
@@ -632,7 +617,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             /// This is pre-emptive to protect against re-entrancy in some cases
             uint256 amount = params.amounts[i];
             params.amounts[i] = 0;
-            
+
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
                 Points(params.tokens[i]).award(to, amount, params.ip);
             } else {
