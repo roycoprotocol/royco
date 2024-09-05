@@ -156,10 +156,6 @@ contract VaultOrderbook is Ownable2Step {
             revert NotEnoughRemainingQuantity();
         }
 
-        for (uint i; i < order.tokenRatesRequested.length; ++i) {
-          tokenToRate[order.tokensRequested[i]] = order.tokenRatesRequested[i];
-        }
-
         // Iterate over each token the LP requested
         for (uint256 i = 0; i < campaignIds.length; ++i) {
             // Ensure that the LP could deposit quantity base tokens into the vault and still receive the desired reward rate
