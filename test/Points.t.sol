@@ -41,7 +41,7 @@ contract PointsFactoryTest is Test {
         factory.createPointsProgram("Test Points 2", "TP2", 18, mockVault, mockOrderbook);
     }
 
-      function testCreatePointsRewardsCampaign() public {
+    function testCreatePointsRewardsCampaign() public {
         uint256 start = block.timestamp;
         uint256 end = start + 1 weeks;
         uint256 totalRewards = 1000e18;

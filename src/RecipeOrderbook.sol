@@ -492,16 +492,17 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
 
         bytes32 orderHash = getOrderHash(order);
-        {  // use a scoping block so solc knows `remaining` doesn't need to be kept around
-          uint256 remaining = orderHashToRemainingQuantity[orderHash];
-          if (fillAmount > remaining) {
-            if (fillAmount != type(uint256).max) revert NotEnoughRemainingQuantity();
-            fillAmount = remaining;
-          }
+        {
+            // use a scoping block so solc knows `remaining` doesn't need to be kept around
+            uint256 remaining = orderHashToRemainingQuantity[orderHash];
+            if (fillAmount > remaining) {
+                if (fillAmount != type(uint256).max) revert NotEnoughRemainingQuantity();
+                fillAmount = remaining;
+            }
         }
 
         if (fillAmount == 0) {
-          revert CannotFillZeroQuantityOrder();
+            revert CannotFillZeroQuantityOrder();
         }
 
         orderHashToRemainingQuantity[orderHash] -= fillAmount;

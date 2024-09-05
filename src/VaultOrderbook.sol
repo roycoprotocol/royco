@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
-import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol";
-import {ERC4626i} from "src/ERC4626i.sol";
-import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
-import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { ERC20 } from "../lib/solmate/src/tokens/ERC20.sol";
+import { ERC4626 } from "../lib/solmate/src/tokens/ERC4626.sol";
+import { ERC4626i } from "src/ERC4626i.sol";
+import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
+import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 contract VaultOrderbook is Ownable2Step {
     using SafeTransferLib for ERC20;
@@ -32,7 +32,7 @@ contract VaultOrderbook is Ownable2Step {
 
     /// @notice maps order hashes to the remaining quantity of the order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
-    /// @notice Temporary mapping for keeping track of order fills 
+    /// @notice Temporary mapping for keeping track of order fills
     mapping(address => uint256) public tokenToRate;
 
     /// @param orderID Set to numOrders - 1 on order creation (zero-indexed)
@@ -82,7 +82,7 @@ contract VaultOrderbook is Ownable2Step {
     error ArrayLengthMismatch();
     /// @notice emitted when the LP tries to cancel an order that they did not create
     error NotOrderCreator();
-    /// @notice Enforce the max campaignIds supplied to be the same as the amount of campaigns a user can opt into 
+    /// @notice Enforce the max campaignIds supplied to be the same as the amount of campaigns a user can opt into
     error TooManyCampaignIds();
 
     constructor() Ownable(msg.sender) {
@@ -104,7 +104,10 @@ contract VaultOrderbook is Ownable2Step {
         uint256 expiry,
         address[] memory tokensRequested,
         uint256[] memory tokenRatesRequested
-    ) public returns (uint256) {
+    )
+        public
+        returns (uint256)
+    {
         // Check order isn't expired (expiries of 0 live forever)
         if (expiry != 0 && expiry < block.timestamp) {
             revert CannotPlaceExpiredOrder();
@@ -120,18 +123,15 @@ contract VaultOrderbook is Ownable2Step {
         // Check assets match in-kind
         // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
         if (fundingVault != address(0) && ERC4626(targetVault).asset() != ERC4626(fundingVault).asset()) {
-          revert MismatchedBaseAsset();
+            revert MismatchedBaseAsset();
         }
 
         // Emit the order creation event, used for matching orders
-        emit LPOrderCreated(
-            numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity
-        );
+        emit LPOrderCreated(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity);
         // Set the quantity of the order
-        LPOrder memory order =
-            LPOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
+        LPOrder memory order = LPOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
-        // Return the new order's ID and increment the order counter 
+        // Return the new order's ID and increment the order counter
         return (numOrders++);
     }
 
@@ -168,13 +168,13 @@ contract VaultOrderbook is Ownable2Step {
             tokenToRate[address(ERC4626i(order.targetVault).campaignToToken(campaignIds[i]))] += rate;
         }
 
-        for (uint i; i < order.tokenRatesRequested.length; ++i) {
+        for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
             if (order.tokenRatesRequested[i] > tokenToRate[order.tokensRequested[i]]) {
                 revert OrderConditionsNotMet();
             }
 
             delete tokenToRate[order.tokensRequested[i]];
-        }        
+        }
         // If transaction has not reverted yet, the order is within its conditions
 
         // Reduce the remaining quantity of the order
