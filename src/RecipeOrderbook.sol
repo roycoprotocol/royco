@@ -423,7 +423,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             revert NotEnoughRemainingQuantity();
         }
         if (fillAmount == type(uint256).max) {
-          fillAmount = orderHashToRemainingQuantity[orderHash];
+          fillAmount = order.remainingQuantity;
         }
 
         // Check that the order's base asset matches the market's base asset
@@ -599,7 +599,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice For wallets of Forfeitable markets, an LP can call this function to forgo their rewards and unlock their wallet
-    function forfeit(address weirollWallet) lock public {
+    function forfeit(address weirollWallet) nonReentrant public {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {
             revert NotOwner();
         }
@@ -610,7 +610,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         for (uint256 i = 0; i < params.tokens.length; i++) {
             /// This is pre-emptive to protect against re-entrancy in some cases
             uint256 amount = params.amounts[i];
-            params.amount[i] = 0;
+            params.amounts[i] = 0;
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
                 ERC20(params.tokens[i]).safeTransfer(params.ip, amount);
             }
@@ -620,7 +620,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
 
-    function claim(address weirollWallet, address to) lock public {
+    function claim(address weirollWallet, address to) nonReentrant public {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {
             revert NotOwner();
         }
@@ -631,7 +631,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         for (uint256 i = 0; i < params.tokens.length; i++) {
             /// This is pre-emptive to protect against re-entrancy in some cases
             uint256 amount = params.amounts[i];
-            params.amount[i] = 0;
+            params.amounts[i] = 0;
             
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
                 Points(params.tokens[i]).award(to, amount, params.ip);
