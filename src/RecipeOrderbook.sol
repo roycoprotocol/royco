@@ -227,8 +227,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     error NotOwner();
     /// @notice emitted when trying to claim rewards of a wallet that is locked
     error WalletLocked();
-    /// @notice Emitted when trying to start a rewards campaign with a non-existant token 
+    /// @notice emitted when trying to start a rewards campaign with a non-existant token 
     error TokenDoesNotExist();
+    /// @notice emitted when trying to fill an order that doesn't exist anymore/yet
+    error CannotFillZeroQuantityOrder();
 
     /// @notice Create a new recipe market
     /// @param inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
@@ -501,6 +503,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         if (fillAmount == type(uint256).max) {
           fillAmount = orderHashToRemainingQuantity[orderHash];
         }
+        if (fillAmount == 0) {
+          revert CannotFillZeroQuantityOrder();
+        }
+
         orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
         WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
