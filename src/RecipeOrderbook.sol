@@ -35,6 +35,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 targetMarketID;
         address lp;
         address fundingVault;
+        uint256 quantity;
         uint256 expiry;
         address[] tokensRequested;
         uint256[] tokenAmountsRequested;
@@ -159,10 +160,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 indexed targetMarketID,
         address indexed lp,
         address fundingVault,
+        uint256 quantity,
         uint256 expiry,
         address[] tokensRequested,
-        uint256[] tokenAmountsRequested,
-        uint256 quantity
+        uint256[] tokenAmountsRequested
     );
 
     /// @param orderID Set to numIPOrders - 1 on order creation (zero-indexed), ordered separately for LP and IP orders
@@ -306,10 +307,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
 
         /// @dev LPOrder events are stored in events and do not exist onchain outside of the orderHashToRemainingQuantity mapping
-        emit LPOrderCreated(numLPOrders, targetMarketID, msg.sender, fundingVault, expiry, tokensRequested, tokenAmountsRequested, quantity);
+        emit LPOrderCreated(numLPOrders, targetMarketID, msg.sender, fundingVault, quantity, expiry, tokensRequested, tokenAmountsRequested);
 
         // Map the order hash to the order quantity
-        LPOrder memory order = LPOrder(numLPOrders, targetMarketID, msg.sender, fundingVault, expiry, tokensRequested, tokenAmountsRequested);
+        LPOrder memory order = LPOrder(numLPOrders, targetMarketID, msg.sender, fundingVault, quantity, expiry, tokensRequested, tokenAmountsRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
         return (numLPOrders++);
     }
@@ -534,7 +535,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             }
 
             //safetransfer the fee to the frontendFeeRecipient
-            accountFee(frontendFeeRecipient, order.tokensRequested[i], order.tokenAmountsRequested[i], msg.sender);
+            uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
+            accountFee(frontendFeeRecipient, order.tokensRequested[i], order.tokenAmountsRequested[i].mulWadDown(fillPercentage), msg.sender);
         }
 
         // if the fundingVault is set to 0, fund the fill directly via the base asset

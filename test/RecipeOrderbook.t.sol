@@ -94,6 +94,7 @@ contract RecipeOrderbookTest is Test {
             0, // marketId
             user1,
             address(0),
+            1000e18,
             block.timestamp + 1 days,
             tokensRequested,
             tokenAmountsRequested
