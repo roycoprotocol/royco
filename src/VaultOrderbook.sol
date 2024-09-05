@@ -82,6 +82,8 @@ contract VaultOrderbook is Ownable2Step {
     error ArrayLengthMismatch();
     /// @notice emitted when the LP tries to cancel an order that they did not create
     error NotOrderCreator();
+    /// @notice Enforce the max campaignIds supplied to be the same as the amount of campaigns a user can opt into 
+    error TooManyCampaignIds();
 
     constructor() Ownable(msg.sender) {
         // Redundant
@@ -154,6 +156,9 @@ contract VaultOrderbook is Ownable2Step {
         }
         if (quantity > remainingQuantity) {
             revert NotEnoughRemainingQuantity();
+        }
+        if (campaignIds.length > 5) {
+            revert TooManyCampaignIds();
         }
 
         // Iterate over each token the LP requested
