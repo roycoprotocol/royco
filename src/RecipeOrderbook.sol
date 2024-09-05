@@ -250,8 +250,6 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             revert FrontendFeeTooLow();
         }
 
-
-
         marketIDToWeirollMarket[numMarkets] =
             WeirollMarket(ERC20(inputToken), lockupTime, frontendFee, depositRecipe, withdrawRecipe, rewardStyle);
 
