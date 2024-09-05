@@ -160,7 +160,7 @@ contract VaultOrderbook is Ownable2Step {
         for (uint256 i = 0; i < campaignIds.length; ++i) {
             // Ensure that the LP could deposit quantity base tokens into the vault and still receive the desired reward rate
             uint256 rate = ERC4626i(order.targetVault).previewRateAfterDeposit(campaignIds[i], quantity);
-            tokenToRate[order.tokensRequested[i]] += rate;
+            tokenToRate[address(ERC4626i(order.targetVault).campaignToToken(campaignIds[i]))] += rate;
         }
 
         for (uint i; i < order.tokenRatesRequested.length; ++i) {
