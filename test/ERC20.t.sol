@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import {MockERC20} from "test/mocks/MockERC20.sol";
-import {MockERC4626} from "test/mocks/MockERC4626.sol";
+import { MockERC20 } from "test/mocks/MockERC20.sol";
+import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
-import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
+import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 
-import {ERC4626i} from "src/ERC4626i.sol";
-import {ERC4626iFactory} from "src/ERC4626iFactory.sol";
+import { ERC4626i } from "src/ERC4626i.sol";
+import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
-import {Test} from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 contract ERC20Test is Test {
     ERC20 underlyingToken = ERC20(address(new MockERC20("Mock Token", "MOCK")));
@@ -28,9 +28,9 @@ contract ERC20Test is Test {
     }
 
     function mintTokensTo(address to, uint256 amount) public {
-      MockERC20(address(underlyingToken)).mint(address(this), amount);
-      underlyingToken.approve(address(token), amount);
-      token.deposit(amount, to);
+        MockERC20(address(underlyingToken)).mint(address(this), amount);
+        underlyingToken.approve(address(token), amount);
+        token.deposit(amount, to);
     }
 
     function testApprove() public {
@@ -83,22 +83,14 @@ contract ERC20Test is Test {
         assertEq(token.balanceOf(address(0xBEEF)), 1e18);
     }
 
-    function testFailTransferInsufficientBalance(
-        address to,
-        uint256 mintAmount,
-        uint256 sendAmount
-    ) public {
+    function testFailTransferInsufficientBalance(address to, uint256 mintAmount, uint256 sendAmount) public {
         sendAmount = bound(sendAmount, mintAmount + 1, type(uint256).max);
 
         mintTokensTo(address(this), mintAmount);
         token.transfer(to, sendAmount);
     }
 
-    function testFailTransferFromInsufficientAllowance(
-        address to,
-        uint256 approval,
-        uint256 amount
-    ) public {
+    function testFailTransferFromInsufficientAllowance(address to, uint256 approval, uint256 amount) public {
         amount = bound(amount, approval + 1, type(uint256).max);
 
         address from = address(0xABCD);

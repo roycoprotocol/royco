@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
-import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol";
-import {ERC4626i} from "src/ERC4626i.sol";
-import {Ownable2Step, Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { ERC20 } from "../lib/solmate/src/tokens/ERC20.sol";
+import { ERC4626 } from "../lib/solmate/src/tokens/ERC4626.sol";
+import { ERC4626i } from "src/ERC4626i.sol";
+import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
+import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 contract VaultOrderbook is Ownable2Step {
+    using SafeTransferLib for ERC20;
+
     /// @custom:field orderID Set to numOrders - 1 on order creation (zero-indexed)
     /// @custom:field targetVault The address of the vault where the input tokens will be deposited
     /// @custom:field lp The address of the liquidity provider
@@ -29,7 +32,7 @@ contract VaultOrderbook is Ownable2Step {
 
     /// @notice maps order hashes to the remaining quantity of the order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
-    /// @notice Temporary mapping for keeping track of order fills 
+    /// @notice Temporary mapping for keeping track of order fills
     mapping(address => uint256) public tokenToRate;
 
     /// @param orderID Set to numOrders - 1 on order creation (zero-indexed)
@@ -79,6 +82,8 @@ contract VaultOrderbook is Ownable2Step {
     error ArrayLengthMismatch();
     /// @notice emitted when the LP tries to cancel an order that they did not create
     error NotOrderCreator();
+    /// @notice Enforce the max campaignIds supplied to be the same as the amount of campaigns a user can opt into
+    error TooManyCampaignIds();
 
     constructor() Ownable(msg.sender) {
         // Redundant
@@ -99,7 +104,10 @@ contract VaultOrderbook is Ownable2Step {
         uint256 expiry,
         address[] memory tokensRequested,
         uint256[] memory tokenRatesRequested
-    ) public returns (uint256) {
+    )
+        public
+        returns (uint256)
+    {
         // Check order isn't expired (expiries of 0 live forever)
         if (expiry != 0 && expiry < block.timestamp) {
             revert CannotPlaceExpiredOrder();
@@ -112,38 +120,18 @@ contract VaultOrderbook is Ownable2Step {
         if (tokensRequested.length != tokenRatesRequested.length) {
             revert ArrayLengthMismatch();
         }
-        
-        ERC20 targetBaseToken = ERC4626(targetVault).asset();
-        // If placing the order without a funding vault...
-        if (fundingVault == address(0)) {
-            if (targetBaseToken.balanceOf(msg.sender) < quantity) {
-                revert NotEnoughBaseAsset();
-            }
-            if (targetBaseToken.allowance(msg.sender, address(this)) < quantity) {
-                revert InsufficientApproval();
-            }
-        } else {
-            // If placing the order with a funding vault...
-            if (quantity > ERC4626(fundingVault).maxWithdraw(msg.sender)) {
-                revert NotEnoughBaseAsset();
-            }
-            if (ERC4626(fundingVault).allowance(msg.sender, address(this)) < quantity) {
-                revert InsufficientApproval();
-            }
-            if (targetBaseToken != ERC4626(fundingVault).asset()) {
-                revert MismatchedBaseAsset();
-            }
+        // Check assets match in-kind
+        // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
+        if (fundingVault != address(0) && ERC4626(targetVault).asset() != ERC4626(fundingVault).asset()) {
+            revert MismatchedBaseAsset();
         }
 
         // Emit the order creation event, used for matching orders
-        emit LPOrderCreated(
-            numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity
-        );
+        emit LPOrderCreated(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity);
         // Set the quantity of the order
-        LPOrder memory order =
-            LPOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
+        LPOrder memory order = LPOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
-        // Return the new order's ID and increment the order counter 
+        // Return the new order's ID and increment the order counter
         return (numOrders++);
     }
 
@@ -155,7 +143,7 @@ contract VaultOrderbook is Ownable2Step {
     /// @notice allocate a specific quantity of a given order
     function allocateOrder(LPOrder memory order, uint256[] memory campaignIds, uint256 quantity) public {
         // Check for order expiry, 0 expiries live forever
-        if (order.expiry != 0 && block.timestamp >= order.expiry) {
+        if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
         }
 
@@ -169,25 +157,24 @@ contract VaultOrderbook is Ownable2Step {
         if (quantity > remainingQuantity) {
             revert NotEnoughRemainingQuantity();
         }
-
-        for (uint i; i < order.tokenRatesRequested.length; ++i) {
-          tokenToRate[order.tokensRequested[i]] = order.tokenRatesRequested[i];
+        if (campaignIds.length > 5) {
+            revert TooManyCampaignIds();
         }
 
         // Iterate over each token the LP requested
         for (uint256 i = 0; i < campaignIds.length; ++i) {
             // Ensure that the LP could deposit quantity base tokens into the vault and still receive the desired reward rate
             uint256 rate = ERC4626i(order.targetVault).previewRateAfterDeposit(campaignIds[i], quantity);
-            tokenToRate[order.tokensRequested[i]] += rate;
+            tokenToRate[address(ERC4626i(order.targetVault).campaignToToken(campaignIds[i]))] += rate;
         }
 
-        for (uint i; i < order.tokenRatesRequested.length; ++i) {
+        for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
             if (order.tokenRatesRequested[i] > tokenToRate[order.tokensRequested[i]]) {
                 revert OrderConditionsNotMet();
             }
 
             delete tokenToRate[order.tokensRequested[i]];
-        }        
+        }
         // If transaction has not reverted yet, the order is within its conditions
 
         // Reduce the remaining quantity of the order
@@ -196,12 +183,12 @@ contract VaultOrderbook is Ownable2Step {
         // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (order.fundingVault == address(0)) {
             // Transfer the base asset from the LP to the orderbook
-            ERC4626(order.targetVault).asset().transferFrom(order.lp, address(this), quantity);
+            ERC4626(order.targetVault).asset().safeTransferFrom(order.lp, address(this), quantity);
         } else {
             // Withdraw from the funding vault to the orderbook
             ERC4626(order.fundingVault).withdraw(quantity, address(this), order.lp);
         }
-        ERC4626(order.targetVault).asset().approve(order.targetVault, quantity);
+        ERC4626(order.targetVault).asset().safeApprove(order.targetVault, quantity);
 
         // Deposit into the target vault
         ERC4626(order.targetVault).deposit(quantity, order.lp);
@@ -225,9 +212,11 @@ contract VaultOrderbook is Ownable2Step {
         }
         bytes32 orderHash = getOrderHash(order);
 
-        // Set the remaining quantity of the order to 0, effectively cancelling it
-        orderHashToRemainingQuantity[orderHash] = 0;
-        emit LPOrderCancelled(order.orderID);
+        if (orderHashToRemainingQuantity[orderHash] > 0) {
+            // Set the remaining quantity of the order to 0, effectively cancelling it
+            orderHashToRemainingQuantity[orderHash] = 0;
+            emit LPOrderCancelled(order.orderID);
+        }
     }
 
     /// @notice calculate the hash of an order

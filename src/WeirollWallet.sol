@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {VM} from "lib/weiroll/contracts/VM.sol";
-import {Clone} from "lib/clones-with-immutable-args/src/Clone.sol";
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
+import { VM } from "lib/weiroll/contracts/VM.sol";
+import { Clone } from "lib/clones-with-immutable-args/src/Clone.sol";
 
 /// @title OrderFactory
 /// @author Royco
 /// @notice WeirollWallet implementation contract.
 ///   Implements a simple smart contract wallet that can execute Weiroll VM commands
 contract WeirollWallet is Clone, VM {
-    using SafeTransferLib for ERC20;
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
@@ -58,7 +54,12 @@ contract WeirollWallet is Clone, VM {
     uint256[] public unlockRewardAmounts;
     address public forfeitRecipient;
 
+    /// @notice Forfeit all rewards to get control of the wallet back 
     function forfeit() public onlyOrderbook {
+        if (!isForfeitable()) {
+            revert WalletNotForfeitable();
+        }
+
         forfeited = true;
     }
 
@@ -92,12 +93,7 @@ contract WeirollWallet is Clone, VM {
     //////////////////////////////////////////////////////////////*/
     /// @notice Execute the Weiroll VM with the given commands.
     /// @param commands The commands to be executed by the Weiroll VM.
-    function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state)
-        public
-        payable
-        onlyOrderbook
-        returns (bytes[] memory)
-    {
+    function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOrderbook returns (bytes[] memory) {
         executed = true;
         // Execute the Weiroll VM.
         return _execute(commands, state);
@@ -105,13 +101,7 @@ contract WeirollWallet is Clone, VM {
 
     /// @notice Execute the Weiroll VM with the given commands.
     /// @param commands The commands to be executed by the Weiroll VM.
-    function manualExecuteWeiroll(bytes32[] calldata commands, bytes[] calldata state)
-        public
-        payable
-        onlyOwner
-        notLocked
-        returns (bytes[] memory)
-    {
+    function manualExecuteWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOwner notLocked returns (bytes[] memory) {
         // Prevent people from approving w/e then rugging during vesting
         require(executed, "Royco: Order unfilled");
         // Execute the Weiroll VM.
@@ -122,11 +112,11 @@ contract WeirollWallet is Clone, VM {
     /// @param to The address to call
     /// @param value The ether value of the execution
     /// @param data The data to pass along with the call
-    function execute(address to, uint256 value, bytes memory data) public onlyOwner notLocked returns (bytes memory) {
+    function execute(address to, uint256 value, bytes memory data) public payable onlyOwner notLocked returns (bytes memory) {
         // Prevent people from approving w/e then rugging during vesting
         require(executed, "Royco: Order unfilled");
         // Execute the call.
-        (bool success, bytes memory result) = to.call{value: value}(data);
+        (bool success, bytes memory result) = to.call{ value: value }(data);
         if (!success) {
             revert("Generic execute proxy failed");
         }
