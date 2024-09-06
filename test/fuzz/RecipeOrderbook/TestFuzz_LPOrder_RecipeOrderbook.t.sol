@@ -83,7 +83,7 @@ contract TestFuzz_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function TestFuzz_RevertIf_CreateLPOrderWithExpiredOrder(uint256 _expiry, uint256 _blockTimestamp) external {
-        _expiry = (_expiry % _blockTimestamp) + 1; // expiry always less than block timestamp
+        vm.assume(_expiry < _blockTimestamp);
         vm.warp(_blockTimestamp); // set block timestamp
 
         uint256 marketId = createMarket();

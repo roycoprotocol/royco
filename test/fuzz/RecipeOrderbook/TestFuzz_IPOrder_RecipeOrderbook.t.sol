@@ -132,7 +132,8 @@ contract TestFuzz_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function testFuzz_RevertIf_CreateIPOrderWithExpiredOrder(uint256 _expiry, uint256 _blockTimestamp) external {
-        _expiry = (_expiry % _blockTimestamp) + 1; // expiry always less than block timestamp
+        vm.assume(_expiry > 0);
+        vm.assume(_expiry < _blockTimestamp);
         vm.warp(_blockTimestamp); // set block timestamp
 
         uint256 marketId = createMarket();
@@ -142,6 +143,25 @@ contract TestFuzz_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
             marketId,
             1000e18, // Quantity
             _expiry, // Expired timestamp
+            new address[](1), // Empty tokens offered array
+            new uint256[](1) // Empty token amounts array
+        );
+    }
+
+    function testFuzz_RevertIf_CreateIPOrderWithNonexistentToken(address _tokenAddress) external {
+        vm.assume(_tokenAddress.code.length == 0);
+        uint256 marketId = createMarket();
+
+        address[] memory tokensOffered = new address[](1);
+        tokensOffered[0] = _tokenAddress;
+        uint256[] memory tokenAmountsOffered = new uint256[](2);
+        tokenAmountsOffered[0] = 100e18;
+
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.TokenDoesNotExist.selector));
+        orderbook.createIPOrder(
+            marketId,
+            1000e18, // Quantity
+            1 days, // Expired timestamp
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
         );
