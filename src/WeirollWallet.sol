@@ -54,6 +54,7 @@ contract WeirollWallet is Clone, VM {
     uint256[] public unlockRewardAmounts;
     address public forfeitRecipient;
 
+    /// @notice Forfeit all rewards to get control of the wallet back 
     function forfeit() public onlyOrderbook {
         if (!isForfeitable()) {
             revert WalletNotForfeitable();

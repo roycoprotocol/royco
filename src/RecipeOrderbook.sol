@@ -66,6 +66,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         bytes[] weirollState;
     }
 
+    /// @custom:field tokens Tokens offered as incentives
+    /// @custom:field amounts The amount of tokens offered for each token
+    /// @custom:field ip The incentives provider
     struct LockedRewardParams {
         address[] tokens;
         uint256[] amounts;
@@ -384,6 +387,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     mapping(address => mapping(address => uint256)) public feeClaimantToTokenToAmount;
 
+    /// @param recipient The address to send fees to 
+    /// @param token The token address where fees are accrued in 
+    /// @param amount The amount of fees to award 
+    /// @param ip The incentive provider if awarding points
     function accountFee(address recipient, address token, uint256 amount, address ip) internal {
         //check to see the token is actually a points campaign
         if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
@@ -394,6 +401,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
     }
 
+    /// @param token The token to claim fees for 
+    /// @param to The address to send fees claimed to
     function claimFees(address token, address to) public {
         uint256 amount = feeClaimantToTokenToAmount[msg.sender][token];
         feeClaimantToTokenToAmount[msg.sender][token] = 0;
@@ -618,6 +627,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
 
+    /// @param weirollWallet The wallet to claim for 
+    /// @param to The address to claim all rewards to
     function claim(address weirollWallet, address to) public nonReentrant {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {
             revert NotOwner();
