@@ -16,7 +16,7 @@ deny_warnings = false
 
 [profile.default.optimizer_details]
 constantOptimizer = false
-yul = false
+yul = true
 
 [profile.default.optimizer_details.yulDetails]
 stackAllocation = true
