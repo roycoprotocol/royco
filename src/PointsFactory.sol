@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {Points} from "src/Points.sol";
+import { Points } from "src/Points.sol";
 
-import {ERC4626i} from "src/ERC4626i.sol";
-import {RecipeOrderbook} from "src/RecipeOrderbook.sol";
+import { ERC4626i } from "src/ERC4626i.sol";
+import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
 
 /// @title PointsFactory
 /// @author CopyPaste, corddry
@@ -25,7 +25,10 @@ contract PointsFactory {
         uint256 _decimals,
         ERC4626i _allowedVault,
         RecipeOrderbook _orderbook
-    ) external returns (Points points) {
+    )
+        external
+        returns (Points points)
+    {
         points = new Points(_name, _symbol, _decimals, _allowedVault, _orderbook);
         isPointsProgram[address(points)] = true;
 

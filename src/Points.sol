@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {ERC4626i} from "src/ERC4626i.sol";
-import {RecipeOrderbook} from "src/RecipeOrderbook.sol";
+import { ERC4626i } from "src/ERC4626i.sol";
+import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
 
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 
 /// @title Points
 /// @author CopyPaste, corddry
@@ -19,13 +19,7 @@ contract Points is Owned(msg.sender) {
     /// @param _symbol The symbol for the points program
     /// @param _decimals The amount of decimals per 1 point
     /// @param _allowedVault The vault allowed to mint and use these points
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        uint256 _decimals,
-        ERC4626i _allowedVault,
-        RecipeOrderbook _orderbook
-    ) {
+    constructor(string memory _name, string memory _symbol, uint256 _decimals, ERC4626i _allowedVault, RecipeOrderbook _orderbook) {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
@@ -64,9 +58,9 @@ contract Points is Owned(msg.sender) {
     /// @param start The start date of the campaign
     /// @param end The end date of the campaign
     /// @param totalRewards The total amount of points to distribute
-    /// 
+    ///
     /// @return newCampaignId The Id of the newly created rewards campaign
-    function createPointsRewardsCampaign(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner returns (uint256 newCampaignId){
+    function createPointsRewardsCampaign(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner returns (uint256 newCampaignId) {
         newCampaignId = allowedVault.createRewardsCampaign(ERC20(address(this)), start, end, totalRewards);
         allowedCampaigns[newCampaignId] = true;
     }

@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import {MockERC20} from "test/mocks/MockERC20.sol";
-import {MockERC4626} from "test/mocks/MockERC4626.sol";
+import { MockERC20 } from "test/mocks/MockERC20.sol";
+import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
-import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
+import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 
-import {ERC4626i} from "src/ERC4626i.sol";
-import {ERC4626iFactory} from "src/ERC4626iFactory.sol";
+import { ERC4626i } from "src/ERC4626i.sol";
+import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
 import { VaultOrderbook } from "src/VaultOrderbook.sol";
 
-import {Test} from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 contract VaultOrderbookTest is Test {
     VaultOrderbook public orderbook = new VaultOrderbook();
@@ -42,19 +42,12 @@ contract VaultOrderbookTest is Test {
         tokensRequested[0] = address(baseToken);
         uint256[] memory tokenRatesRequested = new uint256[](1);
         tokenRatesRequested[0] = 1e18;
-        
-        uint256 orderId = orderbook.createLPOrder(
-            address(targetVault),
-            address(0),
-            100 * 1e18,
-            block.timestamp + 1 days,
-            tokensRequested,
-            tokenRatesRequested
-        );
+
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         assertEq(orderId, 0);
         assertEq(orderbook.numOrders(), 1);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testCannotCreateExpiredOrder() public {
@@ -69,24 +62,10 @@ contract VaultOrderbookTest is Test {
         vm.warp(100 days);
 
         vm.expectRevert(VaultOrderbook.CannotPlaceExpiredOrder.selector);
-        orderbook.createLPOrder(
-            address(targetVault),
-            address(0),
-            100 * 1e18,
-            block.timestamp - 1,
-            tokensRequested,
-            tokenRatesRequested
-        );
+        orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp - 1, tokensRequested, tokenRatesRequested);
 
         // NOTE - Testcase added to address bug of expiry at timestamp, should not revert
-        orderbook.createLPOrder(
-            address(targetVault),
-            address(0),
-            100 * 1e18,
-            block.timestamp,
-            tokensRequested,
-            tokenRatesRequested
-        );
+        orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp, tokensRequested, tokenRatesRequested);
 
         vm.stopPrank();
     }
@@ -101,14 +80,7 @@ contract VaultOrderbookTest is Test {
         tokenRatesRequested[0] = 1e18;
 
         vm.expectRevert(VaultOrderbook.CannotPlaceZeroQuantityOrder.selector);
-        orderbook.createLPOrder(
-            address(targetVault),
-            address(0),
-            0,
-            block.timestamp + 1 days,
-            tokensRequested,
-            tokenRatesRequested
-        );
+        orderbook.createLPOrder(address(targetVault), address(0), 0, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         vm.stopPrank();
     }
@@ -123,31 +95,17 @@ contract VaultOrderbookTest is Test {
         uint256[] memory tokenRatesRequested = new uint256[](1);
         tokenRatesRequested[0] = 1e18;
 
-        uint256 orderId = orderbook.createLPOrder(
-            address(targetVault),
-            address(0),
-            100 * 1e18,
-            block.timestamp + 1 days,
-            tokensRequested,
-            tokenRatesRequested
-        ); 
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-        VaultOrderbook.LPOrder memory order = VaultOrderbook.LPOrder(
-            orderId,
-            address(targetVault),
-            alice,
-            address(fundingVault),
-            block.timestamp + 1 days,
-            tokensRequested,
-            tokenRatesRequested
-        );
+        VaultOrderbook.LPOrder memory order =
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         orderbook.cancelOrder(order);
 
         bytes32 orderHash = orderbook.getOrderHash(order);
         assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 0);
 
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testAllocateOrder() public {
@@ -164,24 +122,10 @@ contract VaultOrderbookTest is Test {
         tokenRatesRequested[0] = 1e18;
 
         // Create an order
-        uint256 orderId = orderbook.createLPOrder(
-            address(targetVault),
-            address(0),
-            100 * 1e18,
-            block.timestamp + 1 days,
-            tokensRequested,
-            tokenRatesRequested
-        );
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-        VaultOrderbook.LPOrder memory order = VaultOrderbook.LPOrder(
-            orderId,
-            address(targetVault),
-            alice,
-            address(0),
-            block.timestamp + 1 days,
-            tokensRequested,
-            tokenRatesRequested
-        );
+        VaultOrderbook.LPOrder memory order =
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         vm.stopPrank();
 
@@ -192,11 +136,7 @@ contract VaultOrderbookTest is Test {
 
         // Mock the previewRateAfterDeposit function
         // You'll need to implement this function in your MockERC4626 contract
-        vm.mockCall(
-            address(targetVault),
-            abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(0), uint256(100 * 1e18)),
-            abi.encode(2e18)
-        );
+        vm.mockCall(address(targetVault), abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(0), uint256(100 * 1e18)), abi.encode(2e18));
 
         // Allocate the order
         orderbook.allocateOrder(order, campaignIds);
