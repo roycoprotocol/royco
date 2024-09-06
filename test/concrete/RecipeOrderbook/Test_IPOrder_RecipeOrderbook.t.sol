@@ -15,7 +15,7 @@ contract Test_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         setUpRecipeOrderbookTests(protocolFee, minimumFrontendFee);
     }
 
-    function test_CreateIPOrder() external prankModifier(ALICE_ADDRESS) {
+    function test_CreateIPOrder_NotPointsProgram() external prankModifier(ALICE_ADDRESS) {
         uint256 marketId = createMarket();
 
         // Handle minting incentive token to the IP's address

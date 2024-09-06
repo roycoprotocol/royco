@@ -48,27 +48,17 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
     function createMarket() public returns (uint256 marketId) {
         // Generate random market parameters within valid constraints
         uint256 lockupTime = 1 hours + (uint256(keccak256(abi.encodePacked(block.timestamp))) % 29 days); // Lockup time between 1 hour and 30 days
-        uint256 frontendFee = (
-            uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % (initialMinimumFrontendFee + 1e18 - initialMinimumFrontendFee)
-        ) + initialMinimumFrontendFee; // Frontend fee between minimum fee and 100%
+        uint256 frontendFee = (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 1e17) + initialMinimumFrontendFee;
         // Generate random reward style (valid values 0, 1, 2)
         RewardStyle rewardStyle = RewardStyle(uint8(uint256(keccak256(abi.encodePacked(block.timestamp))) % 3));
         // Create market
         marketId = orderbook.createMarket(address(mockLiquidityToken), lockupTime, frontendFee, NULL_RECIPE, NULL_RECIPE, rewardStyle);
     }
 
-    function createMarket(
-        RecipeOrderbook.Recipe memory _depositRecipe,
-        RecipeOrderbook.Recipe memory _withdrawRecipe
-    )
-        public
-        returns (uint256 marketId)
-    {
+    function createMarket(RecipeOrderbook.Recipe memory _depositRecipe, RecipeOrderbook.Recipe memory _withdrawRecipe) public returns (uint256 marketId) {
         // Generate random market parameters within valid constraints
         uint256 lockupTime = 1 hours + (uint256(keccak256(abi.encodePacked(block.timestamp))) % 29 days); // Lockup time between 1 hour and 30 days
-        uint256 frontendFee = (
-            uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % (initialMinimumFrontendFee + 1e18 - initialMinimumFrontendFee)
-        ) + initialMinimumFrontendFee; // Frontend fee between minimum fee and 100%
+        uint256 frontendFee = (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 1e17) + initialMinimumFrontendFee;
         // Generate random reward style (valid values 0, 1, 2)
         RewardStyle rewardStyle = RewardStyle(uint8(uint256(keccak256(abi.encodePacked(block.timestamp))) % 3));
         // Create market

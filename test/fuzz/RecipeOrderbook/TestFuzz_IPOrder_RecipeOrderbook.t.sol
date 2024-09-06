@@ -15,7 +15,7 @@ contract TestFuzz_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         setUpRecipeOrderbookTests(protocolFee, minimumFrontendFee);
     }
 
-    function testFuzz_CreateIPOrder(address _creator, uint256 _quantity, uint256 _expiry, uint256 _tokenCount) external prankModifier(_creator) {
+    function testFuzz_CreateIPOrder_NotPointsProgram(address _creator, uint256 _quantity, uint256 _expiry, uint256 _tokenCount) external prankModifier(_creator) {
         _tokenCount = _tokenCount % 5 + 1; // Limit token count between 1 and 5
         uint256 marketId = createMarket();
         address[] memory tokensOffered = new address[](_tokenCount);
@@ -147,7 +147,7 @@ contract TestFuzz_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         );
     }
 
-    function testFuzz_RevertIf_CreateIPOrderWithMismatchedTokenArrays(uint256 _tokensOfferedLen, uint256 _tokenAmountsOfferedLen) external {
+    function testFuzz_RevertIf_CreateIPOrderWithMismatchedTokenArrays(uint8 _tokensOfferedLen, uint8 _tokenAmountsOfferedLen) external {
         vm.assume(_tokensOfferedLen != _tokenAmountsOfferedLen);
 
         uint256 marketId = createMarket();
