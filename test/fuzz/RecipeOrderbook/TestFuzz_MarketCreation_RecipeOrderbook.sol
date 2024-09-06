@@ -1,88 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../src/WeirollWallet.sol";
-import "../../src/RecipeOrderbook.sol";
-import "../../src/PointsFactory.sol";
+import "../../../src/RecipeOrderbook.sol";
 
-import { RecipeOrderbookTestBase } from "../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
+import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 
-contract TestFuzz_RecipeOrderbook is RecipeOrderbookTestBase {
+contract TestFuzz_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     function setUp() external {
         uint256 protocolFee = 0.01e18; // 1% protocol fee
         uint256 minimumFrontendFee = 0.001e18; // 0.1% minimum frontend fee
         setUpRecipeOrderbookTests(protocolFee, minimumFrontendFee);
-    }
-
-    function testFuzz_CreateOrderbook(
-        uint256 _protocolFee,
-        uint256 _minimumFrontendFee,
-        address _weirollImplementation,
-        address _ownerAddress,
-        address _pointsFactory
-    )
-        external
-    {
-        vm.assume(_ownerAddress != address(0));
-        vm.assume(_protocolFee <= 1e18);
-        vm.assume(_minimumFrontendFee <= 1e18);
-        vm.assume((_protocolFee + _minimumFrontendFee) <= 1e18);
-
-        // Deploy orderbook and check for ownership transfer
-        vm.expectEmit(true, false, false, true);
-        emit Ownable.OwnershipTransferred(address(0), _ownerAddress);
-        RecipeOrderbook newOrderbook = new RecipeOrderbook(
-            _weirollImplementation,
-            _protocolFee,
-            _minimumFrontendFee,
-            _ownerAddress, // fee claimant
-            _pointsFactory
-        );
-        // Check constructor args being set correctly
-        assertEq(newOrderbook.WEIROLL_WALLET_IMPLEMENTATION(), _weirollImplementation);
-        assertEq(newOrderbook.POINTS_FACTORY(), _pointsFactory);
-        assertEq(newOrderbook.protocolFee(), _protocolFee);
-        assertEq(newOrderbook.protocolFeeClaimant(), _ownerAddress);
-        assertEq(newOrderbook.minimumFrontendFee(), _minimumFrontendFee);
-
-        // Check initial orderbook state
-        assertEq(newOrderbook.numLPOrders(), 0);
-        assertEq(newOrderbook.numIPOrders(), 0);
-        assertEq(newOrderbook.numMarkets(), 0);
-    }
-
-    function testFuzz_SetProtocolFeeClaimant(address _newClaimant) external prankModifier(OWNER_ADDRESS) {
-        assertEq(orderbook.protocolFeeClaimant(), OWNER_ADDRESS);
-        orderbook.setProtocolFeeClaimant(_newClaimant);
-        assertEq(orderbook.protocolFeeClaimant(), _newClaimant);
-    }
-
-    function testFuzz_RevertIf_NonOwnerSetProtocolFeeClaimant(address _nonOwner, address _newClaimant) external prankModifier(_nonOwner) {
-        vm.assume(_nonOwner != OWNER_ADDRESS);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _nonOwner));
-        orderbook.setProtocolFeeClaimant(_newClaimant);
-    }
-
-    function testFuzz_SetProtocolFee(uint256 _newProtocolFee) external prankModifier(OWNER_ADDRESS) {
-        orderbook.setProtocolFee(_newProtocolFee);
-        assertEq(orderbook.protocolFee(), _newProtocolFee);
-    }
-
-    function testFuzz_RevertIf_NonOwnerSetProtocolFee(address _nonOwner, uint256 _newProtocolFee) external prankModifier(_nonOwner) {
-        vm.assume(_nonOwner != OWNER_ADDRESS);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _nonOwner));
-        orderbook.setProtocolFee(_newProtocolFee);
-    }
-
-    function testFuzz_SetMinimumFrontendFee(uint256 _newMinimumFrontendFee) external prankModifier(OWNER_ADDRESS) {
-        orderbook.setMinimumFrontendFee(_newMinimumFrontendFee);
-        assertEq(orderbook.minimumFrontendFee(), _newMinimumFrontendFee);
-    }
-
-    function testFuzz_RevertIf_NonOwnerSetMinimumFrontendFee(address _nonOwner, uint256 _newMinimumFrontendFee) external prankModifier(_nonOwner) {
-        vm.assume(_nonOwner != OWNER_ADDRESS);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _nonOwner));
-        orderbook.setMinimumFrontendFee(_newMinimumFrontendFee);
     }
 
     function testFuzz_CreateMarket(
@@ -98,7 +25,8 @@ contract TestFuzz_RecipeOrderbook is RecipeOrderbookTestBase {
         external
     {
         // Manually bound the inputs using modulo to limit the ranges (was hitting fuzzing reject limit)
-        _frontendFee = initialMinimumFrontendFee + (_frontendFee % (1e18 - initialMinimumFrontendFee)); // Frontend fee between min fee and 100%
+        _frontendFee = initialMinimumFrontendFee + (_frontendFee % (1e18 - (initialMinimumFrontendFee + initialProtocolFee))); // Frontend fee + protocol fee
+            // between min fee and 100%
         // Limit recipe counts to a maximum of 10 for commands and 5 for state entries
         _depositRecipeCommandCount = _depositRecipeCommandCount % 10;
         _depositRecipeStateCount = _depositRecipeStateCount % 5;
@@ -149,7 +77,7 @@ contract TestFuzz_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(uint8(resultingRewardStyle), uint8(rewardStyle));
     }
 
-    function testFuzz_RevertIf_CreateMarketWithInvalidFrontendFee(uint256 _initialMinimumFrontendFee, uint256 _marketFrontendFee) external {
+    function testFuzz_RevertIf_CreateMarketWithLowFrontendFee(uint256 _initialMinimumFrontendFee, uint256 _marketFrontendFee) external {
         // Make sure that the market fee is less than minimum fee so it reverts
         vm.assume(_marketFrontendFee < _initialMinimumFrontendFee);
 
@@ -158,9 +86,24 @@ contract TestFuzz_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.FrontendFeeTooLow.selector));
         orderbook.createMarket(
-            address(mockToken),
+            address(mockLiquidityToken),
             1 days, // Weiroll wallet lockup time
             _marketFrontendFee, // less than minimum frontend fee
+            NULL_RECIPE, // Deposit Recipe
+            NULL_RECIPE, // Withdraw Recipe
+            RewardStyle.Upfront
+        );
+    }
+
+    function testFuzz_RevertIf_CreateMarketWithInvalidTotalFee(uint256 _frontendFee) external {
+        _frontendFee = _frontendFee % (type(uint256).max - orderbook.protocolFee()); // Bound the fee to prevent overflow and not catch the expected reversion
+        vm.assume((orderbook.protocolFee() + _frontendFee) > 1e18); // Ensures total fee > 100% so we expect a reversion
+
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.TotalFeeTooHigh.selector));
+        orderbook.createMarket(
+            address(mockLiquidityToken),
+            1 days, // Weiroll wallet lockup time
+            _frontendFee, // Resulting total fee > 100%
             NULL_RECIPE, // Deposit Recipe
             NULL_RECIPE, // Withdraw Recipe
             RewardStyle.Upfront
