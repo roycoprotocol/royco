@@ -7,6 +7,10 @@ import { ERC4626i } from "src/ERC4626i.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
+//TODO: Delete this import
+import { Test, console } from "forge-std/Test.sol";
+
+
 contract VaultOrderbook is Ownable2Step {
     using SafeTransferLib for ERC20;
 
@@ -142,6 +146,7 @@ contract VaultOrderbook is Ownable2Step {
 
     /// @notice allocate a specific quantity of a given order
     function allocateOrder(LPOrder memory order, uint256[] memory campaignIds, uint256 quantity) public {
+
         // Check for order expiry, 0 expiries live forever
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
@@ -198,6 +203,7 @@ contract VaultOrderbook is Ownable2Step {
 
     /// @notice fully allocate a selection of orders
     function allocateOrders(LPOrder[] memory orders, uint256[][] memory campaignIds) public {
+        // require(orders.length == campaignIds.length, "Mismatched array lengths");//NEW added by Dhruv
         uint256 len = orders.length;
         for (uint256 i = 0; i < len; ++i) {
             allocateOrder(orders[i], campaignIds[i]);
