@@ -19,7 +19,7 @@ contract RoycoTestBase is Test {
     address internal BOB_ADDRESS;
     address internal CHARLIE_ADDRESS;
     address internal DAN_ADDRESS;
-    
+
     // -----------------------------------------
     // Modifiers
     // -----------------------------------------

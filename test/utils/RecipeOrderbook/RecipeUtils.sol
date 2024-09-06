@@ -26,7 +26,7 @@ contract RecipeUtils {
     // Generate a random command (bytes32) for the weiroll VM
     function generateRandomCommand() internal view returns (bytes32) {
         bytes32 command;
-        command = bytes32(blockhash(block.number - 1)); 
+        command = bytes32(blockhash(block.number - 1));
         return command;
     }
 
@@ -35,7 +35,7 @@ contract RecipeUtils {
         // Create random length between 0 and 128 bytes
         uint256 length = (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 129);
         bytes memory randomState = new bytes(length);
-        
+
         for (uint256 i = 0; i < length; i++) {
             randomState[i] = bytes1(uint8(uint256(keccak256(abi.encodePacked(block.timestamp, i))) % 256));
         }

@@ -234,6 +234,15 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @notice emitted when trying to fill an order that doesn't exist anymore/yet
     error CannotFillZeroQuantityOrder();
 
+    // Getters to access nested mappings
+    function getTokenAmountsOfferedForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
+        return orderIDToIPOrder[orderId].tokenAmountsOffered[tokenAddress];
+    }
+
+    function getTokenToFrontendFeeAmountForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
+        return orderIDToIPOrder[orderId].tokenToFrontendFeeAmount[tokenAddress];
+    }
+
     /// @notice Create a new recipe market
     /// @param inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
     /// @param lockupTime The time in seconds that the user's weiroll wallet will be locked up for after deposit
@@ -296,7 +305,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             revert CannotPlaceExpiredOrder();
         }
         // Check order isn't empty
-        if (quantity == 0) {
+        if (quantity < 1e6) {
             revert CannotPlaceZeroQuantityOrder();
         }
         // Check token and price arrays are the same length
@@ -348,6 +357,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         if (tokensOffered.length != tokenAmounts.length) {
             revert ArrayLengthMismatch();
         }
+        // Check order isn't empty
+        if (quantity < 1e6) {
+            revert CannotPlaceZeroQuantityOrder();
+        }
 
         // Create the order
         IPOrder storage order = orderIDToIPOrder[numIPOrders];
@@ -387,9 +400,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     mapping(address => mapping(address => uint256)) public feeClaimantToTokenToAmount;
 
-    /// @param recipient The address to send fees to 
-    /// @param token The token address where fees are accrued in 
-    /// @param amount The amount of fees to award 
+    /// @param recipient The address to send fees to
+    /// @param token The token address where fees are accrued in
+    /// @param amount The amount of fees to award
     /// @param ip The incentive provider if awarding points
     function accountFee(address recipient, address token, uint256 amount, address ip) internal {
         //check to see the token is actually a points campaign
@@ -401,7 +414,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
     }
 
-    /// @param token The token to claim fees for 
+    /// @param token The token to claim fees for
     /// @param to The address to send fees claimed to
     function claimFees(address token, address to) public {
         uint256 amount = feeClaimantToTokenToAmount[msg.sender][token];
@@ -627,7 +640,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
 
-    /// @param weirollWallet The wallet to claim for 
+    /// @param weirollWallet The wallet to claim for
     /// @param to The address to claim all rewards to
     function claim(address weirollWallet, address to) public nonReentrant {
         if (WeirollWallet(weirollWallet).owner() != msg.sender) {

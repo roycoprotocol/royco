@@ -7,7 +7,6 @@ import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrder
 import { MockERC4626 } from "../../mocks/MockERC4626.sol";
 import { MockERC20 } from "../../mocks/MockERC20.sol";
 
-
 contract TestFuzz_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     function setUp() external {
         uint256 protocolFee = 0.01e18; // 1% protocol fee
@@ -40,7 +39,7 @@ contract TestFuzz_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         }
 
         // Generate a random quantity and valid expiry
-        _quantity = _quantity % 1000e18 + 1;
+        _quantity = _quantity % 1000e18 + 1e6;
         _expiry = _expiry % 100_000 days + block.timestamp;
 
         address fundingVault = _fundingVaultSeed % 2 == 0 ? address(0) : address(mockVault);
@@ -67,6 +66,22 @@ contract TestFuzz_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         );
     }
 
+    function TestFuzz_RevertIf_CreateLPOrderWithZeroQuantity(uint256 _quantity) external {
+        _quantity = _quantity % 1e6;
+
+        uint256 marketId = createMarket();
+
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceZeroQuantityOrder.selector));
+        orderbook.createLPOrder(
+            marketId,
+            address(0),
+            _quantity, // Zero quantity
+            block.timestamp + 1 days,
+            new address[](1),
+            new uint256[](1)
+        );
+    }
+
     function TestFuzz_RevertIf_CreateLPOrderWithExpiredOrder(uint256 _expiry, uint256 _blockTimestamp) external {
         _expiry = (_expiry % _blockTimestamp) + 1; // expiry always less than block timestamp
         vm.warp(_blockTimestamp); // set block timestamp
@@ -87,7 +102,7 @@ contract TestFuzz_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.assume(_tokensRequestedLen != _tokenAmountsRequestedLen);
 
         uint256 marketId = createMarket();
-        
+
         address[] memory tokensRequested = new address[](_tokensRequestedLen);
         uint256[] memory tokenAmountsRequested = new uint256[](_tokenAmountsRequestedLen);
 
