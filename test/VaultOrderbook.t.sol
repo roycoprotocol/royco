@@ -168,6 +168,30 @@ contract VaultOrderbookTest is Test {
         vm.stopPrank();
     }
 
+    function testNotEnoughRemainingQuantity() public {
+        vm.startPrank(alice);
+        baseToken.mint(alice, 1000 * 1e18);
+        baseToken.approve(address(orderbook), 100 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        VaultOrderbook.LPOrder memory order =
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        // New - Testcase added to attempt to allocate a cancelled order
+        uint256[] memory campaignIds = new uint256[](0);
+        vm.expectRevert(VaultOrderbook.NotEnoughRemainingQuantity.selector);
+        orderbook.allocateOrder(order, campaignIds, 200 * 1e18);
+
+        vm.stopPrank();
+    }
+
+
     function testCancelOrder() public {
         vm.startPrank(alice);
         baseToken.mint(alice, 1000 * 1e18);
@@ -206,7 +230,7 @@ contract VaultOrderbookTest is Test {
         uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(fundingVault), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         uint256 order3Id = orderbook.createLPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-        //Need to make the funding vault for order2 the same as the funding vault for order2 used in createLPOrder
+        //todo  - Need to make the funding vault for order2 the same as the funding vault for order2 used in createLPOrder
         VaultOrderbook.LPOrder memory order2 =
             VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         VaultOrderbook.LPOrder memory order3 =
