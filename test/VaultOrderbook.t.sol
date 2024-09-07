@@ -117,8 +117,14 @@ contract VaultOrderbookTest is Test {
         orderbook.allocateOrder(order, campaignIds);
 
         // New - Testcase added to attempt to allocate a cancelled order within a group of multiple valid orders
-        uint256[][] memory moreCampaignIds = new uint256[][](0);
-        VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](2);
+        uint256[][] memory moreCampaignIds = new uint256[][](3);
+        moreCampaignIds[0] = new uint256[](1);
+        moreCampaignIds[0][0] = 0;
+        moreCampaignIds[1] = new uint256[](1);
+        moreCampaignIds[1][0] = 1;
+        moreCampaignIds[2] = new uint256[](1);
+        moreCampaignIds[2][0] = 2;
+        VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](3);
 
         uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         uint256 order3Id = orderbook.createLPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
@@ -129,12 +135,13 @@ contract VaultOrderbookTest is Test {
             VaultOrderbook.LPOrder(order3Id, address(targetVault3), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         orders[0] = order2;
-        orders[1] = order3;
-        orders[2] = order;
+        orders[1] = order;
+        orders[2] = order3;
 
         vm.expectRevert(VaultOrderbook.OrderDoesNotExist.selector);
         orderbook.allocateOrders(orders, moreCampaignIds);
 
+        //*Potentially add asserts to check that first order was allocated while 2nd and 3rd order were not allocated*
 
         vm.stopPrank();
     }
