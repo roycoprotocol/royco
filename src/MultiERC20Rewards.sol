@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { PointsFactory } from "src/PointsFactory.sol";
 
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
@@ -15,7 +16,9 @@ contract ERC20Rewards is Owned, ERC20 {
     event RewardsSet(uint32 start, uint32 end, uint256 rate);
     event RewardsPerTokenUpdated(uint256 accumulated);
     event UserRewardsUpdated(address user, uint256 userRewards, uint256 paidRewardPerToken);
-    event Claimed(address user, address receiver, uint256 claimed);
+    event Claimed(address reward, address user, address receiver, uint256 claimed);
+
+    error MaxRewardsReached();
 
     struct RewardsInterval {
         uint32 start; // Start time for the current rewardsToken schedule
@@ -33,24 +36,80 @@ contract ERC20Rewards is Owned, ERC20 {
         uint128 checkpoint; // RewardsPerToken the last time the user rewards were updated
     }
 
-    ERC20 public immutable rewardsToken; // Token used as rewards
-    RewardsInterval public rewardsInterval; // Interval in which rewards are accumulated by users
-    RewardsPerToken public rewardsPerToken; // Accumulator to track rewards per token
-    mapping(address => UserRewards) public accumulatedRewards; // Rewards accumulated per user
+    // ERC20 public immutable rewardsToken;                            
+    // RewardsInterval public rewardsInterval;                         // Interval in which rewards are accumulated by users
+    // RewardsPerToken public rewardsPerToken;                         // Accumulator to track rewards per token
+    // mapping (address => UserRewards) public accumulatedRewards;     // Rewards accumulated per user
 
-    constructor(address _owner, ERC20 rewardsToken_, string memory name, string memory symbol, uint8 decimals) ERC20(name, symbol, decimals) Owned(_owner) {
-        rewardsToken = rewardsToken_;
+    uint256 public constant MAX_REWARDS = 5;
+    uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
+
+    PointsFactory public immutable POINTS_FACTORY;
+
+    address[] public rewards;                                                                   // Tokens or points programs used as rewards
+    mapping(address => RewardsInterval) public rewardToInterval;                                // Maps a reward to its interval in which rewards are accumulated by users
+    mapping(address => RewardsPerToken) public rewardToRPT;                                     // Maps a reward to its accumulator to track rewards per token
+    mapping(address => mapping(address => UserRewards)) public rewardToUserToAR;                // Maps a reward to a user to their accumulated rewards
+
+    constructor(address _owner, string memory name, string memory symbol, uint8 decimals, address pointsFactory) ERC20(name, symbol, decimals) Owned(_owner) {
+        POINTS_FACTORY = PointsFactory(pointsFactory);
+    }
+
+    function addRewardsToken(address rewardsToken) public onlyOwner {
+        if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
+        rewards.push(rewardsToken);
+    }
+
+    function pullReward(address reward, address from, uint256 amount) internal {
+        if (POINTS_FACTORY.isPointsProgram(reward)) {
+            // TODO: check permissioned awarder then do nothing
+        } else {
+            ERC20(reward).safeTransfer(from, amount);
+        }
+    }
+
+    function pushRewardAndTakeFee(address reward, address to, uint256 amount) internal {
+        // TODO: take fee
+        if (POINTS_FACTORY.isPointsProgram(reward)) {
+            // TODO: call points.award (needs modification to points contrcact)
+        } else {
+            ERC20(reward).safeTransfer(to, amount);
+        }
+    }
+
+    function extendRewardsInterval(uint256 totalRewardsAdded, uint256 newEnd) public onlyOwner {
+        require(
+            newEnd > rewardsInterval.end,
+            "New end must be after the current end"
+        );
+        require(
+            block.timestamp.u32() < rewardsInterval.end,
+            "Rewards already ended"
+        );
+        _updateRewardsPerToken();
+
+        uint256 remainingRewards = rewardsInterval.end < block.timestamp ? 0 : rewardsInterval.rate * (rewardsInterval.end - block.timestamp.u32());
+
+        uint256 rate = totalRewardsAdded / (newEnd - block.timestamp);
+
+        require(rate >= rewardsInterval.rate, "New rate must be greater than or equal to the current rate");
+        
+        rewardsInterval.end = newEnd.u32();
+        rewardsInterval.rate = rate.u96();
     }
 
     /// @dev Set a rewards schedule
-    function setRewardsInterval(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
+    function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
         require(start < end, "Incorrect interval");
+
+        RewardsInterval storage rewardsInterval = rewardToInterval[reward];
+        RewardsPerToken storage rewardsPerToken = rewardToRPT[reward];
 
         // A new rewards program can be set if one is not running
         require(block.timestamp.u32() < rewardsInterval.start || block.timestamp.u32() > rewardsInterval.end, "Rewards still ongoing");
 
         // Update the rewards per token so that we don't lose any rewards
-        _updateRewardsPerToken();
+        _updateRewardsPerToken(reward);
 
         uint256 rate = totalRewards / (end - start);
         rewardsInterval.start = start.u32();
@@ -105,23 +164,31 @@ contract ERC20Rewards is Owned, ERC20 {
 
     /// @notice Update and return the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked
     /// amount.
-    function _updateRewardsPerToken() internal returns (RewardsPerToken memory) {
-        RewardsPerToken memory rewardsPerTokenIn = rewardsPerToken;
+    function _updateRewardsPerToken(address reward) internal returns (RewardsPerToken memory) {
+        RewardsInterval storage rewardsInterval = rewardToInterval[reward];
+        RewardsPerToken memory rewardsPerTokenIn = rewardToRPT[reward];
         RewardsPerToken memory rewardsPerTokenOut = _calculateRewardsPerToken(rewardsPerTokenIn, rewardsInterval);
 
         // We skip the storage changes if already updated in the same block, or if the program has ended and was updated at the end
         if (rewardsPerTokenIn.lastUpdated == rewardsPerTokenOut.lastUpdated) return rewardsPerTokenOut;
 
-        rewardsPerToken = rewardsPerTokenOut;
+        rewardToRPT[reward] = rewardsPerTokenOut;
         emit RewardsPerTokenUpdated(rewardsPerTokenOut.accumulated);
 
         return rewardsPerTokenOut;
     }
 
+    function _updateUserRewards(address user) internal {
+        for (uint256 i = 0; i < rewards.length; i++) {
+            address reward = rewards[i];
+            _updateUserRewards(reward, user);
+        }
+    }
+
     /// @notice Calculate and store current rewards for an user. Checkpoint the rewardsPerToken value with the user.
-    function _updateUserRewards(address user) internal returns (UserRewards memory) {
-        RewardsPerToken memory rewardsPerToken_ = _updateRewardsPerToken();
-        UserRewards memory userRewards_ = accumulatedRewards[user];
+    function _updateUserRewards(address reward, address user) internal returns (UserRewards memory) {
+        RewardsPerToken memory rewardsPerToken_ = _updateRewardsPerToken(reward);
+        UserRewards memory userRewards_ = rewardToUserToAR[reward][user];
 
         // We skip the storage changes if there are no changes to the rewards per token accumulator
         if (userRewards_.checkpoint == rewardsPerToken_.accumulated) return userRewards_;
@@ -130,7 +197,7 @@ contract ERC20Rewards is Owned, ERC20 {
         userRewards_.accumulated += _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerToken_.accumulated).u128();
         userRewards_.checkpoint = rewardsPerToken_.accumulated;
 
-        accumulatedRewards[user] = userRewards_;
+        rewardToUserToAR[reward][user] = userRewards_;
         emit UserRewardsUpdated(user, userRewards_.accumulated, userRewards_.checkpoint);
 
         return userRewards_;
@@ -149,11 +216,11 @@ contract ERC20Rewards is Owned, ERC20 {
     }
 
     /// @notice Claim rewards for an user
-    function _claim(address from, address to, uint256 amount) internal virtual {
-        _updateUserRewards(from);
-        accumulatedRewards[from].accumulated -= amount.u128();
-        rewardsToken.safeTransfer(to, amount);
-        emit Claimed(from, to, amount);
+    function _claim(address reward, address from, address to, uint256 amount) internal virtual {
+        _updateUserRewards(reward, from);
+        rewardToUserToAR[reward][from].accumulated -= amount.u128();
+        pushRewardAndTakeFee(reward, to, amount);
+        emit Claimed(reward, from, to, amount);
     }
 
     /// @dev Transfer tokens, after updating rewards for source and destination.
@@ -171,23 +238,23 @@ contract ERC20Rewards is Owned, ERC20 {
     }
 
     /// @notice Claim all rewards for the caller
-    function claim(address to) public virtual returns (uint256) {
-        uint256 claimed = currentUserRewards(msg.sender);
-        _claim(msg.sender, to, claimed);
-
-        return claimed;
+    function claim(address to) public virtual {
+        for (uint256 i = 0; i < rewards.length; i++) {
+            address reward = rewards[i];
+            _claim(reward, msg.sender, to, currentUserRewards(reward, msg.sender));
+        }
     }
 
     /// @notice Calculate and return current rewards per token.
-    function currentRewardsPerToken() public view returns (uint256) {
-        return _calculateRewardsPerToken(rewardsPerToken, rewardsInterval).accumulated;
+    function currentRewardsPerToken(address reward) public view returns (uint256) {
+        return _calculateRewardsPerToken(rewardToRPT[reward], rewardToInterval[reward]).accumulated;
     }
 
     /// @notice Calculate and return current rewards for a user.
     /// @dev This repeats the logic used on transactions, but doesn't update the storage.
-    function currentUserRewards(address user) public view returns (uint256) {
-        UserRewards memory accumulatedRewards_ = accumulatedRewards[user];
-        RewardsPerToken memory rewardsPerToken_ = _calculateRewardsPerToken(rewardsPerToken, rewardsInterval);
+    function currentUserRewards(address reward, address user) public view returns (uint256) {
+        UserRewards memory accumulatedRewards_ = rewardToUserToAR[reward][user];
+        RewardsPerToken memory rewardsPerToken_ = _calculateRewardsPerToken(rewardToRPT[reward], rewardToInterval[reward]);
         return accumulatedRewards_.accumulated + _calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerToken_.accumulated);
     }
 }
