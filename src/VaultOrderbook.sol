@@ -7,9 +7,6 @@ import { ERC4626i } from "src/ERC4626i.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
-//TODO: Delete this import
-import { Test, console } from "forge-std/Test.sol";
-
 
 contract VaultOrderbook is Ownable2Step {
     using SafeTransferLib for ERC20;
