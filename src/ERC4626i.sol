@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {SafeCast} from "src/libraries/SafeCast.sol";
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
-import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
-import {IERC4626} from "src/interfaces/IERC4626.sol";
-import {LibString} from "lib/solady/src/utils/LibString.sol";
-import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
-import {FixedPointMathLib} from "lib/solmate/src/utils/FixedPointMathLib.sol";
-import {PointsFactory} from "src/PointsFactory.sol";
-import {Points} from "src/Points.sol";
+import { SafeCast } from "src/libraries/SafeCast.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
+import { IERC4626 } from "src/interfaces/IERC4626.sol";
+import { LibString } from "lib/solady/src/utils/LibString.sol";
+import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
+import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+import { PointsFactory } from "src/PointsFactory.sol";
+import { Points } from "src/Points.sol";
 
 /// @title ERC4626i
 /// @author CopyPaste, corddry
@@ -41,9 +41,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @custom:field token                 The ERC20 token being given out as a reward
     /// @custom:field user                  The user whose reward campaigns have been updated
     /// @custom:field paidRewardPerCampaign The amount of paid rewards for the campagin the user has been paid
-    event UserRewardsUpdated(
-        uint256 campaign, address token, address user, uint256 userRewards, uint256 paidRewardPerCampaign
-    );
+    event UserRewardsUpdated(uint256 campaign, address token, address user, uint256 userRewards, uint256 paidRewardPerCampaign);
 
     /// @custom:field campaign    The unique campaignId identifier
     /// @custom:field token       The ERC20 token being given out as a reward
@@ -69,6 +67,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
     /// @dev The underlying ERC4626 Vault deposits are routed to
+
     ERC4626 public underlyingVault;
     /// @dev The actual asset being deposited into the underlying vault
     ERC20 public immutable depositAsset;
@@ -140,7 +139,12 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @param _protocolFee     The protocol fee to take from incentives, out of WAD
     /// @param _referralFee     The fee taken out of incentives for the person who referred a given user
     /// @param _pointsFactory   The address of the PointsFactory contract
-    constructor(ERC4626 _underlyingVault, uint256 _protocolFee, uint256 _referralFee, address _pointsFactory)
+    constructor(
+        ERC4626 _underlyingVault,
+        uint256 _protocolFee,
+        uint256 _referralFee,
+        address _pointsFactory
+    )
         ERC20(LibString.concat("Incentivied", _underlyingVault.name()), LibString.concat(_underlyingVault.name(), "i"), 18)
     {
         underlyingVault = _underlyingVault;
@@ -156,6 +160,20 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
+                           FEE CONTROL LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @param newDefaultProtocolFee The new fee to set on default for the protocol
+    function updateDefaultProtocolFee(uint256 newDefaultProtocolFee) external onlyOwner {
+        protocolFee = newDefaultProtocolFee;
+    }
+
+    /// @param newDefaultReferralFee The new fee to set on default for referrals
+    function updateDefaultReferralFee(uint256 newDefaultReferralFee) external onlyOwner {
+        referralFee = newDefaultReferralFee;
+    }
+
+    /*//////////////////////////////////////////////////////////////
                               NEW CAMPAIGN
     //////////////////////////////////////////////////////////////*/
 
@@ -166,10 +184,7 @@ contract ERC4626i is Owned(msg.sender), ERC20, IERC4626 {
     /// @param totalRewards The total amount of rewards tokens to give out
     ///
     /// @return campaignId The amount of token rewards to give out to depositors
-    function createRewardsCampaign(ERC20 token, uint256 start, uint256 end, uint256 totalRewards)
-        external
-        returns (uint256 campaignId)
-    {
+    function createRewardsCampaign(ERC20 token, uint256 start, uint256 end, uint256 totalRewards) external returns (uint256 campaignId) {
         if (start < block.timestamp) {
             revert CampaignNotStarted();
         }

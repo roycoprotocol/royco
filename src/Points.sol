@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {ERC4626i} from "src/ERC4626i.sol";
-import {RecipeOrderbook} from "src/RecipeOrderbook.sol";
+import { ERC4626i } from "src/ERC4626i.sol";
+import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
 
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
+import { Ownable } from "lib/solady/src/auth/Ownable.sol";
+import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 
 /// @title Points
 /// @author CopyPaste, corddry
 /// @dev A simple program for running points programs
-contract Points is Owned(msg.sender) {
+contract Points is Ownable {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -19,13 +19,9 @@ contract Points is Owned(msg.sender) {
     /// @param _symbol The symbol for the points program
     /// @param _decimals The amount of decimals per 1 point
     /// @param _allowedVault The vault allowed to mint and use these points
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        uint256 _decimals,
-        ERC4626i _allowedVault,
-        RecipeOrderbook _orderbook
-    ) {
+    constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner, ERC4626i _allowedVault, RecipeOrderbook _orderbook) {
+        _initializeOwner(_owner);
+
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
@@ -64,14 +60,11 @@ contract Points is Owned(msg.sender) {
     /// @param start The start date of the campaign
     /// @param end The end date of the campaign
     /// @param totalRewards The total amount of points to distribute
-    function createPointsRewardsCampaign(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
-        uint256 campaignId = allowedVault.totalCampaigns() + 1;
-        allowedCampaigns[campaignId] = true;
-
-        uint256 newCampaign = allowedVault.createRewardsCampaign(ERC20(address(this)), start, end, totalRewards);
-
-        /// Safe check for redundancy
-        require(newCampaign == campaignId);
+    ///
+    /// @return newCampaignId The Id of the newly created rewards campaign
+    function createPointsRewardsCampaign(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner returns (uint256 newCampaignId) {
+        newCampaignId = allowedVault.createRewardsCampaign(ERC20(address(this)), start, end, totalRewards);
+        allowedCampaigns[newCampaignId] = true;
     }
 
     /// @param ip The incentive provider address to allow to mint points
@@ -118,11 +111,15 @@ contract Points is Owned(msg.sender) {
     //////////////////////////////////////////////////////////////*/
 
     /// @param to The address to mint points to
+    /// @param amount  The amount of points to award to the `to` address
     /// @param campaignId The campaignId to mint points for
     function award(address to, uint256 amount, uint256 campaignId) external onlyAllowedCampaigns(campaignId) {
         emit Award(to, amount);
     }
 
+    /// @param to The address to mint points to
+    /// @param amount  The amount of points to award to the `to` address
+    /// @param ip The incentive provider attempting to mint the points
     function award(address to, uint256 amount, address ip) external onlyRecipeOrderbookAllowedIP(ip) {
         emit Award(to, amount);
     }

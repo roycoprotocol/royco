@@ -26,13 +26,12 @@ contract RecipeOrderbookTest is Test {
         owner = address(this);
         user1 = address(0x1);
         user2 = address(0x2);
-        
+
         weirollWalletImplementation = new WeirollWallet();
         mockToken = new MockERC20("Mock Token", "MT");
         mockVault = new MockERC4626(mockToken);
         pointsFactory = new PointsFactory();
-        
-        
+
         orderbook = new RecipeOrderbook(
             address(weirollWalletImplementation),
             0.01e18, // 1% protocol fee
@@ -58,7 +57,7 @@ contract RecipeOrderbookTest is Test {
         assertEq(marketId, 0);
         assertEq(orderbook.numMarkets(), 1);
 
-        (ERC20 inputToken, uint256 lockupTime, uint256 frontendFee, , ,) = orderbook.marketIDToWeirollMarket(0);
+        (ERC20 inputToken, uint256 lockupTime, uint256 frontendFee,,,) = orderbook.marketIDToWeirollMarket(0);
         assertEq(address(inputToken), address(mockToken));
         assertEq(lockupTime, 1 days);
         assertEq(frontendFee, 0.002e18);
@@ -89,15 +88,18 @@ contract RecipeOrderbookTest is Test {
         assertEq(orderId, 0);
         assertEq(orderbook.numLPOrders(), 1);
 
-        bytes32 orderHash = orderbook.getOrderHash(RecipeOrderbook.LPOrder(
-            0, // orderId
-            0, // marketId
-            user1,
-            address(0),
-            block.timestamp + 1 days,
-            tokensRequested,
-            tokenAmountsRequested
-        ));
+        bytes32 orderHash = orderbook.getOrderHash(
+            RecipeOrderbook.LPOrder(
+                0, // orderId
+                0, // marketId
+                user1,
+                address(0),
+                1000e18,
+                block.timestamp + 1 days,
+                tokensRequested,
+                tokenAmountsRequested
+            )
+        );
 
         assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 1000e18);
         vm.stopPrank();
@@ -135,7 +137,6 @@ contract RecipeOrderbookTest is Test {
         vm.stopPrank();
     }
 
-
     function testFillIPOrder() public {
         // First create a market and an IP order
         testCreateIPOrder();
@@ -149,7 +150,7 @@ contract RecipeOrderbookTest is Test {
 
         orderbook.fillIPOrder(0, 500e18, address(mockVault), user2);
 
-        (, , , , uint256 remainingQuantity) = orderbook.orderIDToIPOrder(0);
+        (,,,, uint256 remainingQuantity) = orderbook.orderIDToIPOrder(0);
         assertEq(remainingQuantity, 500e18);
         vm.stopPrank();
     }
