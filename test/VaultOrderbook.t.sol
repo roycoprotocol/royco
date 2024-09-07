@@ -13,7 +13,7 @@ import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 import { VaultOrderbook } from "src/VaultOrderbook.sol";
 
 // import { Test } from "../lib/forge-std/src/Test.sol";
-import { Test, console } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 
 contract VaultOrderbookTest is Test {
@@ -90,7 +90,7 @@ contract VaultOrderbookTest is Test {
 
         uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, 5, tokensRequested, tokenRatesRequested);
         VaultOrderbook.LPOrder memory order =
-            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         uint256[] memory campaignIds = new uint256[](0);
 
@@ -136,9 +136,9 @@ contract VaultOrderbookTest is Test {
         uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         VaultOrderbook.LPOrder memory order1 =
-            VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         VaultOrderbook.LPOrder memory order2 =
-            VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         orders[0] = order1;
         orders[1] = order2;
@@ -162,7 +162,7 @@ contract VaultOrderbookTest is Test {
         uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         VaultOrderbook.LPOrder memory order =
-            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         orderbook.cancelOrder(order);
 
@@ -184,13 +184,14 @@ contract VaultOrderbookTest is Test {
         moreCampaignIds[2][0] = 2;
         VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](3);
 
-        uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(fundingVault), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         uint256 order3Id = orderbook.createLPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
+        //Need to make the funding vault for order2 the same as the funding vault for order2 used in createLPOrder
         VaultOrderbook.LPOrder memory order2 =
-            VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         VaultOrderbook.LPOrder memory order3 =
-            VaultOrderbook.LPOrder(order3Id, address(targetVault3), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            VaultOrderbook.LPOrder(order3Id, address(targetVault3), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         orders[0] = order2;
         orders[1] = order;
