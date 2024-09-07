@@ -12,26 +12,12 @@ import { RoycoTestBase } from "../RoycoTestBase.sol";
 import { RecipeUtils } from "./RecipeUtils.sol";
 
 contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
-    // Contract deployments
-    WeirollWallet public weirollImplementation;
-    RecipeOrderbook public orderbook;
-    MockERC20 public mockLiquidityToken;
-    MockERC20 public mockIncentiveToken;
-    MockERC4626 public mockVault;
-    PointsFactory public pointsFactory;
-
     // Fees set in orderbook constructor
     uint256 initialProtocolFee;
     uint256 initialMinimumFrontendFee;
 
     function setUpRecipeOrderbookTests(uint256 _initialProtocolFee, uint256 _initialMinimumFrontendFee) public {
         setupBaseEnvironment();
-
-        weirollImplementation = new WeirollWallet();
-        mockLiquidityToken = new MockERC20("Mock Liquidity Token", "MLT");
-        mockIncentiveToken = new MockERC20("Mock Incentive Token", "MIT");
-        mockVault = new MockERC4626(mockLiquidityToken);
-        pointsFactory = new PointsFactory();
 
         initialProtocolFee = _initialProtocolFee;
         initialMinimumFrontendFee = _initialMinimumFrontendFee;
