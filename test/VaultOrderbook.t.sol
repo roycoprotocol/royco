@@ -12,8 +12,8 @@ import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
 import { VaultOrderbook } from "src/VaultOrderbook.sol";
 
+// import { Test } from "../lib/forge-std/src/Test.sol";
 import { Test, console } from "forge-std/Test.sol";
-
 
 
 contract VaultOrderbookTest is Test {
@@ -49,10 +49,13 @@ contract VaultOrderbookTest is Test {
         uint256[] memory tokenRatesRequested = new uint256[](1);
         tokenRatesRequested[0] = 1e18;
 
-        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(fundingVault), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        VaultOrderbook.LPOrder memory order =
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         assertEq(orderId, 0);
         assertEq(orderbook.numOrders(), 1);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order)), 100 * 1e18);
         vm.stopPrank();
     }
 
