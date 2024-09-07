@@ -205,6 +205,23 @@ contract VaultOrderbookTest is Test {
         vm.stopPrank();
     }
 
+    function testArrayLengthMismatch() public {
+        vm.startPrank(alice);
+        baseToken.mint(alice, 1000 * 1e18);
+        baseToken.approve(address(orderbook), 100 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](2);
+        tokenRatesRequested[0] = 1e18;
+        tokenRatesRequested[1] = 2e18;
+
+        vm.expectRevert(VaultOrderbook.ArrayLengthMismatch.selector);
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        vm.stopPrank();
+    }
+
     function testAllocateOrder() public {
         // Setup
         vm.startPrank(alice);
