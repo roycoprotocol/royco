@@ -7,7 +7,7 @@ import { ERC4626i } from "src/ERC4626i.sol";
 import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
 
 /// @title PointsFactory
-/// @author CopyPaste, corddry
+/// @author CopyPaste, corddry, ShivaanshK
 /// @dev A simple program for creating points programs
 contract PointsFactory {
     mapping(address => bool) public isPointsProgram;
@@ -23,13 +23,14 @@ contract PointsFactory {
         string memory _name,
         string memory _symbol,
         uint256 _decimals,
+        address _owner,
         ERC4626i _allowedVault,
         RecipeOrderbook _orderbook
     )
         external
         returns (Points points)
     {
-        points = new Points(_name, _symbol, _decimals, _allowedVault, _orderbook);
+        points = new Points(_name, _symbol, _decimals, _owner, _allowedVault, _orderbook);
         isPointsProgram[address(points)] = true;
 
         emit NewPointsProgram(points, _name, _symbol, address(_allowedVault), address(_orderbook));
