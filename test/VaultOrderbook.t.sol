@@ -19,19 +19,24 @@ import { Test } from "forge-std/Test.sol";
 contract VaultOrderbookTest is Test {
     VaultOrderbook public orderbook = new VaultOrderbook();
     MockERC20 public baseToken;
+    MockERC20 public baseToken2;
     MockERC4626 public targetVault;
-    MockERC4626 public targetVault2;//For testing allocation of multiple orders
-    MockERC4626 public targetVault3;//For testing allocation of multiple orders
+    MockERC4626 public targetVault2;
+    MockERC4626 public targetVault3;
     MockERC4626 public fundingVault;
+    MockERC4626 public fundingVault2;
     address public alice = address(0x1);
     address public bob = address(0x2);
 
     function setUp() public {
         baseToken = new MockERC20("Base Token", "BT");
+        baseToken2 = new MockERC20("Base Token2", "BT2");
+
         targetVault = new MockERC4626(baseToken);
         targetVault2 = new MockERC4626(baseToken);
         targetVault3 = new MockERC4626(baseToken);
         fundingVault = new MockERC4626(baseToken);
+        fundingVault2 = new MockERC4626(baseToken2);
 
         baseToken.mint(alice, 1000 * 1e18);
         baseToken.mint(bob, 1000 * 1e18);
@@ -115,6 +120,20 @@ contract VaultOrderbookTest is Test {
 
         vm.expectRevert(VaultOrderbook.CannotPlaceZeroQuantityOrder.selector);
         orderbook.createLPOrder(address(targetVault), address(0), 0, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        vm.stopPrank();
+    }
+
+    function testMismatchedBaseAsset() public {
+        vm.startPrank(alice);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        vm.expectRevert(VaultOrderbook.MismatchedBaseAsset.selector);
+        orderbook.createLPOrder(address(targetVault), address(fundingVault2), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         vm.stopPrank();
     }
