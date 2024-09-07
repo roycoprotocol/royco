@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 import { ERC4626i } from "src/ERC4626i.sol";
 import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
 
-import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { Ownable } from "lib/solady/src/auth/Ownable.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 
 /// @title Points
 /// @author CopyPaste, corddry
 /// @dev A simple program for running points programs
-contract Points is Owned(msg.sender) {
+contract Points is Ownable {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -19,7 +19,9 @@ contract Points is Owned(msg.sender) {
     /// @param _symbol The symbol for the points program
     /// @param _decimals The amount of decimals per 1 point
     /// @param _allowedVault The vault allowed to mint and use these points
-    constructor(string memory _name, string memory _symbol, uint256 _decimals, ERC4626i _allowedVault, RecipeOrderbook _orderbook) {
+    constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner, ERC4626i _allowedVault, RecipeOrderbook _orderbook) {
+        _initializeOwner(_owner);
+
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
