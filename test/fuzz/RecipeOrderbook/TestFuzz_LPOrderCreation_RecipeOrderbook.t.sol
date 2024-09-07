@@ -7,7 +7,7 @@ import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrder
 import { MockERC4626 } from "../../mocks/MockERC4626.sol";
 import { MockERC20 } from "../../mocks/MockERC20.sol";
 
-contract TestFuzz_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
+contract TestFuzz_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     function setUp() external {
         uint256 protocolFee = 0.01e18; // 1% protocol fee
         uint256 minimumFrontendFee = 0.001e18; // 0.1% minimum frontend fee

@@ -8,7 +8,7 @@ import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 
-contract Test_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
+contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     using FixedPointMathLib for uint256;
 
     function setUp() external {
