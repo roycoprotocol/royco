@@ -116,6 +116,36 @@ contract VaultOrderbookTest is Test {
         vm.stopPrank();
     }
 
+    function testNotEnoughCampaignIds() public {
+        vm.startPrank(alice);
+        baseToken.mint(alice, 1000 * 1e18);
+        baseToken.approve(address(orderbook), 100 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](2);
+        uint256[][] memory campaignIds = new uint256[][](0);
+
+        uint256 order1Id = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        VaultOrderbook.LPOrder memory order1 =
+            VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        VaultOrderbook.LPOrder memory order2 =
+            VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        orders[0] = order1;
+        orders[1] = order2;
+
+        vm.expectRevert(VaultOrderbook.NotEnoughCampaignIds.selector);
+        orderbook.allocateOrders(orders, campaignIds);
+
+        vm.stopPrank();
+    }
+
     function testCancelOrder() public {
         vm.startPrank(alice);
         baseToken.mint(alice, 1000 * 1e18);
