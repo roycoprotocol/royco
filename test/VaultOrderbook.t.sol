@@ -76,6 +76,31 @@ contract VaultOrderbookTest is Test {
         vm.stopPrank();
     }
 
+    function testCannotAllocateExpiredOrder() public {
+        vm.startPrank(alice);
+        baseToken.approve(address(orderbook), 100 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, 5, tokensRequested, tokenRatesRequested);
+        VaultOrderbook.LPOrder memory order =
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        uint256[] memory campaignIds = new uint256[](0);
+
+        vm.warp(100 days);
+
+        vm.expectRevert(VaultOrderbook.OrderExpired.selector);
+        orderbook.allocateOrder(order, campaignIds);
+
+        //Note - Going to add testcase to allocate an order expiring at the current timestamp to testAllocateOrder (the allocation should not revert)
+
+        vm.stopPrank();
+    }
+
     function testCannotCreateZeroQuantityOrder() public {
         vm.startPrank(alice);
         baseToken.approve(address(orderbook), 100 * 1e18);
