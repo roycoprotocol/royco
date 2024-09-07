@@ -191,6 +191,31 @@ contract VaultOrderbookTest is Test {
         vm.stopPrank();
     }
 
+    function testNotOrderCreator() public {
+        vm.startPrank(alice);
+        baseToken.mint(alice, 1000 * 1e18);
+        baseToken.approve(address(orderbook), 100 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        VaultOrderbook.LPOrder memory order =
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        vm.stopPrank();
+        
+        vm.startPrank(bob);
+        vm.expectRevert(VaultOrderbook.NotOrderCreator.selector);
+        orderbook.cancelOrder(order);
+
+        bytes32 orderHash = orderbook.getOrderHash(order);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 100 * 1e18);
+        vm.stopPrank();
+    }
 
     function testCancelOrder() public {
         vm.startPrank(alice);
