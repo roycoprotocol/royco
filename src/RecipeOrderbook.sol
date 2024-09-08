@@ -18,6 +18,9 @@ enum RewardStyle {
     Forfeitable
 }
 
+/// @title RecipeOrderbook
+/// @author CopyPaste, corddry, ShivaanshK
+/// @notice Orderbook Contract for Incentivizing LP/IPs to participate in "recipes" which perform arbitrary actions
 contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for ERC20;
@@ -463,7 +466,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
         WeirollWallet wallet =
-            WeirollWallet(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable)));
+            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable))));
 
         if (market.rewardStyle == RewardStyle.Forfeitable || market.rewardStyle == RewardStyle.Arrear) {
             LockedRewardParams memory params;
@@ -534,7 +537,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 unlockTime = block.timestamp + market.lockupTime;
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
         WeirollWallet wallet =
-            WeirollWallet(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime, forfeitable)));
+            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime, forfeitable))));
 
         if (market.rewardStyle == RewardStyle.Forfeitable || market.rewardStyle == RewardStyle.Arrear) {
             LockedRewardParams memory params;
@@ -620,10 +623,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     /// @notice For wallets of Forfeitable markets, an LP can call this function to forgo their rewards and unlock their wallet
     function forfeit(address weirollWallet) public nonReentrant {
-        if (WeirollWallet(weirollWallet).owner() != msg.sender) {
+        if (WeirollWallet(payable(weirollWallet)).owner() != msg.sender) {
             revert NotOwner();
         }
-        WeirollWallet(weirollWallet).forfeit();
+        WeirollWallet(payable(weirollWallet)).forfeit();
 
         //return the locked rewards to the LP
         LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];
@@ -643,10 +646,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @param weirollWallet The wallet to claim for
     /// @param to The address to claim all rewards to
     function claim(address weirollWallet, address to) public nonReentrant {
-        if (WeirollWallet(weirollWallet).owner() != msg.sender) {
+        if (WeirollWallet(payable(weirollWallet)).owner() != msg.sender) {
             revert NotOwner();
         }
-        if (WeirollWallet(weirollWallet).lockedUntil() > block.timestamp) {
+        if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
             revert WalletLocked();
         }
         LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];

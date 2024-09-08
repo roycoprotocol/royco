@@ -7,6 +7,9 @@ import { ERC4626i } from "src/ERC4626i.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
+/// @title VaultOrderbook
+/// @author CopyPaste, corddry, ShivaanshK
+/// @notice Orderbook Contract for Incentivizing LP/IPs to participate incentivized ERC4626 markets
 contract VaultOrderbook is Ownable2Step {
     using SafeTransferLib for ERC20;
 
@@ -82,6 +85,8 @@ contract VaultOrderbook is Ownable2Step {
     error NotOrderCreator();
     /// @notice Enforce the max campaignIds supplied to be the same as the amount of campaigns a user can opt into
     error TooManyCampaignIds();
+    /// @notice emitted when the LP tries to allocate multiple orders, but they did not provide enough campaignIds to match the orders
+    error NotEnoughCampaignIds();
 
     constructor() Ownable(msg.sender) {
         // Redundant
