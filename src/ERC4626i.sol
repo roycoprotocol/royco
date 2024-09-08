@@ -4,14 +4,16 @@ pragma solidity ^0.8.0;
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+import { IERC4626 } from "src/interfaces/IERC4626.sol";
 import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
-contract ERC4626i is Owned, ERC20 {
+contract ERC4626i is Owned, ERC20, IERC4626 {
     using SafeTransferLib for ERC20;
     using Cast for uint256;
     using FixedPointMathLib for uint256;
@@ -29,7 +31,7 @@ contract ERC4626i is Owned, ERC20 {
     error IntervalInProgress();
     error NoIntervalInProgress();
     error RateCannotDecrease();
-    error CastOverflow();
+    error FrontendFeeBelowMinimum();
 
     struct RewardsInterval {
         uint32 start; // Start time for the current rewardsToken schedule
@@ -47,25 +49,27 @@ contract ERC4626i is Owned, ERC20 {
         uint128 checkpoint; // RewardsPerToken the last time the user rewards were updated
     }
 
-    // ERC20 public immutable rewardsToken;
-    // RewardsInterval public rewardsInterval;                         // Interval in which rewards are accumulated by users
-    // RewardsPerToken public rewardsPerToken;                         // Accumulator to track rewards per token
-    // mapping (address => UserRewards) public accumulatedRewards;     // Rewards accumulated per user
-
     uint256 public constant MAX_REWARDS = 5;
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
 
+    IERC4626 public immutable VAULT;
+    ERC20 public immutable DEPOSIT_ASSET;
+    ERC4626iFactory public immutable ERC4626I_FACTORY;
     PointsFactory public immutable POINTS_FACTORY;
 
+    uint256 public frontendFee;
 
     address[] public rewards; // Tokens or points programs used as rewards
     mapping(address => RewardsInterval) public rewardToInterval; // Maps a reward to its interval in which rewards are accumulated by users
     mapping(address => RewardsPerToken) public rewardToRPT; // Maps a reward to its accumulator to track rewards per token
     mapping(address => mapping(address => UserRewards)) public rewardToUserToAR; // Maps a reward to a user to their accumulated rewards
-
     mapping(address => mapping(address => uint256)) public rewardToClaimantToFees;
 
-    constructor(address _owner, string memory name, string memory symbol, uint8 decimals, address pointsFactory) ERC20(name, symbol, decimals) Owned(_owner) {
+    constructor(address _owner, string memory name, string memory symbol, uint8 decimals, address vault, uint256 initialFrontendFee, address erc4626iFactory, address pointsFactory) ERC20(name, symbol, decimals) Owned(_owner) {
+        frontendFee = initialFrontendFee;
+        VAULT = IERC4626(vault);
+        DEPOSIT_ASSET = ERC20(VAULT.asset());
+        ERC4626I_FACTORY = ERC4626iFactory(erc4626iFactory);
         POINTS_FACTORY = PointsFactory(pointsFactory);
     }
 
@@ -73,6 +77,11 @@ contract ERC4626i is Owned, ERC20 {
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
         rewards.push(rewardsToken);
         emit RewardsTokenAdded(rewardsToken);
+    }
+
+    function setFrontendFee(uint256 newFrontendFee) public onlyOwner {
+        if (newFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
+        frontendFee = newFrontendFee;
     }
 
     function claimFees(address to) public {
@@ -108,15 +117,15 @@ contract ERC4626i is Owned, ERC20 {
         _updateRewardsPerToken(reward);
 
         // Calculate fees
-        uint256 frontendFee = rewardsAdded.mulWadDown(FACTORY.getFrontendFee());
-        uint256 protocolFee = rewardsAdded.mulWadDown(FACTORY.getProtocolFee());
+        uint256 frontendFeeTaken = rewardsAdded.mulWadDown(frontendFee);
+        uint256 protocolFeeTaken = rewardsAdded.mulWadDown(ERC4626I_FACTORY.protocolFee());
 
         // Make fees available for claiming
-        rewardToClaimantToFees[reward][frontendFeeRecipient] += frontendFee;
-        rewardToClaimantToFees[reward][FACTORY.getProtocolFeeRecipient()] += protocolFee;
+        rewardToClaimantToFees[reward][frontendFeeRecipient] += frontendFeeTaken;
+        rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the new rate
-        rewardsAfterFee = rewardsAdded - frontendFee - protocolFee;
+        uint256 rewardsAfterFee = rewardsAdded - frontendFeeTaken - protocolFeeTaken;
         uint256 remainingRewards = rewardsInterval.end < block.timestamp ? 0 : rewardsInterval.rate * (rewardsInterval.end - block.timestamp.u32());
         uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - block.timestamp);
 
@@ -128,7 +137,7 @@ contract ERC4626i is Owned, ERC20 {
 
         emit RewardsSet(block.timestamp.u32(), newEnd.u32(), rate);
 
-        pullReward(reward, msg.sender, totalRewards);
+        pullReward(reward, msg.sender, rewardsAdded);
     }
 
     /// @dev Set a rewards schedule
@@ -145,15 +154,15 @@ contract ERC4626i is Owned, ERC20 {
         _updateRewardsPerToken(reward);
 
         // Calculate fees
-        uint256 frontendFee = totalRewards.mulWadDown(FACTORY.getFrontendFee());
-        uint256 protocolFee = totalRewards.mulWadDown(FACTORY.getProtocolFee());
+        uint256 frontendFeeTaken = totalRewards.mulWadDown(frontendFee);
+        uint256 protocolFeeTaken = totalRewards.mulWadDown(ERC4626I_FACTORY.protocolFee());
 
         // Make fees available for claiming
-        rewardToClaimantToFees[reward][msg.sender] += frontendFee;
-        rewardToClaimantToFees[reward][FACTORY.getProtocolFeeRecipient()] += protocolFee;
+        rewardToClaimantToFees[reward][msg.sender] += frontendFeeTaken;
+        rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the rate
-        uint256 rewardsAfterFee = totalRewards - frontendFee - protocolFee;
+        uint256 rewardsAfterFee = totalRewards - frontendFeeTaken - protocolFeeTaken;
         uint256 rate = rewardsAfterFee / (end - start);
 
         rewardsInterval.start = start.u32();
@@ -303,9 +312,126 @@ contract ERC4626i is Owned, ERC20 {
         RewardsPerToken memory rewardsPerToken_ = _calculateRewardsPerToken(rewardToRPT[reward], rewardToInterval[reward]);
         return accumulatedRewards_.accumulated + _calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerToken_.accumulated);
     }
+
+    function previewRateAfterDeposit(address reward, uint256 assets) public view returns (uint256) {
+        RewardsInterval memory rewardsInterval = rewardToInterval[reward];
+        uint256 shares = VAULT.previewDeposit(assets);
+
+        // ratePerShare = rate * VAULT_PRECISION / (totalSupply + shares);
+        // rateOnDeposit = ratePerShare * shares / VAULT_PRECISION;
+        // return rateOnDeposit * DEPOSIT_TOKEN_PRECISION / amount;
+        // simplified to:
+        return (rewardsInterval.rate * shares / (totalSupply + shares)) * DEPOSIT_ASSET.decimals() / assets;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            ERC4626 OVERRIDE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IERC4626
+    function asset() external view returns (address _asset) {
+        return address(DEPOSIT_ASSET);
+    }
+
+    /// @inheritdoc IERC4626
+    function totalAssets() public view returns (uint256) {
+        return VAULT.convertToAssets(ERC20(address(VAULT)).balanceOf(address(this)));
+    }
+
+    /// @inheritdoc IERC4626
+    function deposit(uint256 assets, address receiver) public returns (uint256 shares) {
+        DEPOSIT_ASSET.transferFrom(msg.sender, address(this), assets);
+
+        shares = VAULT.deposit(assets, address(this));
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    /// @inheritdoc IERC4626
+    function mint(uint256 shares, address receiver) public returns (uint256 assets) {
+        DEPOSIT_ASSET.transferFrom(msg.sender, address(this), VAULT.convertToAssets(shares));
+
+        assets = VAULT.mint(shares, address(this));
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    /// @inheritdoc IERC4626
+    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
+        shares = VAULT.withdraw(assets, address(this), address(this));
+
+        _burn(owner, shares);
+        DEPOSIT_ASSET.transfer(receiver, assets);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+    }
+
+    /// @inheritdoc IERC4626
+    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
+        assets = VAULT.redeem(shares, address(this), address(this));
+
+        _burn(owner, shares);
+        DEPOSIT_ASSET.transfer(receiver, assets);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+    }
+
+    /// @inheritdoc IERC4626
+    function convertToShares(uint256 assets) external view returns (uint256 shares) {
+        shares = VAULT.convertToShares(assets);
+    }
+
+    /// @inheritdoc IERC4626
+    function convertToAssets(uint256 shares) external view returns (uint256 assets) {
+        assets = VAULT.convertToAssets(shares);
+    }
+
+    /// @inheritdoc IERC4626
+    function maxDeposit(address) external view returns (uint256 maxAssets) {
+        maxAssets = VAULT.maxDeposit(address(this));
+    }
+
+    /// @inheritdoc IERC4626
+    function previewDeposit(uint256 assets) external view returns (uint256 shares) {
+        shares = VAULT.previewDeposit(assets);
+    }
+
+    /// @inheritdoc IERC4626
+    function maxMint(address) external view returns (uint256 maxShares) {
+        maxShares = VAULT.maxMint(address(this));
+    }
+
+    /// @inheritdoc IERC4626
+    function previewMint(uint256 shares) external view returns (uint256 assets) {
+        assets = VAULT.previewMint(shares);
+    }
+
+    /// @inheritdoc IERC4626
+    function maxWithdraw(address) external view returns (uint256 maxAssets) {
+        maxAssets = VAULT.maxWithdraw(address(this));
+    }
+
+    /// @inheritdoc IERC4626
+    function previewWithdraw(uint256 assets) external view virtual returns (uint256 shares) {
+        shares = VAULT.previewWithdraw(assets);
+    }
+
+    /// @inheritdoc IERC4626
+    function maxRedeem(address) external view returns (uint256 maxShares) {
+        maxShares = VAULT.maxRedeem(address(this));
+    }
+
+    /// @inheritdoc IERC4626
+    function previewRedeem(uint256 shares) external view returns (uint256 assets) {
+        assets = VAULT.previewRedeem(shares);
+    }
+
 }
 
 library Cast {
+    error CastOverflow();
     function u128(uint256 x) internal pure returns (uint128 y) {
         if( x > type(uint128).max) revert CastOverflow();
         y = uint128(x);

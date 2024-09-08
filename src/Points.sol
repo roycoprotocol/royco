@@ -79,18 +79,6 @@ contract Points is Ownable {
     error OnlyRecipeOrderbook();
     error NotAllowedIP();
 
-    // /// @param campaignId The campaignId being supplied
-    // modifier onlyAllowedCampaigns(uint256 campaignId) {
-    //     if (msg.sender != address(allowedVault)) {
-    //         revert OnlyIncentivizedVault();
-    //     }
-
-    //     if (!allowedCampaigns[campaignId]) {
-    //         revert CampaignNotAuthorized();
-    //     }
-    //     _;
-    // }
-
     modifier onlyAllowedVaults {
         if (!isAllowedVault[msg.sender]) {
             revert OnlyAllowedVaults();
@@ -116,8 +104,7 @@ contract Points is Ownable {
 
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
-    /// @param campaignId The campaignId to mint points for
-    function award(address to, uint256 amount, uint256 campaignId) external onlyAllowedVaults() {
+    function award(address to, uint256 amount) external onlyAllowedVaults() {
         emit Award(to, amount);
     }
 
