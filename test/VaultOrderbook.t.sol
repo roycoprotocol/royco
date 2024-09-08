@@ -45,6 +45,10 @@ contract VaultOrderbookTest is Test {
         vm.label(bob, "Bob");
     }
 
+    function testConstructor() public {
+        assertEq(orderbook.numOrders(), 0);
+    }
+
     function testCreateLPOrder() public {
         vm.startPrank(alice);
         baseToken.approve(address(orderbook), 100 * 1e18);
