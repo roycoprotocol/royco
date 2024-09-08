@@ -88,6 +88,48 @@ contract VaultOrderbookTest is Test {
         vm.stopPrank();
     }
 
+    function testTooManyCampaignIds() public {
+        vm.startPrank(alice);
+
+        baseToken.approve(address(orderbook), 1000 * 1e18);
+        baseToken.approve(address(targetVault), 1000 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        // Create an order
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        VaultOrderbook.LPOrder memory order =
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        vm.stopPrank();
+
+        // Setup for allocation
+        vm.startPrank(bob);
+        uint256[] memory campaignIds = new uint256[](6);
+        campaignIds[0] = 0;
+        campaignIds[1] = 1;
+        campaignIds[2] = 2;
+        campaignIds[3] = 3;
+        campaignIds[4] = 4;
+        campaignIds[5] = 5;
+
+        // Allocate the order
+        vm.expectRevert(VaultOrderbook.TooManyCampaignIds.selector);
+        orderbook.allocateOrder(order, campaignIds);
+
+        // Verify allocation
+        bytes32 orderHash = orderbook.getOrderHash(order);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 100 * 1e18);
+        assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+        assertEq(targetVault.balanceOf(alice), 0);
+
+        vm.stopPrank();
+    }
+
     function testCannotAllocateExpiredOrder() public {
         vm.startPrank(alice);
         baseToken.approve(address(orderbook), 100 * 1e18);
@@ -351,7 +393,6 @@ contract VaultOrderbookTest is Test {
     }
 
     function testAllocateOrder() public {
-        // Setup
         vm.startPrank(alice);
         baseToken.mint(alice, 1000 * 1e18);
 
