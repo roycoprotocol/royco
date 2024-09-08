@@ -277,8 +277,8 @@ contract VaultOrderbookTest is Test {
         vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToAllocate.selector);
         orderbook.allocateOrder(order2, campaignIds);
 
-        assertEq(baseToken.balanceOf(address(alice)), 0);
-        assertEq(fundingVault.balanceOf(alice), 1000 * 1e18);
+        assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+        assertEq(fundingVault.balanceOf(alice), 0);
         assertEq(targetVault.balanceOf(alice), 0);
         assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order1)), 1000 * 1e18);
         assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order2)), 1000 * 1e18);
@@ -317,8 +317,8 @@ contract VaultOrderbookTest is Test {
         assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
         assertEq(targetVault.balanceOf(alice), 0);
         assertEq(targetVault2.balanceOf(alice), 0);
-        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order1)), 1000 * 1e18);
-        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order2)), 1000 * 1e18);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order1)), 100 * 1e18);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order2)), 100 * 1e18);
 
         vm.stopPrank();
     }
@@ -574,6 +574,7 @@ contract VaultOrderbookTest is Test {
     function testAllocateOrders() public {
         vm.startPrank(alice);
         baseToken.approve(address(orderbook), 300 * 1e18);
+        baseToken.approve(address(fundingVault), 100 * 1e18);
 
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(baseToken);
