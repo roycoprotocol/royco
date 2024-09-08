@@ -119,7 +119,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @notice Tracks the unfilled quantity of each LP order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
-    mapping(address => LockedRewardParams) internal weirollWalletToLockedRewardParams;
+    mapping(address => LockedRewardParams) public weirollWalletToLockedRewardParams;
 
     /// @param _weirollWalletImplementation The address of the WeirollWallet implementation contract
     /// @param _protocolFee The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant
@@ -244,6 +244,12 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     function getTokenToFrontendFeeAmountForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
         return orderIDToIPOrder[orderId].tokenToFrontendFeeAmount[tokenAddress];
+    }
+
+    // Single getter function that returns the entire LockedRewardParams struct as a tuple
+    function getLockedRewardParams(address weirollWallet) external view returns (address[] memory tokens, uint256[] memory amounts, address ip) {
+        LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
+        return (params.tokens, params.amounts, params.ip);
     }
 
     /// @notice Create a new recipe market
