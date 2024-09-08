@@ -555,24 +555,32 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
         uint256 len = order.tokensRequested.length;
         for (uint256 i = 0; i < len; ++i) {
-            // if the token is points
+            // Get distribution of amounts
+            uint256 amount = order.tokenAmountsRequested[i];
+            uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
+            uint256 frontendFeeAmount = amount.mulWadDown(marketIDToWeirollMarket[order.targetMarketID].frontendFee);
+            uint256 incentiveAmount = amount - protocolFeeAmount - frontendFeeAmount;
+
+            // Account for protocol and frontend fees
+            accountFee(protocolFeeClaimant, order.tokensRequested[i], protocolFeeAmount, msg.sender);
+            accountFee(frontendFeeRecipient, order.tokensRequested[i], frontendFeeAmount, msg.sender);
+
             if (market.rewardStyle == RewardStyle.Upfront) {
+                // If incentives should be paid out upfront to LP
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
-                    Points(order.tokensRequested[i]).award(order.lp, order.tokenAmountsRequested[i], msg.sender);
+                    // Award points right now if points program
+                    Points(order.tokensRequested[i]).award(order.lp, incentiveAmount, msg.sender);
                 } else {
-                    //safetransfer the token to the LP
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, order.tokenAmountsRequested[i]);
+                    // Transfer LP's incentives to them on fill if token incentive
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, amount);
                 }
             } else {
-                //safetransfer the token to the orderbook
+                // If incentives will be paid out later, only handle the token case. Points will be awarded on claim.
                 if (!PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), order.tokenAmountsRequested[i]);
+                    // If not a points program, transfer full amount to orderbook, so it can pay out LP on claim
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), amount);
                 }
             }
-
-            //safetransfer the fee to the frontendFeeRecipient
-            uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
-            accountFee(frontendFeeRecipient, order.tokensRequested[i], order.tokenAmountsRequested[i].mulWadDown(fillPercentage), msg.sender);
         }
 
         // if the fundingVault is set to 0, fund the fill directly via the base asset
