@@ -5,6 +5,7 @@ import "../../../src/RecipeOrderbook.sol";
 import "../../../src/ERC4626i.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
+import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 
@@ -232,5 +233,70 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
+    }
+
+    function test_RevertIf_OrderExpired() external {
+        uint256 frontendFee = orderbook.minimumFrontendFee();
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+
+        uint256 orderAmount = 1000e18;
+        uint256 fillAmount = 100e18;
+
+        // Create an order with a past expiry date
+        uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
+
+        // Order is now expired
+        vm.warp(block.timestamp + 30 days + 1 seconds);
+
+        // Attempt to fill the expired order, expecting a revert
+        vm.expectRevert(RecipeOrderbook.OrderExpired.selector);
+        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+    }
+
+    function test_RevertIf_NotEnoughRemainingQuantity() external {
+        uint256 frontendFee = orderbook.minimumFrontendFee();
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+
+        uint256 orderAmount = 1000e18;
+        uint256 fillAmount = 1100e18; // Fill amount exceeds the order amount
+
+        // Create a fillable IP order
+        uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
+
+        // Attempt to fill more than available, expecting a revert
+        vm.expectRevert(RecipeOrderbook.NotEnoughRemainingQuantity.selector);
+        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+    }
+
+    function test_RevertIf_MismatchedBaseAsset() external {
+        uint256 frontendFee = orderbook.minimumFrontendFee();
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+
+        uint256 orderAmount = 1000e18;
+        uint256 fillAmount = 100e18;
+
+        // Create a fillable IP order
+        uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
+
+        // Use a different vault with a mismatched base asset
+        address incorrectVault = address(new MockERC4626(mockIncentiveToken)); // Mismatched asset
+
+        // Attempt to fill with a mismatched base asset, expecting a revert
+        vm.expectRevert(RecipeOrderbook.MismatchedBaseAsset.selector);
+        orderbook.fillIPOrder(orderId, fillAmount, incorrectVault, FRONTEND_FEE_RECIPIENT);
+    }
+
+    function test_RevertIf_ZeroQuantityFill() external {
+        uint256 frontendFee = orderbook.minimumFrontendFee();
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+
+        uint256 orderAmount = 1000e18;
+
+        // Create a fillable IP order
+        uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
+
+        // Attempt to fill with a zero quantity, expecting a revert
+        vm.expectRevert(RecipeOrderbook.CannotPlaceZeroQuantityOrder.selector);
+        orderbook.fillIPOrder(orderId, 0, address(0), FRONTEND_FEE_RECIPIENT);
     }
 }
