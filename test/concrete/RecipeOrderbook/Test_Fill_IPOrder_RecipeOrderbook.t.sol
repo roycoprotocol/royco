@@ -215,7 +215,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC4626.Withdraw(address(orderbook), address(0), BOB_ADDRESS, fillAmount, 0);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
-        emit ERC20.Transfer(BOB_ADDRESS, address(0), fillAmount);
+        emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
