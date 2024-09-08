@@ -5,6 +5,13 @@ import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
+import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+
+interface feeTeller {
+    function getFrontendFee() external view returns (uint256);
+    function getProtocolFee() external view returns (uint256);
+    function getProtocolFeeRecipient() external view returns (address);
+}
 
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
@@ -12,13 +19,22 @@ import { PointsFactory } from "src/PointsFactory.sol";
 contract ERC20Rewards is Owned, ERC20 {
     using SafeTransferLib for ERC20;
     using Cast for uint256;
+    using FixedPointMathLib for uint256;
 
     event RewardsSet(uint32 start, uint32 end, uint256 rate);
     event RewardsPerTokenUpdated(uint256 accumulated);
     event UserRewardsUpdated(address user, uint256 userRewards, uint256 paidRewardPerToken);
     event Claimed(address reward, address user, address receiver, uint256 claimed);
+    event FeesClaimed(address claimant);
+    event RewardsTokenAdded(address rewardsToken);
 
     error MaxRewardsReached();
+    error VaultNotAuthorizedToRewardPoints();
+    error InvalidInterval();
+    error IntervalInProgress();
+    error NoIntervalInProgress();
+    error RateCannotDecrease();
+    error CastOverflow();
 
     struct RewardsInterval {
         uint32 start; // Start time for the current rewardsToken schedule
@@ -36,7 +52,7 @@ contract ERC20Rewards is Owned, ERC20 {
         uint128 checkpoint; // RewardsPerToken the last time the user rewards were updated
     }
 
-    // ERC20 public immutable rewardsToken;                            
+    // ERC20 public immutable rewardsToken;
     // RewardsInterval public rewardsInterval;                         // Interval in which rewards are accumulated by users
     // RewardsPerToken public rewardsPerToken;                         // Accumulator to track rewards per token
     // mapping (address => UserRewards) public accumulatedRewards;     // Rewards accumulated per user
@@ -46,10 +62,13 @@ contract ERC20Rewards is Owned, ERC20 {
 
     PointsFactory public immutable POINTS_FACTORY;
 
-    address[] public rewards;                                                                   // Tokens or points programs used as rewards
-    mapping(address => RewardsInterval) public rewardToInterval;                                // Maps a reward to its interval in which rewards are accumulated by users
-    mapping(address => RewardsPerToken) public rewardToRPT;                                     // Maps a reward to its accumulator to track rewards per token
-    mapping(address => mapping(address => UserRewards)) public rewardToUserToAR;                // Maps a reward to a user to their accumulated rewards
+
+    address[] public rewards; // Tokens or points programs used as rewards
+    mapping(address => RewardsInterval) public rewardToInterval; // Maps a reward to its interval in which rewards are accumulated by users
+    mapping(address => RewardsPerToken) public rewardToRPT; // Maps a reward to its accumulator to track rewards per token
+    mapping(address => mapping(address => UserRewards)) public rewardToUserToAR; // Maps a reward to a user to their accumulated rewards
+
+    mapping(address => mapping(address => uint256)) public rewardToClaimantToFees;
 
     constructor(address _owner, string memory name, string memory symbol, uint8 decimals, address pointsFactory) ERC20(name, symbol, decimals) Owned(_owner) {
         POINTS_FACTORY = PointsFactory(pointsFactory);
@@ -58,60 +77,90 @@ contract ERC20Rewards is Owned, ERC20 {
     function addRewardsToken(address rewardsToken) public onlyOwner {
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
         rewards.push(rewardsToken);
+        emit RewardsTokenAdded(rewardsToken);
+    }
+
+    function claimFees(address to) public {
+        emit FeesClaimed(to);
+        for (uint256 i = 0; i < rewards.length; i++) {
+            address reward = rewards[i];
+            uint256 owed = rewardToClaimantToFees[reward][to];
+            rewardToClaimantToFees[reward][to] = 0;
+            pushReward(reward, to, owed);
+        }
     }
 
     function pullReward(address reward, address from, uint256 amount) internal {
         if (POINTS_FACTORY.isPointsProgram(reward)) {
-            // TODO: check permissioned awarder then do nothing
+            if (!Points(reward).isAllowedVault(address(this))) revert VaultNotAuthorizedToRewardPoints();
         } else {
             ERC20(reward).safeTransfer(from, amount);
         }
     }
 
-    function pushRewardAndTakeFee(address reward, address to, uint256 amount) internal {
-        // TODO: take fee
+    function pushReward(address reward, address to, uint256 amount) internal {
         if (POINTS_FACTORY.isPointsProgram(reward)) {
-            // TODO: call points.award (needs modification to points contrcact)
+            Points(reward).award(to, amount);
         } else {
             ERC20(reward).safeTransfer(to, amount);
         }
     }
 
-    function extendRewardsInterval(uint256 totalRewardsAdded, uint256 newEnd) public onlyOwner {
-        require(
-            newEnd > rewardsInterval.end,
-            "New end must be after the current end"
-        );
-        require(
-            block.timestamp.u32() < rewardsInterval.end,
-            "Rewards already ended"
-        );
-        _updateRewardsPerToken();
+    function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) public onlyOwner {
+        RewardsInterval storage rewardsInterval = rewardToInterval[reward];
+        if(newEnd <= rewardsInterval.end) revert InvalidInterval();
+        if(block.timestamp >= rewardsInterval.end) revert NoIntervalInProgress();
+        _updateRewardsPerToken(reward);
 
+        // Calculate fees
+        uint256 frontendFee = rewardsAdded.mulWadDown(FACTORY.getFrontendFee());
+        uint256 protocolFee = rewardsAdded.mulWadDown(FACTORY.getProtocolFee());
+
+        // Make fees available for claiming
+        rewardToClaimantToFees[reward][frontendFeeRecipient] += frontendFee;
+        rewardToClaimantToFees[reward][FACTORY.getProtocolFeeRecipient()] += protocolFee;
+
+        // Calculate the new rate
+        rewardsAfterFee = rewardsAdded - frontendFee - protocolFee;
         uint256 remainingRewards = rewardsInterval.end < block.timestamp ? 0 : rewardsInterval.rate * (rewardsInterval.end - block.timestamp.u32());
+        uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - block.timestamp);
 
-        uint256 rate = totalRewardsAdded / (newEnd - block.timestamp);
+        if (rate < rewardsInterval.rate) revert RateCannotDecrease();
 
-        require(rate >= rewardsInterval.rate, "New rate must be greater than or equal to the current rate");
-        
+        rewardsInterval.start = block.timestamp.u32();
         rewardsInterval.end = newEnd.u32();
         rewardsInterval.rate = rate.u96();
+
+        emit RewardsSet(block.timestamp.u32(), newEnd.u32(), rate);
+
+        pullReward(reward, msg.sender, totalRewards);
     }
 
     /// @dev Set a rewards schedule
     function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
-        require(start < end, "Incorrect interval");
+        if(start < end) revert InvalidInterval();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         RewardsPerToken storage rewardsPerToken = rewardToRPT[reward];
 
         // A new rewards program can be set if one is not running
-        require(block.timestamp.u32() < rewardsInterval.start || block.timestamp.u32() > rewardsInterval.end, "Rewards still ongoing");
+        if (block.timestamp.u32() >= rewardsInterval.start && block.timestamp.u32() <= rewardsInterval.end) revert IntervalInProgress();
 
         // Update the rewards per token so that we don't lose any rewards
         _updateRewardsPerToken(reward);
 
-        uint256 rate = totalRewards / (end - start);
+        // Calculate fees
+        uint256 frontendFee = totalRewards.mulWadDown(FACTORY.getFrontendFee());
+        uint256 protocolFee = totalRewards.mulWadDown(FACTORY.getProtocolFee());
+
+        // Make fees available for claiming
+        rewardToClaimantToFees[reward][msg.sender] += frontendFee;
+        rewardToClaimantToFees[reward][FACTORY.getProtocolFeeRecipient()] += protocolFee;
+
+        // Calculate the rate
+        uint256 rewardsAfterFee = totalRewards - frontendFee - protocolFee;
+        uint256 rate = rewardsAfterFee / (end - start);
+
         rewardsInterval.start = start.u32();
         rewardsInterval.end = end.u32();
         rewardsInterval.rate = rate.u96();
@@ -123,6 +172,8 @@ contract ERC20Rewards is Owned, ERC20 {
         rewardsPerToken.lastUpdated = start.u32();
 
         emit RewardsSet(start.u32(), end.u32(), rate);
+
+        pullReward(reward, msg.sender, totalRewards);
     }
 
     /// @notice Update the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.
@@ -219,7 +270,7 @@ contract ERC20Rewards is Owned, ERC20 {
     function _claim(address reward, address from, address to, uint256 amount) internal virtual {
         _updateUserRewards(reward, from);
         rewardToUserToAR[reward][from].accumulated -= amount.u128();
-        pushRewardAndTakeFee(reward, to, amount);
+        pushReward(reward, to, amount);
         emit Claimed(reward, from, to, amount);
     }
 
@@ -261,17 +312,17 @@ contract ERC20Rewards is Owned, ERC20 {
 
 library Cast {
     function u128(uint256 x) internal pure returns (uint128 y) {
-        require(x <= type(uint128).max, "Cast overflow");
+        if( x > type(uint128).max) revert CastOverflow();
         y = uint128(x);
     }
 
     function u96(uint256 x) internal pure returns (uint96 y) {
-        require(x <= type(uint96).max, "Cast overflow");
+        if( x > type(uint128).max) revert CastOverflow();
         y = uint96(x);
     }
 
     function u32(uint256 x) internal pure returns (uint32 y) {
-        require(x <= type(uint32).max, "Cast overflow");
+        if( x > type(uint128).max) revert CastOverflow();
         y = uint32(x);
     }
 }
