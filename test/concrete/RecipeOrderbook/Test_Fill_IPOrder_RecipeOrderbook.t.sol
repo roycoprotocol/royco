@@ -191,6 +191,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Deposit tokens into the vault and approve orderbook to spend them
         mockVault.deposit(fillAmount, BOB_ADDRESS);
         mockVault.approve(address(orderbook), fillAmount);
+
         vm.stopPrank();
 
         // Create a fillable IP order
@@ -220,11 +221,11 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(BOB_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[4].topics[2])));
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
