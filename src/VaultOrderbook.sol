@@ -75,10 +75,10 @@ contract VaultOrderbook is Ownable2Step {
     error OrderConditionsNotMet();
     /// @notice emitted when trying to create an order with a quantity of 0
     error CannotPlaceZeroQuantityOrder();
-    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet
-    error NotEnoughBaseAsset();
-    /// @notice emitted when the LP has not approved the orderbook to withdraw the base asset from the funding vault
-    error InsufficientApproval();
+    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet to place an LP order
+    error NotEnoughBaseAssetToOrder();
+    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet to allocate an order
+    error NotEnoughBaseAssetToAllocate();
     /// @notice emitted when the length of the tokens and prices arrays do not match
     error ArrayLengthMismatch();
     /// @notice emitted when the LP tries to cancel an order that they did not create
@@ -127,6 +127,15 @@ contract VaultOrderbook is Ownable2Step {
         // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
         if (fundingVault != address(0) && ERC4626(targetVault).asset() != ERC4626(fundingVault).asset()) {
             revert MismatchedBaseAsset();
+        }
+
+        for (uint256 i; i < tokensRequested.length; ++i) {
+            //Check that the LP has enough base asset in the funding vault for the order
+            if (fundingVault == address(0) && ERC20(tokensRequested[i]).balanceOf(msg.sender) < quantity) {
+                revert NotEnoughBaseAssetToOrder();
+            } else if(fundingVault != address(0) && ERC4626(fundingVault).maxWithdraw(msg.sender) < quantity) {
+                revert NotEnoughBaseAssetToOrder();
+            }
         }
 
         // Emit the order creation event, used for matching orders
