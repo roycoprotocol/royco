@@ -79,6 +79,70 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         );
     }
 
+    function createLPOrder_ForTokens(
+        uint256 _targetMarketID,
+        address _fundingVault,
+        uint256 _quantity,
+        address _lpAddress
+    )
+        public
+        prankModifier(_lpAddress)
+        returns (uint256 orderId, RecipeOrderbook.LPOrder memory order)
+    {
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(mockIncentiveToken);
+        uint256[] memory tokenAmountsRequested = new uint256[](1);
+        tokenAmountsRequested[0] = 100e18;
+
+        orderId = orderbook.createLPOrder(
+            _targetMarketID, // Referencing the created market
+            _fundingVault, // Address of funding vault
+            _quantity, // Total input token amount
+            30 days, // Expiry time
+            tokensRequested, // Incentive tokens requested
+            tokenAmountsRequested // Incentive amounts requested
+        );
+
+        order = RecipeOrderbook.LPOrder(orderId, _targetMarketID, _lpAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+    }
+
+    function createLPOrder_ForPoints(
+        uint256 _targetMarketID,
+        address _fundingVault,
+        uint256 _quantity,
+        address _lpAddress,
+        address _ipAddress
+    )
+        public
+        prankModifier(_lpAddress)
+        returns (uint256 orderId, Points points)
+    {
+        address[] memory tokensRequested = new address[](1);
+        uint256[] memory tokenAmountsRequested = new uint256[](1);
+
+        string memory name = "POINTS";
+        string memory symbol = "PTS";
+
+        // Create a new Points program
+        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress, ERC4626i(address(mockVault)), orderbook);
+
+        // Allow _ipAddress to mint points in the Points program
+        points.addAllowedIP(_ipAddress);
+
+        // Add the Points program to the tokensOffered array
+        tokensRequested[0] = address(points);
+        tokenAmountsRequested[0] = 100e18;
+
+        orderId = orderbook.createLPOrder(
+            _targetMarketID, // Referencing the created market
+            _fundingVault, // Address of funding vault
+            _quantity, // Total input token amount
+            30 days, // Expiry time
+            tokensRequested, // Incentive tokens requested
+            tokenAmountsRequested // Incentive amounts requested
+        );
+    }
+
     function createIPOrder_WithPoints(
         uint256 _targetMarketID,
         uint256 _quantity,
