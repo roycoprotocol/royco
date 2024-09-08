@@ -15,7 +15,6 @@ import { VaultOrderbook } from "src/VaultOrderbook.sol";
 // import { Test } from "../lib/forge-std/src/Test.sol";
 import { Test } from "forge-std/Test.sol";
 
-
 contract VaultOrderbookTest is Test {
     VaultOrderbook public orderbook = new VaultOrderbook();
     MockERC20 public baseToken;
@@ -54,7 +53,8 @@ contract VaultOrderbookTest is Test {
         uint256[] memory tokenRatesRequested = new uint256[](1);
         tokenRatesRequested[0] = 1e18;
 
-        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(fundingVault), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 orderId =
+            orderbook.createLPOrder(address(targetVault), address(fundingVault), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         VaultOrderbook.LPOrder memory order =
             VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
@@ -152,7 +152,8 @@ contract VaultOrderbookTest is Test {
         uint256[][] memory campaignIds = new uint256[][](0);
 
         uint256 order1Id = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 order2Id =
+            orderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         VaultOrderbook.LPOrder memory order1 =
             VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
@@ -203,8 +204,10 @@ contract VaultOrderbookTest is Test {
         moreCampaignIds[2][0] = 2;
         VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](3);
 
-        uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(fundingVault), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        uint256 order3Id = orderbook.createLPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 order2Id =
+            orderbook.createLPOrder(address(targetVault2), address(fundingVault), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 order3Id =
+            orderbook.createLPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         //Need to make the funding vault for order2 the same as the funding vault for order2 used in createLPOrder
         VaultOrderbook.LPOrder memory order2 =

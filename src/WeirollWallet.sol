@@ -9,6 +9,10 @@ import { Clone } from "lib/clones-with-immutable-args/src/Clone.sol";
 /// @notice WeirollWallet implementation contract.
 ///   Implements a simple smart contract wallet that can execute Weiroll VM commands
 contract WeirollWallet is Clone, VM {
+    /// @notice Let the Weiroll Wallet receive ether directly if needed
+    receive() external payable { }
+    /// @notice Also allow a fallback with no logic if erroneous data is provided 
+    fallback() external payable { }
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
@@ -54,7 +58,7 @@ contract WeirollWallet is Clone, VM {
     uint256[] public unlockRewardAmounts;
     address public forfeitRecipient;
 
-    /// @notice Forfeit all rewards to get control of the wallet back 
+    /// @notice Forfeit all rewards to get control of the wallet back
     function forfeit() public onlyOrderbook {
         if (!isForfeitable()) {
             revert WalletNotForfeitable();

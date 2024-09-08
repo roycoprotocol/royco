@@ -124,9 +124,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         );
 
         // MockERC20 should track calls to `award` in points contract
-        vm.expectCall(
-            address(points), abi.encodeWithSignature("award(address,uint256,address)", OWNER_ADDRESS, protocolFeeAmount, ALICE_ADDRESS)
-        );
+        vm.expectCall(address(points), abi.encodeWithSignature("award(address,uint256,address)", OWNER_ADDRESS, protocolFeeAmount, ALICE_ADDRESS));
 
         vm.startPrank(ALICE_ADDRESS);
         // Create the IP order
