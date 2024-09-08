@@ -549,6 +549,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             // market.rewardStyle == RewardStyle.Forfeitable || market.rewardStyle == RewardStyle.Arrear
             LockedRewardParams memory params;
             params.tokens = order.tokensRequested;
+            params.amounts = new uint256[](order.tokensRequested.length);
             params.ip = msg.sender;
 
             for (uint256 i = 0; i < order.tokensRequested.length; ++i) {
