@@ -545,27 +545,45 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         WeirollWallet wallet =
             WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime, forfeitable))));
 
-        if (market.rewardStyle == RewardStyle.Forfeitable || market.rewardStyle == RewardStyle.Arrear) {
+        if (market.rewardStyle != RewardStyle.Upfront) {
+            // market.rewardStyle == RewardStyle.Forfeitable || market.rewardStyle == RewardStyle.Arrear
             LockedRewardParams memory params;
             params.tokens = order.tokensRequested;
-            params.amounts = order.tokenAmountsRequested;
             params.ip = msg.sender;
+
+            for (uint256 i = 0; i < order.tokensRequested.length; ++i) {
+                // Get distribution of amounts
+                uint256 amount = order.tokenAmountsRequested[i];
+                uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
+                uint256 frontendFeeAmount = amount.mulWadDown(marketIDToWeirollMarket[order.targetMarketID].frontendFee);
+
+                // This is the amount that the LP can claim once weiroll wallet is unlocked
+                params.amounts[i] = amount - protocolFeeAmount - frontendFeeAmount;
+
+                // Account for protocol and frontend fees
+                accountFee(protocolFeeClaimant, order.tokensRequested[i], protocolFeeAmount, msg.sender);
+                accountFee(frontendFeeRecipient, order.tokensRequested[i], frontendFeeAmount, msg.sender);
+
+                // If incentives will be paid out later, only handle the token case. Points will be awarded on claim.
+                if (!PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
+                    // If not a points program, transfer full amount to orderbook, so it can pay out LP on claim
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), amount);
+                }
+            }
+            // write locked params for use in claiming fees
             weirollWalletToLockedRewardParams[address(wallet)] = params;
-        }
+        } else {
+            // market.rewardStyle == RewardStyle.Upfront
+            for (uint256 i = 0; i < order.tokensRequested.length; ++i) {
+                // Get distribution of amounts
+                uint256 amount = order.tokenAmountsRequested[i];
+                uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
+                uint256 frontendFeeAmount = amount.mulWadDown(marketIDToWeirollMarket[order.targetMarketID].frontendFee);
+                uint256 incentiveAmount = amount - protocolFeeAmount - frontendFeeAmount;
 
-        uint256 len = order.tokensRequested.length;
-        for (uint256 i = 0; i < len; ++i) {
-            // Get distribution of amounts
-            uint256 amount = order.tokenAmountsRequested[i];
-            uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
-            uint256 frontendFeeAmount = amount.mulWadDown(marketIDToWeirollMarket[order.targetMarketID].frontendFee);
-            uint256 incentiveAmount = amount - protocolFeeAmount - frontendFeeAmount;
-
-            // Account for protocol and frontend fees
-            accountFee(protocolFeeClaimant, order.tokensRequested[i], protocolFeeAmount, msg.sender);
-            accountFee(frontendFeeRecipient, order.tokensRequested[i], frontendFeeAmount, msg.sender);
-
-            if (market.rewardStyle == RewardStyle.Upfront) {
+                // Account for protocol and frontend fees
+                accountFee(protocolFeeClaimant, order.tokensRequested[i], protocolFeeAmount, msg.sender);
+                accountFee(frontendFeeRecipient, order.tokensRequested[i], frontendFeeAmount, msg.sender);
                 // If incentives should be paid out upfront to LP
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
                     // Award points right now if points program
@@ -573,12 +591,6 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 } else {
                     // Transfer LP's incentives to them on fill if token incentive
                     ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, amount);
-                }
-            } else {
-                // If incentives will be paid out later, only handle the token case. Points will be awarded on claim.
-                if (!PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
-                    // If not a points program, transfer full amount to orderbook, so it can pay out LP on claim
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), amount);
                 }
             }
         }
