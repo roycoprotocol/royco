@@ -82,8 +82,95 @@ contract VaultOrderbookTest is Test {
         vm.expectRevert(VaultOrderbook.CannotPlaceExpiredOrder.selector);
         orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp - 1, tokensRequested, tokenRatesRequested);
 
+        assertEq(orderbook.numOrders(), 0);
+
         // NOTE - Testcase added to address bug of expiry at timestamp, should not revert
-        orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp, tokensRequested, tokenRatesRequested);
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp, tokensRequested, tokenRatesRequested);
+        VaultOrderbook.LPOrder memory order =
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp, tokensRequested, tokenRatesRequested);
+
+        assertEq(orderId, 0);
+        assertEq(orderbook.numOrders(), 1);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order)), 100 * 1e18);
+
+        vm.stopPrank();
+    }
+
+    function testCannotCreateZeroQuantityOrder() public {
+        vm.startPrank(alice);
+        baseToken.approve(address(orderbook), 100 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        vm.expectRevert(VaultOrderbook.CannotPlaceZeroQuantityOrder.selector);
+        orderbook.createLPOrder(address(targetVault), address(0), 0, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        assertEq(orderbook.numOrders(), 0);
+
+        vm.stopPrank();
+    }
+
+    function testMismatchedBaseAsset() public {
+        vm.startPrank(alice);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        vm.expectRevert(VaultOrderbook.MismatchedBaseAsset.selector);
+        orderbook.createLPOrder(address(targetVault), address(fundingVault2), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        assertEq(orderbook.numOrders(), 0);
+
+        vm.stopPrank();
+    }
+
+    function testNotEnoughBaseAssetToOrder() public {
+        vm.startPrank(alice);
+
+        baseToken.approve(address(orderbook), 100 * 1e18);
+        baseToken.approve(address(fundingVault), 100 * 1e18);
+        fundingVault.deposit(100 * 1e18, alice);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        //Test when funding vault is the user's address, revert occurs
+        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToOrder.selector);
+        orderbook.createLPOrder(address(targetVault), address(0), 2000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        assertEq(orderbook.numOrders(), 0);
+
+        //Test that when funding vault is an ERC4626 vault, revert occurs
+        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToOrder.selector);
+        orderbook.createLPOrder(address(targetVault), address(fundingVault), 2000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        assertEq(orderbook.numOrders(), 0);
+
+        vm.stopPrank();
+    }
+
+    function testArrayLengthMismatch() public {
+        vm.startPrank(alice);
+        baseToken.mint(alice, 1000 * 1e18);
+        baseToken.approve(address(orderbook), 100 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](2);
+        tokenRatesRequested[0] = 1e18;
+        tokenRatesRequested[1] = 2e18;
+
+        vm.expectRevert(VaultOrderbook.ArrayLengthMismatch.selector);
+        orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        assertEq(orderbook.numOrders(), 0);
 
         vm.stopPrank();
     }
@@ -141,7 +228,7 @@ contract VaultOrderbookTest is Test {
 
         uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, 5, tokensRequested, tokenRatesRequested);
         VaultOrderbook.LPOrder memory order =
-            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), 5, tokensRequested, tokenRatesRequested);
 
         uint256[] memory campaignIds = new uint256[](0);
 
@@ -150,60 +237,13 @@ contract VaultOrderbookTest is Test {
         vm.expectRevert(VaultOrderbook.OrderExpired.selector);
         orderbook.allocateOrder(order, campaignIds);
 
-        //Note - Going to add testcase to allocate an order expiring at the current timestamp to testAllocateOrder (the allocation should not revert)
+        // Verify allocation did not occur
+        bytes32 orderHash = orderbook.getOrderHash(order);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 100 * 1e18);
+        assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+        assertEq(targetVault.balanceOf(alice), 0);
 
-        vm.stopPrank();
-    }
-
-    function testCannotCreateZeroQuantityOrder() public {
-        vm.startPrank(alice);
-        baseToken.approve(address(orderbook), 100 * 1e18);
-
-        address[] memory tokensRequested = new address[](1);
-        tokensRequested[0] = address(baseToken);
-        uint256[] memory tokenRatesRequested = new uint256[](1);
-        tokenRatesRequested[0] = 1e18;
-
-        vm.expectRevert(VaultOrderbook.CannotPlaceZeroQuantityOrder.selector);
-        orderbook.createLPOrder(address(targetVault), address(0), 0, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-
-        vm.stopPrank();
-    }
-
-    function testMismatchedBaseAsset() public {
-        vm.startPrank(alice);
-
-        address[] memory tokensRequested = new address[](1);
-        tokensRequested[0] = address(baseToken);
-        uint256[] memory tokenRatesRequested = new uint256[](1);
-        tokenRatesRequested[0] = 1e18;
-
-        vm.expectRevert(VaultOrderbook.MismatchedBaseAsset.selector);
-        orderbook.createLPOrder(address(targetVault), address(fundingVault2), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-
-
-        vm.stopPrank();
-    }
-
-    function testNotEnoughBaseAssetToOrder() public {
-        vm.startPrank(alice);
-
-        baseToken.approve(address(orderbook), 100 * 1e18);
-        baseToken.approve(address(fundingVault), 100 * 1e18);
-        fundingVault.deposit(100 * 1e18, alice);
-
-        address[] memory tokensRequested = new address[](1);
-        tokensRequested[0] = address(baseToken);
-        uint256[] memory tokenRatesRequested = new uint256[](1);
-        tokenRatesRequested[0] = 1e18;
-
-        //Test when funding vault is the user's address, revert occurs
-        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToOrder.selector);
-        orderbook.createLPOrder(address(targetVault), address(0), 2000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-
-        //Test that when funding vault is an ERC4626 vault, revert occurs
-        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToOrder.selector);
-        orderbook.createLPOrder(address(targetVault), address(fundingVault), 2000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        //todo - Going to add testcase to allocate an order expiring at the current timestamp to testAllocateOrder (the allocation should not revert)
 
         vm.stopPrank();
     }
@@ -237,12 +277,17 @@ contract VaultOrderbookTest is Test {
         vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToAllocate.selector);
         orderbook.allocateOrder(order2, campaignIds);
 
+        assertEq(baseToken.balanceOf(address(alice)), 0);
+        assertEq(fundingVault.balanceOf(alice), 1000 * 1e18);
+        assertEq(targetVault.balanceOf(alice), 0);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order1)), 1000 * 1e18);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order2)), 1000 * 1e18);
+
         vm.stopPrank();
     }
 
     function testNotEnoughCampaignIds() public {
         vm.startPrank(alice);
-        baseToken.mint(alice, 1000 * 1e18);
         baseToken.approve(address(orderbook), 100 * 1e18);
 
         address[] memory tokensRequested = new address[](1);
@@ -253,8 +298,10 @@ contract VaultOrderbookTest is Test {
         VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](2);
         uint256[][] memory campaignIds = new uint256[][](0);
 
-        uint256 order1Id = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 order1Id = 
+            orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 order2Id = 
+            orderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         VaultOrderbook.LPOrder memory order1 =
             VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
@@ -267,12 +314,17 @@ contract VaultOrderbookTest is Test {
         vm.expectRevert(VaultOrderbook.NotEnoughCampaignIds.selector);
         orderbook.allocateOrders(orders, campaignIds);
 
+        assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+        assertEq(targetVault.balanceOf(alice), 0);
+        assertEq(targetVault2.balanceOf(alice), 0);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order1)), 1000 * 1e18);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order2)), 1000 * 1e18);
+
         vm.stopPrank();
     }
 
     function testNotEnoughRemainingQuantity() public {
         vm.startPrank(alice);
-        baseToken.mint(alice, 1000 * 1e18);
         baseToken.approve(address(orderbook), 100 * 1e18);
 
         address[] memory tokensRequested = new address[](1);
@@ -280,7 +332,8 @@ contract VaultOrderbookTest is Test {
         uint256[] memory tokenRatesRequested = new uint256[](1);
         tokenRatesRequested[0] = 1e18;
 
-        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 orderId = 
+            orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         VaultOrderbook.LPOrder memory order =
             VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
@@ -289,6 +342,10 @@ contract VaultOrderbookTest is Test {
         uint256[] memory campaignIds = new uint256[](0);
         vm.expectRevert(VaultOrderbook.NotEnoughRemainingQuantity.selector);
         orderbook.allocateOrder(order, campaignIds, 200 * 1e18);
+
+        assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+        assertEq(targetVault.balanceOf(alice), 0);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order)), 100 * 1e18);
 
         vm.stopPrank();
     }
@@ -413,23 +470,6 @@ contract VaultOrderbookTest is Test {
         assertEq(orderbook.orderHashToRemainingQuantity(order3Hash), 100 * 1e18);
 
         assertEq(baseToken.balanceOf(address(alice)), 2000 * 1e18);
-
-        vm.stopPrank();
-    }
-
-    function testArrayLengthMismatch() public {
-        vm.startPrank(alice);
-        baseToken.mint(alice, 1000 * 1e18);
-        baseToken.approve(address(orderbook), 100 * 1e18);
-
-        address[] memory tokensRequested = new address[](1);
-        tokensRequested[0] = address(baseToken);
-        uint256[] memory tokenRatesRequested = new uint256[](2);
-        tokenRatesRequested[0] = 1e18;
-        tokenRatesRequested[1] = 2e18;
-
-        vm.expectRevert(VaultOrderbook.ArrayLengthMismatch.selector);
-        orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         vm.stopPrank();
     }
