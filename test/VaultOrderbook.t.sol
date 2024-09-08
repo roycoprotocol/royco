@@ -121,7 +121,7 @@ contract VaultOrderbookTest is Test {
         vm.expectRevert(VaultOrderbook.TooManyCampaignIds.selector);
         orderbook.allocateOrder(order, campaignIds);
 
-        // Verify allocation
+        // Verify allocation did not occur
         bytes32 orderHash = orderbook.getOrderHash(order);
         assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 100 * 1e18);
         assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
@@ -392,9 +392,57 @@ contract VaultOrderbookTest is Test {
         vm.stopPrank();
     }
 
+    function testOrderConditionsNotMet() public {
+        vm.startPrank(alice);
+
+        baseToken.approve(address(orderbook), 1000 * 1e18);
+        baseToken.approve(address(targetVault), 1000 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 5e18;
+
+        // Create an order
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        VaultOrderbook.LPOrder memory order =
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        vm.stopPrank();
+
+        // Setup for allocation
+        vm.startPrank(bob);
+        uint256[] memory campaignIds = new uint256[](1);
+        campaignIds[0] = 0; // Assuming campaign ID 0 exists
+
+        // Mock the previewRateAfterDeposit function
+        vm.mockCall(
+            address(targetVault), 
+            abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(0), uint256(100 * 1e18)), 
+            abi.encode(2e18)
+            );
+        // Mock the campaignToToken variable
+        vm.mockCall(
+            address(targetVault),
+            abi.encodeWithSelector(bytes4(keccak256("campaignToToken(uint256)")), uint256(0)),
+            abi.encode(address(baseToken)) // Mocking the address return
+        );
+        // Allocate the order
+        vm.expectRevert(VaultOrderbook.OrderConditionsNotMet.selector);
+        orderbook.allocateOrder(order, campaignIds);
+
+        // Verify allocation did not occur
+        bytes32 orderHash = orderbook.getOrderHash(order);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 100 * 1e18);
+        assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+        assertEq(targetVault.balanceOf(alice), 0);
+
+        vm.stopPrank();
+    }
+
     function testAllocateOrder() public {
         vm.startPrank(alice);
-        baseToken.mint(alice, 1000 * 1e18);
 
         baseToken.approve(address(orderbook), 1000 * 1e18);
         baseToken.approve(address(targetVault), 1000 * 1e18);
