@@ -6,17 +6,12 @@ import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
-
-interface feeTeller {
-    function getFrontendFee() external view returns (uint256);
-    function getProtocolFee() external view returns (uint256);
-    function getProtocolFeeRecipient() external view returns (address);
-}
+import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
-contract ERC20Rewards is Owned, ERC20 {
+contract ERC4626i is Owned, ERC20 {
     using SafeTransferLib for ERC20;
     using Cast for uint256;
     using FixedPointMathLib for uint256;
