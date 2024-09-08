@@ -9,6 +9,7 @@ import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 
 import "lib/forge-std/src/Test.sol";
+import "lib/forge-std/src/Vm.sol";
 
 contract RoycoTestBase is Test {
     // -----------------------------------------
