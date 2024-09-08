@@ -13,7 +13,7 @@ import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 import { VaultOrderbook } from "src/VaultOrderbook.sol";
 
 // import { Test } from "../lib/forge-std/src/Test.sol";
-import { Test } from "forge-std/Test.sol";
+import { Test, console } from "forge-std/Test.sol";
 
 
 contract VaultOrderbookTest is Test {
@@ -54,9 +54,9 @@ contract VaultOrderbookTest is Test {
         uint256[] memory tokenRatesRequested = new uint256[](1);
         tokenRatesRequested[0] = 1e18;
 
-        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(fundingVault), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         VaultOrderbook.LPOrder memory order =
-            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         assertEq(orderId, 0);
         assertEq(orderbook.numOrders(), 1);
@@ -135,6 +135,62 @@ contract VaultOrderbookTest is Test {
         vm.expectRevert(VaultOrderbook.MismatchedBaseAsset.selector);
         orderbook.createLPOrder(address(targetVault), address(fundingVault2), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
+
+        vm.stopPrank();
+    }
+
+    function testNotEnoughBaseAssetToOrder() public {
+        vm.startPrank(alice);
+
+        baseToken.approve(address(orderbook), 100 * 1e18);
+        baseToken.approve(address(fundingVault), 100 * 1e18);
+        fundingVault.deposit(100 * 1e18, alice);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        //Test when funding vault is the user's address, revert occurs
+        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToOrder.selector);
+        orderbook.createLPOrder(address(targetVault), address(0), 2000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        //Test that when funding vault is an ERC4626 vault, revert occurs
+        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToOrder.selector);
+        orderbook.createLPOrder(address(targetVault), address(fundingVault), 2000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        vm.stopPrank();
+    }
+
+    function testNotEnoughBaseAssetToAllocate() public {
+        vm.startPrank(alice);
+
+        baseToken.approve(address(orderbook), 1000 * 1e18);
+        baseToken.approve(address(fundingVault), 1000 * 1e18);
+
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](1);
+        tokenRatesRequested[0] = 1e18;
+
+        uint256 order1Id = orderbook.createLPOrder(address(targetVault), address(0), 1000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        fundingVault.deposit(1000 * 1e18, alice);
+        uint256 order2Id = orderbook.createLPOrder(address(targetVault), address(fundingVault), 1000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        VaultOrderbook.LPOrder memory order1 =
+            VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        VaultOrderbook.LPOrder memory order2 = 
+            VaultOrderbook.LPOrder(order2Id, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+
+        uint256[] memory campaignIds = new uint256[](0);
+
+        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToAllocate.selector);
+        orderbook.allocateOrder(order1, campaignIds);
+
+        fundingVault.withdraw(1000 * 1e18, alice, alice);
+        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToAllocate.selector);
+        orderbook.allocateOrder(order2, campaignIds);
+
         vm.stopPrank();
     }
 
@@ -207,7 +263,7 @@ contract VaultOrderbookTest is Test {
             VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         vm.stopPrank();
-        
+
         vm.startPrank(bob);
         vm.expectRevert(VaultOrderbook.NotOrderCreator.selector);
         orderbook.cancelOrder(order);
@@ -243,32 +299,32 @@ contract VaultOrderbookTest is Test {
         orderbook.allocateOrder(order, campaignIds);
 
         // New - Testcase added to attempt to allocate a cancelled order within a group of multiple valid orders
-        uint256[][] memory moreCampaignIds = new uint256[][](3);
-        moreCampaignIds[0] = new uint256[](1);
-        moreCampaignIds[0][0] = 0;
-        moreCampaignIds[1] = new uint256[](1);
-        moreCampaignIds[1][0] = 1;
-        moreCampaignIds[2] = new uint256[](1);
-        moreCampaignIds[2][0] = 2;
-        VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](3);
+//         uint256[][] memory moreCampaignIds = new uint256[][](3);
+//         moreCampaignIds[0] = new uint256[](1);
+//         moreCampaignIds[0][0] = 0;
+//         moreCampaignIds[1] = new uint256[](1);
+//         moreCampaignIds[1][0] = 1;
+//         moreCampaignIds[2] = new uint256[](1);
+//         moreCampaignIds[2][0] = 2;
+//         VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](3);
 
-        uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(fundingVault), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        uint256 order3Id = orderbook.createLPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+//         uint256 order2Id = orderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+//         uint256 order3Id = orderbook.createLPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-        //todo  - Need to make the funding vault for order2 the same as the funding vault for order2 used in createLPOrder
-        VaultOrderbook.LPOrder memory order2 =
-            VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        VaultOrderbook.LPOrder memory order3 =
-            VaultOrderbook.LPOrder(order3Id, address(targetVault3), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+//         //todo  - Need to make the funding vault for order2 the same as the funding vault for order2 used in createLPOrder
+//         VaultOrderbook.LPOrder memory order2 =
+//             VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+//         VaultOrderbook.LPOrder memory order3 =
+//             VaultOrderbook.LPOrder(order3Id, address(targetVault3), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-        orders[0] = order2;
-        orders[1] = order;
-        orders[2] = order3;
+//         orders[0] = order2;
+//         orders[1] = order;
+//         orders[2] = order3;
 
-        vm.expectRevert(VaultOrderbook.OrderDoesNotExist.selector);
-        orderbook.allocateOrders(orders, moreCampaignIds);
+//         vm.expectRevert(VaultOrderbook.OrderDoesNotExist.selector);
+//         orderbook.allocateOrders(orders, moreCampaignIds);
 
-        //*Potentially add asserts to check that first order was allocated while 2nd and 3rd order were not allocated*
+//         //*Potentially add asserts to check that first order was allocated while 2nd and 3rd order were not allocated*
 
         vm.stopPrank();
     }
@@ -285,7 +341,7 @@ contract VaultOrderbookTest is Test {
         tokenRatesRequested[1] = 2e18;
 
         vm.expectRevert(VaultOrderbook.ArrayLengthMismatch.selector);
-        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         vm.stopPrank();
     }

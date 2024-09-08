@@ -2,8 +2,10 @@
 pragma solidity ^0.8.0;
 
 import { ERC20 } from "../lib/solmate/src/tokens/ERC20.sol";
+import { IERC20 } from "src/interfaces/IERC20.sol";//added to check the balance of a token users hold
 import { ERC4626 } from "../lib/solmate/src/tokens/ERC4626.sol";
 import { ERC4626i } from "src/ERC4626i.sol";
+import { IERC4626 } from "src/interfaces/IERC4626.sol";//added to check the amount of tokens in a vault that the user holds
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
@@ -75,8 +77,10 @@ contract VaultOrderbook is Ownable2Step {
     error OrderConditionsNotMet();
     /// @notice emitted when trying to create an order with a quantity of 0
     error CannotPlaceZeroQuantityOrder();
-    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet
-    error NotEnoughBaseAsset();
+    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet to place an LP order
+    error NotEnoughBaseAssetToOrder();
+    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet to allocate an order
+    error NotEnoughBaseAssetToAllocate();
     /// @notice emitted when the LP has not approved the orderbook to withdraw the base asset from the funding vault
     error InsufficientApproval();
     /// @notice emitted when the length of the tokens and prices arrays do not match
@@ -129,6 +133,21 @@ contract VaultOrderbook is Ownable2Step {
             revert MismatchedBaseAsset();
         }
 
+        //Check that the LP has enough base asset in the funding vault for the order
+        if(fundingVault == address(0)){
+            for (uint256 i; i < tokensRequested.length; ++i) {
+                if (IERC20(tokensRequested[i]).balanceOf(msg.sender) < quantity) {
+                    revert NotEnoughBaseAssetToOrder();
+                }
+            }
+        }else{
+            for (uint256 i; i < tokensRequested.length; ++i) {
+                if (IERC4626(fundingVault).maxWithdraw(msg.sender) < quantity) {
+                    revert NotEnoughBaseAssetToOrder();
+                }
+            }
+        }
+
         // Emit the order creation event, used for matching orders
         emit LPOrderCreated(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity);
         // Set the quantity of the order
@@ -163,6 +182,21 @@ contract VaultOrderbook is Ownable2Step {
         }
         if (campaignIds.length > 5) {
             revert TooManyCampaignIds();
+        }
+
+        //Check that the LP has enough base asset in the funding vault for the order
+        if(order.fundingVault == address(0)){
+            for (uint256 i; i < order.tokensRequested.length; ++i) {
+                if (IERC20(order.tokensRequested[i]).balanceOf(order.lp) < quantity) {
+                    revert NotEnoughBaseAssetToAllocate();
+                }
+            }
+        }else{
+            for (uint256 i; i < order.tokensRequested.length; ++i) {
+                if (IERC4626(order.fundingVault).maxWithdraw(order.lp) < quantity) {
+                    revert NotEnoughBaseAssetToAllocate();
+                }
+            }
         }
 
         // Iterate over each token the LP requested
