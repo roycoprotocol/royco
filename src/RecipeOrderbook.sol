@@ -450,7 +450,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
 
         // Check that the order's base asset matches the market's base asset
-        if (market.inputToken != ERC4626(fundingVault).asset()) {
+        if (fundingVault != address(0) && market.inputToken != ERC4626(fundingVault).asset()) {
             revert MismatchedBaseAsset();
         }
         // Check that the order isn't empty
