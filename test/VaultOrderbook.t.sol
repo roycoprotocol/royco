@@ -373,9 +373,17 @@ contract VaultOrderbookTest is Test {
         campaignIds[0] = 0; // Assuming campaign ID 0 exists
 
         // Mock the previewRateAfterDeposit function
-        // You'll need to implement this function in your MockERC4626 contract
-        vm.mockCall(address(targetVault), abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(0), uint256(100 * 1e18)), abi.encode(2e18));
-
+        vm.mockCall(
+            address(targetVault), 
+            abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(0), uint256(100 * 1e18)), 
+            abi.encode(2e18)
+            );
+        // Mock the campaignToToken variable
+        vm.mockCall(
+            address(targetVault),
+            abi.encodeWithSelector(bytes4(keccak256("campaignToToken(uint256)")), uint256(0)),
+            abi.encode(address(baseToken)) // Mocking the address return
+        );
         // Allocate the order
         orderbook.allocateOrder(order, campaignIds);
 
