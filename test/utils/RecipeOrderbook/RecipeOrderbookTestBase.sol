@@ -115,7 +115,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
     )
         public
         prankModifier(_lpAddress)
-        returns (uint256 orderId, Points points)
+        returns (uint256 orderId, RecipeOrderbook.LPOrder memory order, Points points)
     {
         address[] memory tokensRequested = new address[](1);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
@@ -141,6 +141,8 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
             tokensRequested, // Incentive tokens requested
             tokenAmountsRequested // Incentive amounts requested
         );
+
+        order = RecipeOrderbook.LPOrder(orderId, _targetMarketID, _lpAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
     }
 
     function createIPOrder_WithPoints(
@@ -191,5 +193,22 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         // Fees are taken as a percentage of the promised amounts
         frontendFeeAmount = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
         incentiveAmount = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
+    }
+
+    function calculateLPOrderExpectedIncentiveAndFrontendFee(
+        uint256 protocolFee,
+        uint256 frontendFee,
+        uint256 orderAmount,
+        uint256 fillAmount,
+        uint256 tokenAmountRequested
+    )
+        internal
+        pure
+        returns (uint256 fillPercentage, uint256 frontendFeeAmount, uint256 protocolFeeAmount, uint256 incentiveAmount)
+    {
+        fillPercentage = fillAmount.divWadDown(orderAmount);
+        incentiveAmount = tokenAmountRequested.mulWadDown(fillPercentage);
+        protocolFeeAmount = incentiveAmount.mulWadDown(protocolFee);
+        frontendFeeAmount = incentiveAmount.mulWadDown(frontendFee);
     }
 }
