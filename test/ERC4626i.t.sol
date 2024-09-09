@@ -133,7 +133,7 @@ contract ERC4626iTest is Test {
       }
   }
 
-   //Not applicable to rewrite
+   //Not applicable to rewrite, needs to major fixes
 //    function testCanCreateRewardsCampaign(uint96 _incentiveAmount) public {
 //        vm.assume(_incentiveAmount > 0);
 //        uint256 incentiveAmount = uint256(_incentiveAmount);
@@ -165,7 +165,7 @@ contract ERC4626iTest is Test {
 //        assertEq(uint256(incentiveAmount) / (end - start), rate);
 //    }
 
-   //Not applicable to rewrite
+   //Not applicable to rewrite, needs to major fixes
 //    function testOptIntoCampaign() public {
 //        ERC4626i campaign = testFactory.createIncentivizedVault(testVault);
 //        vm.startPrank(REGULAR_USER);
@@ -191,7 +191,7 @@ contract ERC4626iTest is Test {
 //        vm.stopPrank();
 //    }
 
-   //Not applicable to rewrite
+   //Not applicable to rewrite, needs to major fixes
 //    function testOptOutOfLastCampaign() public {
 //        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
 //        vm.startPrank(REGULAR_USER);
@@ -213,7 +213,7 @@ contract ERC4626iTest is Test {
 //        vm.stopPrank();
 //    }
 
-   //Not applicable to rewrite
+   //Not applicable to rewrite, needs to major fixes
 //    function testBasicRewardsCampaign(uint96 _incentiveAmount, uint112 depositAmount, uint16 _duration) public {
 //        vm.assume(_incentiveAmount > 0.0001 ether);
 //        vm.assume(depositAmount > 0.0001 ether);
@@ -254,7 +254,7 @@ contract ERC4626iTest is Test {
 //        assertGt(claimed, 0);
 //    }
 
-   //Not applicable to rewrite
+   //Not applicable to rewrite, needs to major fixes
 //    function createTestCampaign(uint256 incentiveAmount, uint256 depositAmount, uint256 duration) public returns (uint256 campaignId, ERC4626i iVault) {
 //        iVault = testFactory.createIncentivizedVault(testVault);
 
@@ -277,7 +277,7 @@ contract ERC4626iTest is Test {
 //        vm.stopPrank();
 //    }
 
-   //Not applicable to rewrite
+   //Not applicable to rewrite, needs to major fixes
 //    function testPoolUpdate(uint96 _incentiveAmount, uint112 depositAmount, uint16 _duration) public {
 //        vm.assume(_incentiveAmount > 0.0001 ether);
 //        vm.assume(depositAmount > 0.0001 ether);
@@ -304,7 +304,7 @@ contract ERC4626iTest is Test {
 //        assertGt(mostRecentUpdate, lastUpdated);
 //    }
 
-       //Not applicable to rewrite
+   //Not applicable to rewrite, needs to major fixes
 //    function testRetroactiveOptIn(uint96 _incentiveAmount, uint112 depositAmount, uint16 _duration) public {
 //        vm.assume(_incentiveAmount > 0.0001 ether);
 //        vm.assume(depositAmount > 0.0001 ether);
