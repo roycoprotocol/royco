@@ -19,12 +19,10 @@ contract Test_ClaimFees_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function test_ClaimFeesAfterFillingIPOrder() external {
         uint256 frontendFee = orderbook.minimumFrontendFee();
-        uint256 marketId = orderbook.createMarket(
-            address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront
-        );
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18;   // Fill amount
+        uint256 fillAmount = 100e18; // Fill amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, ALICE_ADDRESS);
@@ -36,8 +34,7 @@ contract Test_ClaimFees_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         // Calculate expected frontend and protocol fees
-        (, uint256 expectedFrontendFeeAmount,) =
-            calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
+        (, uint256 expectedFrontendFeeAmount,) = calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         uint256 protocolFeeAmount = fillAmount.mulWadDown(orderbook.protocolFee());
 
