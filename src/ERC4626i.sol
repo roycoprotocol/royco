@@ -110,6 +110,8 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         DEPOSIT_ASSET = ERC20(VAULT.asset());
         ERC4626I_FACTORY = ERC4626iFactory(msg.sender);
         POINTS_FACTORY = PointsFactory(pointsFactory);
+
+        DEPOSIT_ASSET.approve(vault, type(uint256).max);
     }
 
     /// @param rewardsToken The new reward token / points program to be used as incentives
@@ -199,7 +201,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param end The end timestamp of the interval 
     /// @param totalRewards The amount of rewards to distribute over the interval
     function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
-        if(start < end) revert InvalidInterval();
+        if (start > end) revert InvalidInterval();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         RewardsPerToken storage rewardsPerToken = rewardToRPT[reward];
