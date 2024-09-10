@@ -443,7 +443,7 @@ contract VaultOrderbookTest is Test {
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(0), uint256(100 * 1e18)),
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
            abi.encode(2e18)
            );
        // Allocate the order
@@ -502,17 +502,17 @@ contract VaultOrderbookTest is Test {
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(0), uint256(100 * 1e18)),
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
            abi.encode(2e18)
            );
        vm.mockCall(
            address(targetVault2),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(1), uint256(100 * 1e18)),
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
            abi.encode(2e18)
            );
        vm.mockCall(
            address(targetVault3),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(2), uint256(100 * 1e18)),
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
            abi.encode(2e18)
            );
 
