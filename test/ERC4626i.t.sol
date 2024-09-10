@@ -12,7 +12,7 @@ import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
 import { PointsFactory } from "src/PointsFactory.sol";
 
-import { Test } from "forge-std/Test.sol";
+import { Test, console } from "forge-std/Test.sol";
 
 contract ERC4626iTest is Test {
     ERC20 token = ERC20(address(new MockERC20("Mock Token", "MOCK")));
@@ -95,23 +95,28 @@ contract ERC4626iTest is Test {
 
     function testSetRewardsInterval(uint32 start, uint32 duration, uint256 totalRewards) public {
         vm.assume(duration >= testIncentivizedVault.MIN_CAMPAIGN_DURATION());
+        vm.assume(duration <= type(uint32).max-start);//If this is not here, then 'end' variable will overflow
         vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
         
         uint32 end = start + duration;
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
-        
+
         rewardToken1.mint(address(this), totalRewards);
         rewardToken1.approve(address(testIncentivizedVault), totalRewards);
-
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, end, totalRewards);
-
         (uint32 actualStart, uint32 actualEnd, uint96 actualRate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
+
         assertEq(actualStart, start);
         assertEq(actualEnd, end);
         assertEq(actualRate, totalRewards / duration);
     }
 
     function testExtendRewardsInterval(uint32 start, uint32 initialDuration, uint32 extension, uint256 initialRewards, uint256 additionalRewards) public {
+        //If these three are not here, then 'intialEnd' or 'newEnd' variables will overflow
+        vm.assume(start <= type(uint32).max-initialDuration);
+        vm.assume(initialDuration <= type(uint32).max-extension);
+        vm.assume(extension <= type(uint32).max-start);
+
         vm.assume(initialDuration >= testIncentivizedVault.MIN_CAMPAIGN_DURATION());
         vm.assume(extension > 0);
         vm.assume(initialRewards > 0 && initialRewards < type(uint96).max);
@@ -219,6 +224,8 @@ contract ERC4626iTest is Test {
         vm.warp(start + timeElapsed);
 
         uint256 expectedRewards = (rewardAmount * timeElapsed) / duration;
+        console.log("Expected rewards: ", expectedRewards);
+        console.log("Regular user balance: ", rewardToken1.balanceOf(REGULAR_USER));
         testIncentivizedVault.claim(REGULAR_USER);
         vm.stopPrank();
 
