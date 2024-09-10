@@ -308,7 +308,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for transfers
         vm.expectEmit(true, false, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(IP_ADDRESS, address(orderbook), expectedFrontendFeeAmount + expectedProtocolFeeAmount + orderAmount);
+        emit ERC20.Transfer(IP_ADDRESS, address(orderbook), expectedFrontendFeeAmount + expectedProtocolFeeAmount + expectedIncentiveAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
@@ -432,7 +432,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for transfers
         vm.expectEmit(true, false, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(IP_ADDRESS, address(orderbook), expectedFrontendFeeAmount + expectedProtocolFeeAmount + orderAmount);
+        emit ERC20.Transfer(IP_ADDRESS, address(orderbook), expectedFrontendFeeAmount + expectedProtocolFeeAmount + expectedIncentiveAmount);
 
         vm.expectEmit(true, false, true, false, address(mockVault));
         emit ERC4626.Withdraw(address(orderbook), address(0), LP_ADDRESS, fillAmount, 0);
@@ -559,7 +559,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for transfers
         vm.expectEmit(true, false, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(IP_ADDRESS, address(orderbook), expectedFrontendFeeAmount + expectedProtocolFeeAmount + orderAmount);
+        emit ERC20.Transfer(IP_ADDRESS, address(orderbook), expectedFrontendFeeAmount + expectedProtocolFeeAmount + expectedIncentiveAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
