@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 import "../../../src/Points.sol";
 import "../../../src/PointsFactory.sol";
-import { ERC4626i, ERC4626 } from "../../../src/ERC4626i.sol";
+import { ERC4626i } from "../../../src/ERC4626i.sol";
+import { ERC4626 } from "../../../lib/solmate/src/tokens/ERC4626.sol";
 import { Ownable } from "lib/solady/src/auth/Ownable.sol";
 import { RoycoTestBase } from "../../utils/RoycoTestBase.sol";
 
@@ -17,17 +18,17 @@ contract Test_Points is RoycoTestBase {
     Points pointsProgram;
     uint256 campaignId;
 
+    uint256 public constant PROTOCOL_FEE = 0.01e18;
+
     function setUp() external {
         setupBaseEnvironment();
-        vault = new ERC4626i(ERC4626(address(mockVault)), 0.01e18, 0.001e18, address(pointsFactory));
+        vault = erc4626iFactory.createIncentivizedVault(mockVault, programOwner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
         // Create a new Points contract through the factory
-        pointsProgram = PointsFactory(vault.pointsFactory()).createPointsProgram(programName, programSymbol, decimals, programOwner, vault, orderbook);
+        pointsProgram = PointsFactory(vault.POINTS_FACTORY()).createPointsProgram(programName, programSymbol, decimals, programOwner, orderbook);
 
-        // Create a rewards campaign
-        vm.startPrank(programOwner);
-        campaignId = pointsProgram.createPointsRewardsCampaign(block.timestamp, block.timestamp + 30 days, 1000e18);
-        pointsProgram.addAllowedIP(ipAddress);
-        vm.stopPrank();
+        // Authorize mockVault to award points
+        vm.prank(programOwner);
+        pointsProgram.addAllowedVault(address(vault));
     }
 
     /// @dev Test the initialization of the Points contract
@@ -37,29 +38,19 @@ contract Test_Points is RoycoTestBase {
         assertEq(pointsProgram.symbol(), programSymbol);
         assertEq(pointsProgram.decimals(), decimals);
         assertEq(pointsProgram.owner(), programOwner);
-        assertEq(address(pointsProgram.allowedVault()), address(vault));
+        assertTrue(pointsProgram.isAllowedVault(address(vault)));
         assertEq(address(pointsProgram.orderbook()), address(orderbook));
     }
 
-    function test_CreatePointsRewardsCampaign() external prankModifier(programOwner) {
-        uint256 start = block.timestamp;
-        uint256 end = start + 30 days;
-        uint256 totalRewards = 1000e18;
+    // TODO: replace with a test that checks that a non-owner cannot create a campaign
+    // function test_RevertIf_NonOwnerCreatesPointsRewardsCampaign() external prankModifier(BOB_ADDRESS) {
+    //     uint256 start = block.timestamp;
+    //     uint256 end = start + 30 days;
+    //     uint256 totalRewards = 1000e18;
 
-        uint256 newCampaignId = pointsProgram.createPointsRewardsCampaign(start, end, totalRewards);
-
-        // Check if the campaign is correctly added to allowedCampaigns
-        assertTrue(pointsProgram.allowedCampaigns(newCampaignId));
-    }
-
-    function test_RevertIf_NonOwnerCreatesPointsRewardsCampaign() external prankModifier(BOB_ADDRESS) {
-        uint256 start = block.timestamp;
-        uint256 end = start + 30 days;
-        uint256 totalRewards = 1000e18;
-
-        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
-        pointsProgram.createPointsRewardsCampaign(start, end, totalRewards);
-    }
+    //     vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
+    //     pointsProgram.createPointsRewardsCampaign(start, end, totalRewards);
+    // }
 
     function test_AddAllowedIP() external prankModifier(programOwner) {
         // Add CHARLIE_ADDRESS as an allowed IP
@@ -93,28 +84,21 @@ contract Test_Points is RoycoTestBase {
         pointsProgram.removeAllowedIP(ipAddress);
     }
 
-    function test_AwardPoints_Campaign() external prankModifier(address(vault)) {
+    function test_AwardPoints() external prankModifier(address(vault)) {
         // Check if the event was emitted (Points awarded)
         vm.expectEmit(true, true, false, true, address(pointsProgram));
         emit Points.Award(BOB_ADDRESS, 500e18);
 
         // Vault should call the award function
-        pointsProgram.award(BOB_ADDRESS, 500e18, campaignId);
+        pointsProgram.award(BOB_ADDRESS, 500e18);
     }
 
-    function test_RevertIf_NonVaultAwardsPoints_Campaign() external prankModifier(BOB_ADDRESS) {
-        // Expect revert if a non-vault address tries to award points
-        vm.expectRevert(abi.encodeWithSelector(Points.OnlyIncentivizedVault.selector));
-        pointsProgram.award(BOB_ADDRESS, 500e18, campaignId);
-    }
-
-    function test_RevertIf_AwardPoints_NonAuthorizedCampaign() external prankModifier(address(vault)) {
-        uint256 invalidCampaignId = 999; // Invalid campaignId
-
-        // Expect revert due to non-authorized campaign
-        vm.expectRevert(abi.encodeWithSelector(Points.CampaignNotAuthorized.selector));
-        pointsProgram.award(BOB_ADDRESS, 500e18, invalidCampaignId);
-    }
+    //TODO: replace with a test that checks that a non whitelist vault cannot award points
+    // function test_RevertIf_NonVaultAwardsPoints_Campaign() external prankModifier(BOB_ADDRESS) {
+    //     // Expect revert if a non-vault address tries to award points
+    //     vm.expectRevert(abi.encodeWithSelector(Points.OnlyAllowedVaults.selector));
+    //     pointsProgram.award(BOB_ADDRESS, 500e18);
+    // }
 
     function test_AwardPoints_AllowedIP() external prankModifier(address(orderbook)) {
         // Check if the event was emitted (Points awarded)

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.12;
 
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
 
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
+import { LibString } from "lib/solmate/src/utils/LibString.sol";
 
 import { ERC4626i } from "src/ERC4626i.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
@@ -16,68 +17,62 @@ contract ERC4626iFactory is Owned(msg.sender) {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(uint256 startingProtocolFee, uint256 startingReferralFee, address pointsFactoryAddress) {
-        defaultProtocolFee = startingProtocolFee;
-        defaultReferralFee = startingReferralFee;
-        pointsFactory = pointsFactoryAddress;
+    constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) {
+        protocolFeeRecipient = _protocolFeeRecipient;
+        protocolFee = _protocolFee;
+        minimumFrontendFee = _minimumFrontendFee;
+        pointsFactory = _pointsFactory;
     }
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
 
+    uint256 public constant MAX_PROTOCOL_FEE = 30e18;
+    uint256 public constant MAX_MIN_REFERRAL_FEE = 30e18;
+
     address public pointsFactory;
+
+    address public protocolFeeRecipient;
 
     /// @dev MakerDAO Constant for a 1e18 Scalar
     uint256 constant WAD = 1e18;
 
-    /// @dev The default protocolFee to initialize incentivized vaults with
-    uint256 public defaultProtocolFee;
-    /// @dev The default referralFee to initialize incentivized vaults with
-    uint256 public defaultReferralFee;
+    /// @dev The protocolFee for all incentivized vaults
+    uint256 public protocolFee;
+    /// @dev The default minimumFrontendFee to initialize incentivized vaults with
+    uint256 public minimumFrontendFee;
 
-    /// @dev A mapping to track newly created incentivized vaults, for any given token
-    mapping(ERC4626 vault => ERC4626i incentivizedVault) public incentivizedVaults;
+    /// @dev All incentivized vaults deployed by this factory
+    address[] public incentivizedVaults;
+    mapping(address => bool) public isVault;
 
     /*//////////////////////////////////////////////////////////////
                                INTERFACE
     //////////////////////////////////////////////////////////////*/
     error ProtocolFeeTooHigh();
     error ReferralFeeTooHigh();
-    error VaultAlreadyDeployed();
     error VaultNotDeployed();
 
-    event ProtocolFeeUpdated(ERC4626 indexed vault, ERC4626i indexed incentivizedVault, uint256 indexed newProtocolFee);
-    event ReferralFeeUpdated(ERC4626 indexed vault, ERC4626i indexed incentivizedVault, uint256 indexed newReferralFee);
+    event ProtocolFeeUpdated(uint256 newProtocolFee);
+    event ReferralFeeUpdated(uint256 newReferralFee);
     event VaultCreated(ERC4626 indexed baseTokenAddress, ERC4626i indexed incentivzedVaultAddress);
     /*//////////////////////////////////////////////////////////////
                              OWNER CONTROLS
     //////////////////////////////////////////////////////////////*/
 
-    /// @param vault The ERC4626 Vault to deploy an incentivized vault for
     /// @param newProtocolFee The new protocol fee to set for a given vault
-    function updateProtocolFee(ERC4626 vault, uint256 newProtocolFee) external onlyOwner {
-        ERC4626i incentivizedVault = incentivizedVaults[vault];
-
-        if (address(incentivizedVault) == address(0)) {
-            revert VaultNotDeployed();
-        }
-
-        incentivizedVault.setProtocolFee(newProtocolFee);
-
-        emit ProtocolFeeUpdated(vault, incentivizedVault, newProtocolFee);
+    function updateProtocolFee(uint256 newProtocolFee) external onlyOwner {
+        if (newProtocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeTooHigh();
+        protocolFee = newProtocolFee;
+        emit ProtocolFeeUpdated(newProtocolFee);
     }
 
-    function updateReferralFee(ERC4626 vault, uint256 newReferralFee) external onlyOwner {
-        ERC4626i incentivizedVault = incentivizedVaults[vault];
-
-        if (address(incentivizedVault) == address(0)) {
-            revert VaultNotDeployed();
-        }
-
-        incentivizedVault.setReferralFee(newReferralFee);
-
-        emit ReferralFeeUpdated(vault, incentivizedVault, newReferralFee);
+    /// @param newMinimumReferralFee The new minimum referral fee to set for all incentivized vaults
+    function updateMinimumReferralFee(uint256 newMinimumReferralFee) external onlyOwner {
+        if (newMinimumReferralFee > MAX_MIN_REFERRAL_FEE) revert ReferralFeeTooHigh();
+        minimumFrontendFee = newMinimumReferralFee;
+        emit ReferralFeeUpdated(newMinimumReferralFee);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -85,14 +80,17 @@ contract ERC4626iFactory is Owned(msg.sender) {
     //////////////////////////////////////////////////////////////*/
 
     /// @param vault The ERC4626 Vault to deploy an incentivized vault for
-    function createIncentivizedVault(ERC4626 vault) public returns (ERC4626i incentivizedVault) {
-        if (address(incentivizedVaults[vault]) != address(0)) {
-            revert VaultAlreadyDeployed();
-        }
+    function createIncentivizedVault(ERC4626 vault, address owner, string memory name, uint256 initialFrontendFee) public returns (ERC4626i incentivizedVault) {
+        incentivizedVault = new ERC4626i(owner, name, getNextSymbol(), vault.decimals(), address(vault), initialFrontendFee, address(this), pointsFactory);
 
-        incentivizedVault = new ERC4626i(vault, defaultProtocolFee, defaultReferralFee, pointsFactory);
-        incentivizedVaults[vault] = incentivizedVault;
+        incentivizedVaults.push(address(incentivizedVault));
+        isVault[address(incentivizedVault)] = true;
 
         emit VaultCreated(vault, incentivizedVault);
+    }
+
+    /// @dev Helper function to get the symbol for a new incentivized vault, ROY-0, ROY-1, etc.
+    function getNextSymbol() private view returns (string memory) {
+        return string.concat("ROY-", LibString.toString(incentivizedVaults.length));
     }
 }

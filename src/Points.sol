@@ -18,15 +18,13 @@ contract Points is Ownable {
     /// @param _name The name of the points program
     /// @param _symbol The symbol for the points program
     /// @param _decimals The amount of decimals per 1 point
-    /// @param _allowedVault The vault allowed to mint and use these points
-    constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner, ERC4626i _allowedVault, RecipeOrderbook _orderbook) {
+    constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner, RecipeOrderbook _orderbook) {
         _initializeOwner(_owner);
 
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
 
-        allowedVault = _allowedVault;
         orderbook = _orderbook;
     }
 
@@ -34,12 +32,16 @@ contract Points is Ownable {
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
     event Award(address indexed to, uint256 indexed amount);
+    event AllowedVaultAdded(address indexed vault);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
-    /// @dev The allowed vault to call this contract
-    ERC4626i public immutable allowedVault;
+    /// @dev The allowed vaults to call this contract
+    address[] public allowedVaults;
+    /// @dev Maps a vault to if the vault is allowed to call this contract
+    mapping(address => bool) public isAllowedVault;
+
     /// @dev The RecipeOrderbook for IP Orders
     RecipeOrderbook public immutable orderbook;
 
@@ -49,47 +51,36 @@ contract Points is Ownable {
     string public symbol;
     /// @dev We track all points logic using base 1
     uint256 public decimals;
-    /// @dev Track which campaignIds are allowed to mint
-    mapping(uint256 campaignId => bool allowed) public allowedCampaigns;
     /// @dev Track which RecipeOrderbook IPs are allowed to mint
     mapping(address => bool) public allowedIPs;
 
     /*//////////////////////////////////////////////////////////////
                               POINTS AUTH
     //////////////////////////////////////////////////////////////*/
-    /// @param start The start date of the campaign
-    /// @param end The end date of the campaign
-    /// @param totalRewards The total amount of points to distribute
-    ///
-    /// @return newCampaignId The Id of the newly created rewards campaign
-    function createPointsRewardsCampaign(uint256 start, uint256 end, uint256 totalRewards) external onlyOwner returns (uint256 newCampaignId) {
-        newCampaignId = allowedVault.createRewardsCampaign(ERC20(address(this)), start, end, totalRewards);
-        allowedCampaigns[newCampaignId] = true;
+
+    function addAllowedVault(address vault) external onlyOwner {
+        allowedVaults.push(vault);
+        isAllowedVault[vault] = true;
+        emit AllowedVaultAdded(vault);
     }
 
-    /// @param ip The incentive provider address to allow to mint points
+    /// @param ip The incentive provider address to allow to mint points on RecipeOrderbook
     function addAllowedIP(address ip) external onlyOwner {
         allowedIPs[ip] = true;
     }
 
-    /// @param ip The incentive provider address to disallow to mint points
+    /// @param ip The incentive provider address to disallow to mint points on RecipeOrderbook
     function removeAllowedIP(address ip) external onlyOwner {
         allowedIPs[ip] = false;
     }
 
-    error CampaignNotAuthorized();
-    error OnlyIncentivizedVault();
+    error OnlyAllowedVaults();
     error OnlyRecipeOrderbook();
     error NotAllowedIP();
 
-    /// @param campaignId The campaignId being supplied
-    modifier onlyAllowedCampaigns(uint256 campaignId) {
-        if (msg.sender != address(allowedVault)) {
-            revert OnlyIncentivizedVault();
-        }
-
-        if (!allowedCampaigns[campaignId]) {
-            revert CampaignNotAuthorized();
+    modifier onlyAllowedVaults {
+        if (!isAllowedVault[msg.sender]) {
+            revert OnlyAllowedVaults();
         }
         _;
     }
@@ -112,8 +103,7 @@ contract Points is Ownable {
 
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
-    /// @param campaignId The campaignId to mint points for
-    function award(address to, uint256 amount, uint256 campaignId) external onlyAllowedCampaigns(campaignId) {
+    function award(address to, uint256 amount) external onlyAllowedVaults {
         emit Award(to, amount);
     }
 

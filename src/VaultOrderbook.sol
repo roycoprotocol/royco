@@ -35,8 +35,6 @@ contract VaultOrderbook is Ownable2Step {
 
     /// @notice maps order hashes to the remaining quantity of the order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
-    /// @notice Temporary mapping for keeping track of order fills
-    mapping(address => uint256) public tokenToRate;
 
     /// @param orderID Set to numOrders - 1 on order creation (zero-indexed)
     /// @param targetVault The address of the vault where the input tokens will be deposited
@@ -150,12 +148,12 @@ contract VaultOrderbook is Ownable2Step {
     }
 
     /// @notice allocate the entirety of a given order
-    function allocateOrder(LPOrder memory order, uint256[] memory campaignIds) public {
-        allocateOrder(order, campaignIds, orderHashToRemainingQuantity[getOrderHash(order)]);
+    function allocateOrder(LPOrder memory order) public {
+        allocateOrder(order, orderHashToRemainingQuantity[getOrderHash(order)]);
     }
 
     /// @notice allocate a specific quantity of a given order
-    function allocateOrder(LPOrder memory order, uint256[] memory campaignIds, uint256 quantity) public {
+    function allocateOrder(LPOrder memory order, uint256 quantity) public {
         // Check for order expiry, 0 expiries live forever
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
@@ -171,32 +169,12 @@ contract VaultOrderbook is Ownable2Step {
         if (quantity > remainingQuantity) {
             revert NotEnoughRemainingQuantity();
         }
-        if (campaignIds.length > 5) {
-            revert TooManyCampaignIds();
-        }
-
-        for (uint256 i; i < order.tokensRequested.length; ++i) {
-            //Check that the LP has enough base asset in the funding vault for the order
-            if (order.fundingVault == address(0) && ERC20(order.tokensRequested[i]).balanceOf(order.lp) < quantity) {
-                revert NotEnoughBaseAssetToAllocate();
-            } else if(order.fundingVault != address(0) && ERC4626(order.fundingVault).maxWithdraw(order.lp) < quantity) {
-                revert NotEnoughBaseAssetToAllocate();
-            }
-        }
-
-        // Iterate over each token the LP requested
-        for (uint256 i = 0; i < campaignIds.length; ++i) {
-            // Ensure that the LP could deposit quantity base tokens into the vault and still receive the desired reward rate
-            uint256 rate = ERC4626i(order.targetVault).previewRateAfterDeposit(campaignIds[i], quantity);
-            tokenToRate[address(ERC4626i(order.targetVault).campaignToToken(campaignIds[i]))] += rate;
-        }
 
         for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
-            if (order.tokenRatesRequested[i] > tokenToRate[order.tokensRequested[i]]) {
+            if (order.tokenRatesRequested[i] > ERC4626i(order.targetVault).previewRateAfterDeposit(order.tokensRequested[i], quantity)) {
                 revert OrderConditionsNotMet();
             }
 
-            delete tokenToRate[order.tokensRequested[i]];
         }
         // If transaction has not reverted yet, the order is within its conditions
 
@@ -220,15 +198,10 @@ contract VaultOrderbook is Ownable2Step {
     }
 
     /// @notice fully allocate a selection of orders
-    function allocateOrders(LPOrder[] memory orders, uint256[][] memory campaignIds) public {
-        //Check that there are matching orders and campaignIds
-        if (orders.length > campaignIds.length) {
-            revert NotEnoughCampaignIds();
-        }
-
+    function allocateOrders(LPOrder[] memory orders) public {
         uint256 len = orders.length;
         for (uint256 i = 0; i < len; ++i) {
-            allocateOrder(orders[i], campaignIds[i]);
+            allocateOrder(orders[i]);
         }
     }
 

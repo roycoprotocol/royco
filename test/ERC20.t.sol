@@ -23,8 +23,10 @@ contract ERC20Test is Test {
     address public constant REFERRAL_USER = address(0x33f123);
 
     function setUp() public {
-        testFactory = new ERC4626iFactory(0.05e18, 0.05e18, address(0));
-        token = testFactory.createIncentivizedVault(testVault);
+        // testFactory = new ERC4626iFactory(0.05e18, 0.05e18, address(0));
+        // token = testFactory.createIncentivizedVault(testVault);
+        testFactory = new ERC4626iFactory(address(0x0), 30e18, 30e18, address(0x0));
+        token = testFactory.createIncentivizedVault(testVault, address(0x0), "Juan", 30e18);
     }
 
     function mintTokensTo(address to, uint256 amount) public {
