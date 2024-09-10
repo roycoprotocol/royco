@@ -50,7 +50,7 @@ contract Test_CancelLPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 expiry = block.timestamp + 1 days; // Order expires in 1 day
 
         // Create the LP order
-        (uint256 orderId, RecipeOrderbook.LPOrder memory order, ) = createLPOrder_ForPoints(marketId, address(0), quantity, LP_ADDRESS, IP_ADDRESS);
+        (uint256 orderId, RecipeOrderbook.LPOrder memory order,) = createLPOrder_ForPoints(marketId, address(0), quantity, LP_ADDRESS, IP_ADDRESS);
 
         uint256 initialQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
         assertEq(initialQuantity, quantity);
@@ -64,5 +64,62 @@ contract Test_CancelLPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         uint256 resultingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
         assertEq(resultingQuantity, 0);
+    }
+
+    function test_RevertIf_cancelLPOrder_NotOwner() external {
+        uint256 marketId = createMarket();
+        uint256 quantity = 1000e18;
+        uint256 expiry = block.timestamp + 1 days;
+
+        (uint256 orderId, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), quantity, LP_ADDRESS);
+
+        vm.startPrank(IP_ADDRESS);
+        vm.expectRevert(RecipeOrderbook.NotOwner.selector);
+        orderbook.cancelLPOrder(order);
+        vm.stopPrank();
+    }
+
+    function test_RevertIf_cancelLPOrder_OrderExpired() external {
+        uint256 marketId = createMarket();
+        uint256 quantity = 1000e18;
+
+        (uint256 orderId, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), quantity, LP_ADDRESS);
+
+        vm.warp(order.expiry + 1 seconds);
+
+        vm.startPrank(LP_ADDRESS);
+        vm.expectRevert(RecipeOrderbook.OrderExpired.selector);
+        orderbook.cancelLPOrder(order);
+        vm.stopPrank();
+    }
+
+    function test_RevertIf_cancelLPOrder_NoRemainingQuantity() external {
+        uint256 marketId = createMarket();
+        uint256 quantity = 1000e18;
+        uint256 expiry = block.timestamp + 1 days;
+
+        (uint256 orderId, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), quantity, LP_ADDRESS);
+
+        mockLiquidityToken.mint(LP_ADDRESS, quantity);
+        vm.startPrank(LP_ADDRESS);
+        mockLiquidityToken.approve(address(orderbook), quantity);
+        vm.stopPrank();
+
+        // Mint incentive tokens to IP and fill
+        mockIncentiveToken.mint(IP_ADDRESS, 100e18);
+        vm.startPrank(IP_ADDRESS);
+        mockIncentiveToken.approve(address(orderbook), 100e18);
+
+        orderbook.fillLPOrder(order, quantity, DAN_ADDRESS);
+        vm.stopPrank();
+
+        // Should be completely filled and uncancellable
+        uint256 resultingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
+        assertEq(resultingQuantity, 0);
+
+        vm.startPrank(LP_ADDRESS);
+        vm.expectRevert(RecipeOrderbook.NotEnoughRemainingQuantity.selector);
+        orderbook.cancelLPOrder(order);
+        vm.stopPrank();
     }
 }
