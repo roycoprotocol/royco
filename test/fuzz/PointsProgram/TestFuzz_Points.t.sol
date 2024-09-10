@@ -152,6 +152,8 @@ contract TestFuzz_Points is RoycoTestBase {
 
     // Fuzz test reverting when a non-allowed IP tries to award points
     function testFuzz_RevertIf_NonAllowedIPAwardsPoints(address _to, uint256 _amount, address _nonAllowedIP) external prankModifier(address(orderbook)) {
+        vm.assume(_nonAllowedIP != ipAddress);
+        
         vm.expectRevert(abi.encodeWithSelector(Points.NotAllowedIP.selector));
         pointsProgram.award(_to, _amount, _nonAllowedIP);
     }

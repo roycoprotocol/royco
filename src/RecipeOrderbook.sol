@@ -599,7 +599,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                     Points(order.tokensRequested[i]).award(order.lp, amount, msg.sender);
                 } else {
                     // Transfer protcol and frontend fees to orderbook for the claimants to withdraw them on-demand
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), protocolFee + frontendFeeAmount);
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), protocolFeeAmount + frontendFeeAmount);
                     // Transfer LP's incentives to them on fill if token incentive
                     ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, amount);
                 }
