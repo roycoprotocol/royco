@@ -48,23 +48,52 @@ contract VaultOrderbookTest is Test {
        assertEq(orderbook.numOrders(), 0);
    }
 
-   function testCreateLPOrder() public {
+    //Test fails when quantity is allowed to be very large
+   function testCreateLPOrder(uint256 quantity, uint256 rate, uint256 expiry) public {
+        //todo - delete once setup is fixed
+        vm.prank(alice);
+        baseToken.burn(alice, 1000 * 1e18);
+
+        uint256 limit = (2**237)-1;
+        console.log("Quantity: ", quantity);
+        console.log("limit: ", limit);
+        vm.assume(quantity <= limit);
+        // vm.assume(quantity <= type(uint256).max / 2); //TEST FAILS WHEN THIS IS UNCOMMENTED
+        // vm.assume(quantity < 1e24); //TEST PASSES IF THIS IN UNCOMMENTED
+        vm.assume(quantity > 0);
+        vm.assume(expiry >= block.timestamp);
+
+       baseToken.mint(alice, 2*quantity);
+
        vm.startPrank(alice);
-       baseToken.approve(address(orderbook), 100 * 1e18);
+       baseToken.approve(address(orderbook), 2*quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = 1e18;
+       tokenRatesRequested[0] = rate;
        
-       uint256 orderId =
-           orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-       VaultOrderbook.LPOrder memory order =
-           VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       uint256 order1Id =
+           orderbook.createLPOrder(address(targetVault), address(0), quantity, expiry, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order1 =
+           VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(0), expiry, tokensRequested, tokenRatesRequested);
 
-       assertEq(orderId, 0);
+       assertEq(order1Id, 0);
        assertEq(orderbook.numOrders(), 1);
-       assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order)), 100 * 1e18);
+       assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order1)), quantity);
+
+       baseToken.approve(address(fundingVault), quantity);
+       fundingVault.deposit(quantity, alice);
+
+       uint256 order2Id =
+           orderbook.createLPOrder(address(targetVault), address(fundingVault), quantity, expiry, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order2 =
+           VaultOrderbook.LPOrder(order2Id, address(targetVault), alice, address(fundingVault), expiry, tokensRequested, tokenRatesRequested);
+
+       assertEq(order2Id, 1);
+       assertEq(orderbook.numOrders(), 2);
+       assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order2)), quantity);
+
        vm.stopPrank();
    }
 
