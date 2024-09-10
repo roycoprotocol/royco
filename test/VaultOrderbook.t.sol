@@ -230,8 +230,6 @@ contract VaultOrderbookTest is Test {
        VaultOrderbook.LPOrder memory order =
            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), 5, tokensRequested, tokenRatesRequested);
 
-       uint256[] memory campaignIds = new uint256[](0);
-
        vm.warp(100 days);
 
        vm.expectRevert(VaultOrderbook.OrderExpired.selector);
@@ -268,8 +266,6 @@ contract VaultOrderbookTest is Test {
        VaultOrderbook.LPOrder memory order2 =
            VaultOrderbook.LPOrder(order2Id, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-       uint256[] memory campaignIds = new uint256[](0);
-
        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToAllocate.selector);
        orderbook.allocateOrder(order1);
 
@@ -296,7 +292,7 @@ contract VaultOrderbookTest is Test {
        tokenRatesRequested[0] = 1e18;
 
        VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](2);
-       uint256[][] memory campaignIds = new uint256[][](0);
+
 
        uint256 order1Id = orderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
        uint256 order2Id =
@@ -338,7 +334,7 @@ contract VaultOrderbookTest is Test {
            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
        // New - Testcase added to attempt to allocate a cancelled order
-       uint256[] memory campaignIds = new uint256[](0);
+
        vm.expectRevert(VaultOrderbook.NotEnoughRemainingQuantity.selector);
        orderbook.allocateOrder(order, 200 * 1e18);
 
@@ -396,7 +392,7 @@ contract VaultOrderbookTest is Test {
        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 0);
 
        // New - Testcase added to attempt to allocate a cancelled order
-       uint256[] memory campaignIds = new uint256[](0);
+
        vm.expectRevert(VaultOrderbook.OrderDoesNotExist.selector);
        orderbook.allocateOrder(order);
 
@@ -485,12 +481,6 @@ contract VaultOrderbookTest is Test {
            abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(0), uint256(100 * 1e18)),
            abi.encode(2e18)
            );
-       // Mock the campaignToToken variable
-       vm.mockCall(
-           address(targetVault),
-           abi.encodeWithSelector(bytes4(keccak256("campaignToToken(uint256)")), uint256(0)),
-           abi.encode(address(baseToken)) // Mocking the address return
-       );
        // Allocate the order
        vm.expectRevert(VaultOrderbook.OrderConditionsNotMet.selector);
        orderbook.allocateOrder(order);
@@ -534,12 +524,6 @@ contract VaultOrderbookTest is Test {
            abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(0), uint256(100 * 1e18)),
            abi.encode(2e18)
            );
-       // Mock the campaignToToken variable
-       vm.mockCall(
-           address(targetVault),
-           abi.encodeWithSelector(bytes4(keccak256("campaignToToken(uint256)")), uint256(0)),
-           abi.encode(address(baseToken)) // Mocking the address return
-       );
        // Allocate the order
        orderbook.allocateOrder(order);
 
@@ -609,22 +593,6 @@ contract VaultOrderbookTest is Test {
            abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, uint256(2), uint256(100 * 1e18)),
            abi.encode(2e18)
            );
-       // Mock the campaignToToken variable
-       vm.mockCall(
-           address(targetVault),
-           abi.encodeWithSelector(bytes4(keccak256("campaignToToken(uint256)")), uint256(0)),
-           abi.encode(address(baseToken)) // Mocking the address return
-       );
-       vm.mockCall(
-           address(targetVault2),
-           abi.encodeWithSelector(bytes4(keccak256("campaignToToken(uint256)")), uint256(1)),
-           abi.encode(address(baseToken)) // Mocking the address return
-       );
-       vm.mockCall(
-           address(targetVault3),
-           abi.encodeWithSelector(bytes4(keccak256("campaignToToken(uint256)")), uint256(2)),
-           abi.encode(address(baseToken)) // Mocking the address return
-       );
 
        orderbook.allocateOrders(orders);
 

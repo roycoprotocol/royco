@@ -170,6 +170,16 @@ contract VaultOrderbook is Ownable2Step {
             revert NotEnoughRemainingQuantity();
         }
 
+        //Funding vault must have enough base asset to allocate the order
+        for (uint256 i; i < order.tokensRequested.length; ++i) {
+            //Check that the LP has enough base asset in the funding vault for the order
+            if (order.fundingVault == address(0) && ERC20(order.tokensRequested[i]).balanceOf(order.lp) < quantity) {
+                revert NotEnoughBaseAssetToAllocate();
+            } else if(order.fundingVault != address(0) && ERC4626(order.fundingVault).maxWithdraw(order.lp) < quantity) {
+                revert NotEnoughBaseAssetToAllocate();
+            }
+        }
+
         for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
             if (order.tokenRatesRequested[i] > ERC4626i(order.targetVault).previewRateAfterDeposit(order.tokensRequested[i], quantity)) {
                 revert OrderConditionsNotMet();
