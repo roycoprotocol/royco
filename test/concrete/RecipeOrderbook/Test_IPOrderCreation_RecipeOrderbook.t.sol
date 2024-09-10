@@ -87,7 +87,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_CreateIPOrder_ForPointsProgram() external {
         uint256 marketId = createMarket();
 
-        Points points = pointsFactory.createPointsProgram("POINTS", "PTS", 18, BOB_ADDRESS, ERC4626i(address(mockVault)), orderbook);
+        Points points = pointsFactory.createPointsProgram("POINTS", "PTS", 18, BOB_ADDRESS, orderbook);
         vm.startPrank(BOB_ADDRESS);
         points.addAllowedIP(ALICE_ADDRESS);
         vm.stopPrank();

@@ -125,7 +125,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             string memory symbol = string(abi.encodePacked("PTS_", i));
 
             // Create a new Points program
-            Points points = pointsFactory.createPointsProgram(name, symbol, 18, _pointsOwner, ERC4626i(address(mockVault)), orderbook);
+            Points points = pointsFactory.createPointsProgram(name, symbol, 18, _pointsOwner, orderbook);
 
             // Allow ALICE to mint points in the Points program
             vm.startPrank(_pointsOwner);
@@ -240,7 +240,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             string memory symbol = string(abi.encodePacked("PTS_", i));
 
             // Create a new Points program
-            Points points = pointsFactory.createPointsProgram(name, symbol, 18, _pointsOwner, ERC4626i(address(mockVault)), orderbook);
+            Points points = pointsFactory.createPointsProgram(name, symbol, 18, _pointsOwner, orderbook);
 
             // Allow the creator to mint points in the Points program
             vm.startPrank(_pointsOwner);
