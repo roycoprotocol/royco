@@ -124,7 +124,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
 
         vm.startPrank(_ipAddress);
         // Create a new Points program
-        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress, ERC4626i(address(mockVault)), orderbook);
+        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress, orderbook);
 
         // Allow _ipAddress to mint points in the Points program
         points.addAllowedIP(_ipAddress);
@@ -163,7 +163,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         string memory symbol = "PTS";
 
         // Create a new Points program
-        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress, ERC4626i(address(mockVault)), orderbook);
+        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress, orderbook);
 
         // Allow _ipAddress to mint points in the Points program
         points.addAllowedIP(_ipAddress);
