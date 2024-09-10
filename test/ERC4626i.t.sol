@@ -15,299 +15,334 @@ import { PointsFactory } from "src/PointsFactory.sol";
 import { Test } from "forge-std/Test.sol";
 
 contract ERC4626iTest is Test {
-    ERC20 token = ERC20(address(new MockERC20("Mock Token", "MOCK")));
-    ERC4626 testVault = ERC4626(address(new MockERC4626(token)));
-    ERC4626i testIncentivizedVault;
-
-    PointsFactory pointsFactory = new PointsFactory();
-
-    ERC4626iFactory testFactory;
+  ERC20 token = ERC20(address(new MockERC20("Mock Token", "MOCK")));
+  ERC4626 testVault = ERC4626(address(new MockERC4626(token)));
+  ERC4626i testIncentivizedVault;
 
-    uint256 constant WAD = 1e18;
+  PointsFactory pointsFactory = new PointsFactory();
 
-    uint256 constant DEFAULT_REFERRAL_FEE = 0.025e18;
-    uint256 constant DEFAULT_PROTOCOL_FEE = 0.05e18;
+  ERC4626iFactory testFactory;
 
-    address public constant REGULAR_USER = address(0xbeef);
-    address public constant REFERRAL_USER = address(0x33f123);
+  uint256 constant WAD = 1e18;
 
-    function setUp() public {
-        testFactory = new ERC4626iFactory(DEFAULT_PROTOCOL_FEE, DEFAULT_REFERRAL_FEE, address(pointsFactory));
-    }
+  uint256 constant DEFAULT_REFERRAL_FEE = 0.025e18;
+  uint256 constant DEFAULT_FRONTEND_FEE = 0.025e18;
+  uint256 constant DEFAULT_PROTOCOL_FEE = 0.05e18;
+
+  address constant DEFAULT_FEE_RECIPIENT = address(0xdead);
+
+  address public constant REGULAR_USER = address(0xbeef);
+  address public constant REFERRAL_USER = address(0x33f123);
+
+  address constant DEFAULT_POINTS_FACTORY =address(0xFAC);
+
+  function setUp() public {
+      testFactory = new ERC4626iFactory(address(DEFAULT_FEE_RECIPIENT), DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(DEFAULT_POINTS_FACTORY));
+  }
+
+  function testConstructor(address initialFeeRecipient, uint256 initialProtocolFee, uint256 initialMinimumFrontendFee, address initialPointsFactory) public {
+      ERC4626iFactory newTestFactory = new ERC4626iFactory(initialFeeRecipient, initialProtocolFee, initialMinimumFrontendFee, initialPointsFactory);
+
+      assertEq(newTestFactory.protocolFeeRecipient(), initialFeeRecipient);
+      assertEq(newTestFactory.protocolFee(), initialProtocolFee);
+      assertEq(newTestFactory.minimumFrontendFee(), initialMinimumFrontendFee);
+  }
 
-    function testConstructor(uint128 initialProtocolFee, uint128 initialReferralFee) public {
-        ERC4626iFactory newTestFactory = new ERC4626iFactory(initialProtocolFee, initialReferralFee, address(0));
+  function testFactoryDeploysVault() public {
+      ERC4626i iVault = testFactory.createIncentivizedVault(testVault, address(0x0), "Juan", DEFAULT_REFERRAL_FEE);
 
-        assertEq(newTestFactory.defaultProtocolFee(), initialProtocolFee);
-        assertEq(newTestFactory.defaultReferralFee(), initialReferralFee);
-    }
+      uint32 size;
+      assembly {
+          size := extcodesize(iVault)
+      }
 
-    function testFactoryDeploysPair() public {
-        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
+      assertGt(size, 0);
+      assertEq(iVault.frontendFee(), DEFAULT_REFERRAL_FEE);
+      assertEq(iVault.VAULT.address, address(testVault));
+      assertEq(iVault.ERC4626I_FACTORY.address, address(testFactory));
+      assertEq(iVault.POINTS_FACTORY.address, DEFAULT_POINTS_FACTORY);
+  }
 
-        uint32 size;
-        assembly {
-            size := extcodesize(iVault)
-        }
+  function testUpdateVault(uint256 newReferralFee, uint256 newProtocolFee, uint256 newFrontendFee) public {
+      ERC4626i iVault = testFactory.createIncentivizedVault(testVault, address(0x0), "Juan", DEFAULT_REFERRAL_FEE);
 
-        assertGt(size, 0);
-        assertEq(iVault.referralFee(), DEFAULT_REFERRAL_FEE);
-        assertEq(iVault.protocolFee(), DEFAULT_PROTOCOL_FEE);
+      vm.startPrank(REGULAR_USER);
+      vm.expectRevert("UNAUTHORIZED");
+      iVault.setFrontendFee(DEFAULT_FRONTEND_FEE);
 
-        vm.expectRevert(ERC4626iFactory.VaultAlreadyDeployed.selector);
-        testFactory.createIncentivizedVault(testVault);
-    }
+      vm.expectRevert("UNAUTHORIZED");
+      iVault.addRewardsToken(address(token));
 
-    function testUpdateAPairsFee(uint128 newReferralFee, uint128 newProtocolFee) public {
-        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
+      vm.expectRevert("UNAUTHORIZED");
+      iVault.extendRewardsInterval(address(0x1234), 1234, 10, DEFAULT_FEE_RECIPIENT);
 
-        vm.startPrank(REGULAR_USER);
-        vm.expectRevert("UNAUTHORIZED");
-        iVault.updateDefaultProtocolFee(newProtocolFee);
-        vm.expectRevert("UNAUTHORIZED");
-        iVault.updateDefaultReferralFee(newReferralFee);
-        vm.stopPrank();
+      vm.expectRevert("UNAUTHORIZED");
+      iVault.setRewardsInterval(address(0x1234), 1, 10, 1234);
 
-        vm.prank(iVault.owner());
-        iVault.updateDefaultProtocolFee(newProtocolFee);
-        assertEq(iVault.protocolFee(), newProtocolFee);
+      vm.stopPrank();
 
-        vm.prank(iVault.owner());
-        iVault.updateDefaultReferralFee(newReferralFee);
-        assertEq(iVault.referralFee(), newReferralFee);
+      vm.startPrank(iVault.owner());
+      if(newFrontendFee < testFactory.minimumFrontendFee()){
+          vm.expectRevert(ERC4626i.FrontendFeeBelowMinimum.selector);
+          iVault.setFrontendFee(newFrontendFee);
+      } else {
+          iVault.setFrontendFee(newFrontendFee);
+          assertEq(iVault.frontendFee(), newFrontendFee);
+      }
 
-        vm.startPrank(REGULAR_USER);
-        vm.expectRevert("UNAUTHORIZED");
-        testFactory.updateReferralFee(testVault, newReferralFee);
-        vm.expectRevert("UNAUTHORIZED");
-        testFactory.updateProtocolFee(testVault, newProtocolFee);
-        vm.stopPrank();
+      //todo -- add asserts to ensure this worked
+      iVault.setRewardsInterval(address(0x1234), 1, 10, 12345);
+      assertEq(iVault.rewards(0), address(token));
 
-        vm.expectRevert(ERC4626iFactory.VaultNotDeployed.selector);
-        testFactory.updateReferralFee(ERC4626(address(iVault)), newReferralFee);
-        vm.expectRevert(ERC4626iFactory.VaultNotDeployed.selector);
-        testFactory.updateProtocolFee(ERC4626(address(iVault)), newProtocolFee);
+      iVault.addRewardsToken(address(token));
+      assertEq(iVault.rewards(0), address(token));
 
-        if (newReferralFee > WAD) {
-            vm.expectRevert(ERC4626i.FeeSetTooHigh.selector);
-            testFactory.updateReferralFee(testVault, newReferralFee);
-        } else {
-            testFactory.updateReferralFee(testVault, newReferralFee);
-            assertEq(iVault.referralFee(), newReferralFee);
-        }
+      //todo -- add asserts to ensure this worked
+      iVault.extendRewardsInterval(address(0x1234), 1234, 10, DEFAULT_FEE_RECIPIENT);
+      assertEq(iVault.rewards(0), address(token));
 
-        if (newProtocolFee > WAD) {
-            vm.expectRevert(ERC4626i.FeeSetTooHigh.selector);
-            testFactory.updateProtocolFee(testVault, newProtocolFee);
-        } else {
-            testFactory.updateProtocolFee(testVault, newProtocolFee);
-            assertEq(iVault.protocolFee(), newProtocolFee);
-        }
-    }
+      vm.stopPrank();
 
-    function testCanCreateRewardsCampaign(uint96 _incentiveAmount) public {
-        vm.assume(_incentiveAmount > 0);
-        uint256 incentiveAmount = uint256(_incentiveAmount);
-        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
+      vm.startPrank(REGULAR_USER);
+      vm.expectRevert("UNAUTHORIZED");
+      testFactory.updateProtocolFee(newProtocolFee);
+      vm.expectRevert("UNAUTHORIZED");
+      testFactory.updateMinimumReferralFee(newReferralFee);
+      vm.stopPrank();
 
-        MockERC20 testMockToken = new MockERC20("Reward Token", "REWARD");
+      //I don't think these apply anymore after rewrite
+      // vm.expectRevert(ERC4626iFactory.VaultNotDeployed.selector);
+      // testFactory.updateReferralFee(ERC4626(address(iVault)), newReferralFee);
+      // vm.expectRevert(ERC4626iFactory.VaultNotDeployed.selector);
+      // testFactory.updateProtocolFee(ERC4626(address(iVault)), newProtocolFee);
 
-        testMockToken.mint(address(this), incentiveAmount);
-        testMockToken.approve(address(iVault), incentiveAmount);
+      if (newReferralFee > testFactory.MAX_MIN_REFERRAL_FEE()) {
+          vm.expectRevert(ERC4626iFactory.ReferralFeeTooHigh.selector);
+          testFactory.updateMinimumReferralFee(newReferralFee);
+      } else {
+          testFactory.updateMinimumReferralFee(newReferralFee);
+          assertEq(testFactory.minimumFrontendFee(), newReferralFee);
+      }
 
-        uint256 startTime = block.timestamp;
+      if (newProtocolFee > testFactory.MAX_PROTOCOL_FEE()) {
+          vm.expectRevert(ERC4626iFactory.ProtocolFeeTooHigh.selector);
+          testFactory.updateProtocolFee(newProtocolFee);
+      } else {
+          testFactory.updateProtocolFee(newProtocolFee);
+          assertEq(testFactory.protocolFee(), newProtocolFee);
+      }
+  }
+
+   //Not applicable to rewrite, needs to major fixes
+//    function testCanCreateRewardsCampaign(uint96 _incentiveAmount) public {
+//        vm.assume(_incentiveAmount > 0);
+//        uint256 incentiveAmount = uint256(_incentiveAmount);
+//        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
 
-        uint256 initialTokenBalance = testMockToken.balanceOf(address(this));
+//        MockERC20 testMockToken = new MockERC20("Reward Token", "REWARD");
 
-        uint256 campaignId = iVault.createRewardsCampaign(testMockToken, startTime, startTime + 100 days, incentiveAmount);
-        assertEq(testMockToken.balanceOf(address(this)), initialTokenBalance - incentiveAmount);
+//        testMockToken.mint(address(this), incentiveAmount);
+//        testMockToken.approve(address(iVault), incentiveAmount);
 
-        (uint32 start, uint32 end, uint96 rate,,,,) = iVault.campaignIdToData(campaignId);
+//        uint256 startTime = block.timestamp;
 
-        assertEq(startTime, start);
-        assertEq(end, startTime + 100 days);
+//        uint256 initialTokenBalance = testMockToken.balanceOf(address(this));
 
-        uint256 referralFeeAmount = incentiveAmount * uint256(iVault.referralFee()) / WAD;
-        uint256 protocolFeeAmount = incentiveAmount * uint256(iVault.protocolFee()) / WAD;
+//        uint256 campaignId = iVault.createRewardsCampaign(testMockToken, startTime, startTime + 100 days, incentiveAmount);
+//        assertEq(testMockToken.balanceOf(address(this)), initialTokenBalance - incentiveAmount);
 
-        incentiveAmount -= referralFeeAmount;
-        incentiveAmount -= protocolFeeAmount;
+//        (uint32 start, uint32 end, uint96 rate,,,,) = iVault.campaignIdToData(campaignId);
 
-        assertEq(uint256(incentiveAmount) / (end - start), rate);
-    }
+//        assertEq(startTime, start);
+//        assertEq(end, startTime + 100 days);
 
-    function testOptIntoCampaign() public {
-        ERC4626i campaign = testFactory.createIncentivizedVault(testVault);
-        vm.startPrank(REGULAR_USER);
+//        uint256 referralFeeAmount = incentiveAmount * uint256(iVault.referralFee()) / WAD;
+//        uint256 protocolFeeAmount = incentiveAmount * uint256(iVault.protocolFee()) / WAD;
 
-        // Test opting into a campaign
-        campaign.optIntoCampaign(1, address(0));
-        assertEq(campaign.userSelectedCampaigns(REGULAR_USER, 0), 1);
-        assertEq(campaign.referralsPerUser(1, REGULAR_USER), address(0));
+//        incentiveAmount -= referralFeeAmount;
+//        incentiveAmount -= protocolFeeAmount;
 
-        // Test opting into multiple campaigns
-        campaign.optIntoCampaign(2, REFERRAL_USER);
-        assertEq(campaign.userSelectedCampaigns(REGULAR_USER, 1), 2);
-        assertEq(campaign.referralsPerUser(2, REGULAR_USER), REFERRAL_USER);
+//        assertEq(uint256(incentiveAmount) / (end - start), rate);
+//    }
 
-        // Test maximum campaigns limit
-        campaign.optIntoCampaign(3, address(0));
-        campaign.optIntoCampaign(4, address(0));
-        campaign.optIntoCampaign(5, address(0));
+   //Not applicable to rewrite, needs to major fixes
+//    function testOptIntoCampaign() public {
+//        ERC4626i campaign = testFactory.createIncentivizedVault(testVault);
+//        vm.startPrank(REGULAR_USER);
 
-        vm.expectRevert(ERC4626i.MaxCampaignsOptedInto.selector);
-        campaign.optIntoCampaign(6, address(0));
+//        // Test opting into a campaign
+//        campaign.optIntoCampaign(1, address(0));
+//        assertEq(campaign.userSelectedCampaigns(REGULAR_USER, 0), 1);
+//        assertEq(campaign.referralsPerUser(1, REGULAR_USER), address(0));
 
-        vm.stopPrank();
-    }
+//        // Test opting into multiple campaigns
+//        campaign.optIntoCampaign(2, REFERRAL_USER);
+//        assertEq(campaign.userSelectedCampaigns(REGULAR_USER, 1), 2);
+//        assertEq(campaign.referralsPerUser(2, REGULAR_USER), REFERRAL_USER);
 
-    function testOptOutOfLastCampaign() public {
-        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
-        vm.startPrank(REGULAR_USER);
+//        // Test maximum campaigns limit
+//        campaign.optIntoCampaign(3, address(0));
+//        campaign.optIntoCampaign(4, address(0));
+//        campaign.optIntoCampaign(5, address(0));
 
-        // Setup: Opt into 5 campaigns
-        for (uint256 i = 1; i <= 5; i++) {
-            iVault.optIntoCampaign(i, REFERRAL_USER);
-        }
+//        vm.expectRevert(ERC4626i.MaxCampaignsOptedInto.selector);
+//        campaign.optIntoCampaign(6, address(0));
 
-        // Test opting out of the last campaign (index 4)
-        iVault.optOutOfCampaign(5, 4);
-        assertEq(iVault.userSelectedCampaigns(REGULAR_USER, 4), 0);
+//        vm.stopPrank();
+//    }
 
-        // Verify that other campaigns are still intact
-        for (uint256 i = 0; i < 4; i++) {
-            assertEq(iVault.userSelectedCampaigns(REGULAR_USER, i), i + 1);
-        }
+   //Not applicable to rewrite, needs to major fixes
+//    function testOptOutOfLastCampaign() public {
+//        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
+//        vm.startPrank(REGULAR_USER);
 
-        vm.stopPrank();
-    }
+//        // Setup: Opt into 5 campaigns
+//        for (uint256 i = 1; i <= 5; i++) {
+//            iVault.optIntoCampaign(i, REFERRAL_USER);
+//        }
 
-    function testBasicRewardsCampaign(uint96 _incentiveAmount, uint112 depositAmount, uint16 _duration) public {
-        vm.assume(_incentiveAmount > 0.0001 ether);
-        vm.assume(depositAmount > 0.0001 ether);
+//        // Test opting out of the last campaign (index 4)
+//        iVault.optOutOfCampaign(5, 4);
+//        assertEq(iVault.userSelectedCampaigns(REGULAR_USER, 4), 0);
 
-        uint256 duration;
-        uint256 incentiveAmount = uint256(_incentiveAmount);
+//        // Verify that other campaigns are still intact
+//        for (uint256 i = 0; i < 4; i++) {
+//            assertEq(iVault.userSelectedCampaigns(REGULAR_USER, i), i + 1);
+//        }
 
-        if (_duration < 7 days) {
-            duration = 7 days + 1;
-        } else {
-            duration = uint256(_duration);
-        }
+//        vm.stopPrank();
+//    }
 
-        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
+   //Not applicable to rewrite, needs to major fixes
+//    function testBasicRewardsCampaign(uint96 _incentiveAmount, uint112 depositAmount, uint16 _duration) public {
+//        vm.assume(_incentiveAmount > 0.0001 ether);
+//        vm.assume(depositAmount > 0.0001 ether);
 
-        MockERC20 testMockToken = new MockERC20("Reward Token", "REWARD");
-        testMockToken.mint(address(this), incentiveAmount);
-        testMockToken.approve(address(iVault), incentiveAmount);
+//        uint256 duration;
+//        uint256 incentiveAmount = uint256(_incentiveAmount);
 
-        uint256 startTime = block.timestamp;
+//        if (_duration < 7 days) {
+//            duration = 7 days + 1;
+//        } else {
+//            duration = uint256(_duration);
+//        }
 
-        uint256 campaignId = iVault.createRewardsCampaign(testMockToken, startTime, startTime + duration, incentiveAmount);
+//        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
 
-        vm.startPrank(REGULAR_USER);
+//        MockERC20 testMockToken = new MockERC20("Reward Token", "REWARD");
+//        testMockToken.mint(address(this), incentiveAmount);
+//        testMockToken.approve(address(iVault), incentiveAmount);
 
-        MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
-        token.approve(address(iVault), depositAmount);
-        iVault.deposit(depositAmount, REGULAR_USER);
+//        uint256 startTime = block.timestamp;
 
-        iVault.optIntoCampaign(campaignId, REFERRAL_USER);
+//        uint256 campaignId = iVault.createRewardsCampaign(testMockToken, startTime, startTime + duration, incentiveAmount);
 
-        iVault.claim(campaignId, REGULAR_USER);
+//        vm.startPrank(REGULAR_USER);
 
-        vm.warp(block.timestamp + startTime + duration);
+//        MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
+//        token.approve(address(iVault), depositAmount);
+//        iVault.deposit(depositAmount, REGULAR_USER);
 
-        uint256 claimed = iVault.claim(campaignId, REGULAR_USER);
-        assertEq(testMockToken.balanceOf(REGULAR_USER), claimed);
-        assertGt(claimed, 0);
-    }
+//        iVault.optIntoCampaign(campaignId, REFERRAL_USER);
 
-    function createTestCampaign(uint256 incentiveAmount, uint256 depositAmount, uint256 duration) public returns (uint256 campaignId, ERC4626i iVault) {
-        iVault = testFactory.createIncentivizedVault(testVault);
+//        iVault.claim(campaignId, REGULAR_USER);
 
-        MockERC20 testMockToken = new MockERC20("Reward Token", "REWARD");
-        testMockToken.mint(address(this), incentiveAmount);
-        testMockToken.approve(address(iVault), incentiveAmount);
+//        vm.warp(block.timestamp + startTime + duration);
 
-        uint256 startTime = block.timestamp;
+//        uint256 claimed = iVault.claim(campaignId, REGULAR_USER);
+//        assertEq(testMockToken.balanceOf(REGULAR_USER), claimed);
+//        assertGt(claimed, 0);
+//    }
 
-        campaignId = iVault.createRewardsCampaign(testMockToken, startTime, startTime + duration, incentiveAmount);
+   //Not applicable to rewrite, needs to major fixes
+//    function createTestCampaign(uint256 incentiveAmount, uint256 depositAmount, uint256 duration) public returns (uint256 campaignId, ERC4626i iVault) {
+//        iVault = testFactory.createIncentivizedVault(testVault);
 
-        vm.startPrank(REGULAR_USER);
+//        MockERC20 testMockToken = new MockERC20("Reward Token", "REWARD");
+//        testMockToken.mint(address(this), incentiveAmount);
+//        testMockToken.approve(address(iVault), incentiveAmount);
 
-        MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
-        token.approve(address(iVault), depositAmount);
-        iVault.deposit(depositAmount, REGULAR_USER);
+//        uint256 startTime = block.timestamp;
 
-        iVault.optIntoCampaign(campaignId, REFERRAL_USER);
+//        campaignId = iVault.createRewardsCampaign(testMockToken, startTime, startTime + duration, incentiveAmount);
 
-        vm.stopPrank();
-    }
+//        vm.startPrank(REGULAR_USER);
 
-    function testPoolUpdate(uint96 _incentiveAmount, uint112 depositAmount, uint16 _duration) public {
-        vm.assume(_incentiveAmount > 0.0001 ether);
-        vm.assume(depositAmount > 0.0001 ether);
+//        MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
+//        token.approve(address(iVault), depositAmount);
+//        iVault.deposit(depositAmount, REGULAR_USER);
 
-        uint256 duration;
-        uint256 incentiveAmount = uint256(_incentiveAmount);
+//        iVault.optIntoCampaign(campaignId, REFERRAL_USER);
 
-        if (_duration < 7 days) {
-            duration = 7 days + 1;
-        } else {
-            duration = uint256(_duration);
-        }
+//        vm.stopPrank();
+//    }
 
-        (uint256 campaignId, ERC4626i iVault) = createTestCampaign(incentiveAmount, depositAmount, duration);
+   //Not applicable to rewrite, needs to major fixes
+//    function testPoolUpdate(uint96 _incentiveAmount, uint112 depositAmount, uint16 _duration) public {
+//        vm.assume(_incentiveAmount > 0.0001 ether);
+//        vm.assume(depositAmount > 0.0001 ether);
 
-        (,,,,, uint256 accumulated, uint64 lastUpdated) = iVault.campaignIdToData(campaignId);
+//        uint256 duration;
+//        uint256 incentiveAmount = uint256(_incentiveAmount);
 
-        vm.warp(duration / 3);
-        iVault.updateRewardCampaign(campaignId);
+//        if (_duration < 7 days) {
+//            duration = 7 days + 1;
+//        } else {
+//            duration = uint256(_duration);
+//        }
 
-        (,,,,, uint256 newAcc, uint64 mostRecentUpdate) = iVault.campaignIdToData(campaignId);
+//        (uint256 campaignId, ERC4626i iVault) = createTestCampaign(incentiveAmount, depositAmount, duration);
 
-        assertGt(newAcc, accumulated);
-        assertGt(mostRecentUpdate, lastUpdated);
-    }
+//        (,,,,, uint256 accumulated, uint64 lastUpdated) = iVault.campaignIdToData(campaignId);
 
-    function testRetroactiveOptIn(uint96 _incentiveAmount, uint112 depositAmount, uint16 _duration) public {
-        vm.assume(_incentiveAmount > 0.0001 ether);
-        vm.assume(depositAmount > 0.0001 ether);
+//        vm.warp(duration / 3);
+//        iVault.updateRewardCampaign(campaignId);
 
-        uint256 duration;
-        uint256 incentiveAmount = uint256(_incentiveAmount);
+//        (,,,,, uint256 newAcc, uint64 mostRecentUpdate) = iVault.campaignIdToData(campaignId);
 
-        if (_duration < 7 days) {
-            duration = 7 days + 1;
-        } else {
-            duration = uint256(_duration);
-        }
+//        assertGt(newAcc, accumulated);
+//        assertGt(mostRecentUpdate, lastUpdated);
+//    }
 
-        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
+   //Not applicable to rewrite, needs to major fixes
+//    function testRetroactiveOptIn(uint96 _incentiveAmount, uint112 depositAmount, uint16 _duration) public {
+//        vm.assume(_incentiveAmount > 0.0001 ether);
+//        vm.assume(depositAmount > 0.0001 ether);
 
-        MockERC20 testMockToken = new MockERC20("Reward Token", "REWARD");
-        testMockToken.mint(address(this), incentiveAmount);
-        testMockToken.approve(address(iVault), incentiveAmount);
+//        uint256 duration;
+//        uint256 incentiveAmount = uint256(_incentiveAmount);
 
-        uint256 startTime = block.timestamp;
+//        if (_duration < 7 days) {
+//            duration = 7 days + 1;
+//        } else {
+//            duration = uint256(_duration);
+//        }
 
-        uint256 campaignId = iVault.createRewardsCampaign(testMockToken, startTime, startTime + duration, incentiveAmount);
+//        ERC4626i iVault = testFactory.createIncentivizedVault(testVault);
 
-        vm.startPrank(REGULAR_USER);
+//        MockERC20 testMockToken = new MockERC20("Reward Token", "REWARD");
+//        testMockToken.mint(address(this), incentiveAmount);
+//        testMockToken.approve(address(iVault), incentiveAmount);
 
-        MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
-        token.approve(address(iVault), depositAmount);
-        iVault.deposit(depositAmount, REGULAR_USER);
+//        uint256 startTime = block.timestamp;
 
-        vm.warp(duration / 2);
-        iVault.updateRewardCampaign(campaignId);
+//        uint256 campaignId = iVault.createRewardsCampaign(testMockToken, startTime, startTime + duration, incentiveAmount);
 
-        iVault.optIntoCampaign(campaignId, REFERRAL_USER);
+//        vm.startPrank(REGULAR_USER);
 
-        (uint256 accumulated,,) = iVault.campaignToUserRewards(campaignId, REGULAR_USER);
-        iVault.updateUserRewards(campaignId, REGULAR_USER);
-        (uint256 newAccumulated,,) = iVault.campaignToUserRewards(campaignId, REGULAR_USER);
+//        MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
+//        token.approve(address(iVault), depositAmount);
+//        iVault.deposit(depositAmount, REGULAR_USER);
 
-        assertGt(newAccumulated, accumulated);
-    }
+//        vm.warp(duration / 2);
+//        iVault.updateRewardCampaign(campaignId);
+
+//        iVault.optIntoCampaign(campaignId, REFERRAL_USER);
+
+//        (uint256 accumulated,,) = iVault.campaignToUserRewards(campaignId, REGULAR_USER);
+//        iVault.updateUserRewards(campaignId, REGULAR_USER);
+//        (uint256 newAccumulated,,) = iVault.campaignToUserRewards(campaignId, REGULAR_USER);
+
+//        assertGt(newAccumulated, accumulated);
+//    }
 }

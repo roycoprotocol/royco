@@ -63,7 +63,7 @@ contract Points is Ownable {
         isAllowedVault[vault] = true;
         emit AllowedVaultAdded(vault);
     }
-    
+
     /// @param ip The incentive provider address to allow to mint points on RecipeOrderbook
     function addAllowedIP(address ip) external onlyOwner {
         allowedIPs[ip] = true;
@@ -74,7 +74,6 @@ contract Points is Ownable {
         allowedIPs[ip] = false;
     }
 
-    error CampaignNotAuthorized();
     error OnlyAllowedVaults();
     error OnlyRecipeOrderbook();
     error NotAllowedIP();
@@ -104,7 +103,7 @@ contract Points is Ownable {
 
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
-    function award(address to, uint256 amount) external onlyAllowedVaults() {
+    function award(address to, uint256 amount) external onlyAllowedVaults {
         emit Award(to, amount);
     }
 
