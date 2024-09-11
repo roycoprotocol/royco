@@ -515,6 +515,14 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
                 address token = order.tokensOffered[i];
 
+                // Calculate fees to take based on percentage of fill
+                uint256 protocolFeeAmount = order.tokenToProtocolFeeAmount[token].mulWadDown(fillPercentage);
+                uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
+
+                // Take fees
+                accountFee(protocolFeeClaimant, order.tokensOffered[i], protocolFeeAmount, order.ip);
+                accountFee(frontendFeeRecipient, order.tokensOffered[i], frontendFeeAmount, order.ip);
+
                 // Calculate incentives to give based on percentage of fill
                 uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
                 // Give incentives to LP immediately in an Upfront market
@@ -523,14 +531,6 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 } else {
                     ERC20(token).safeTransfer(msg.sender, incentiveAmount);
                 }
-
-                // Calculate fees to take based on percentage of fill
-                uint256 protocolFeeAmount = order.tokenToProtocolFeeAmount[token].mulWadDown(fillPercentage);
-                uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
-
-                // Take fees
-                accountFee(protocolFeeClaimant, order.tokensOffered[i], protocolFeeAmount, order.ip);
-                accountFee(frontendFeeRecipient, order.tokensOffered[i], frontendFeeAmount, order.ip);
             }
         }
 
@@ -538,7 +538,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             // If the no fundingVault specified, fund the wallet directly from LP
             ERC20(market.inputToken).safeTransferFrom(msg.sender, address(wallet), fillAmount);
         } else {
-            // Withdraw the LP from the funding vault into the wallet
+            // Withdraw the liquidity from the funding vault into the wallet
             ERC4626(fundingVault).withdraw(fillAmount, address(wallet), msg.sender);
         }
 
@@ -590,8 +590,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             params.ip = msg.sender;
 
             for (uint256 i = 0; i < order.tokensRequested.length; ++i) {
-                // This is the amount that the LP can claim once weiroll wallet is unlocked (fees are taken on top of this amount from the IP)
+                // This is the amount (per incentive) that the LP can claim once weiroll wallet is unlocked (fees are taken on top of this amount from the IP)
                 params.amounts[i] = order.tokenAmountsRequested[i].mulWadDown(fillPercentage);
+
                 // Calculate fees based on fill percentage. These fees will be taken on top of the LP's requested amount.
                 uint256 protocolFeeAmount = params.amounts[i].mulWadDown(protocolFee);
                 uint256 frontendFeeAmount = params.amounts[i].mulWadDown(market.frontendFee);
@@ -613,6 +614,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             for (uint256 i = 0; i < order.tokensRequested.length; ++i) {
                 // This is the amount that the LP can claim once weiroll wallet is unlocked (fees are taken on top of this amount from the IP)
                 uint256 amount = order.tokenAmountsRequested[i].mulWadDown(fillPercentage);
+
                 // Calculate fees based on fill percentage. These fees will be taken on top of the LP's requested amount.
                 uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
                 uint256 frontendFeeAmount = amount.mulWadDown(market.frontendFee);
@@ -634,12 +636,11 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             }
         }
 
-        // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (order.fundingVault == address(0)) {
-            // Transfer the base asset from the LP to the target vault
+            // If the no fundingVault specified, fund the wallet directly from LP
             ERC20(market.inputToken).safeTransferFrom(order.lp, address(wallet), fillAmount);
         } else {
-            // Withdraw from the funding vault
+            // Withdraw the liquidity from the funding vault into the wallet
             ERC4626(order.fundingVault).withdraw(fillAmount, address(wallet), order.lp);
         }
 
