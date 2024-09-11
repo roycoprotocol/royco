@@ -207,9 +207,13 @@ contract ERC4626iTest is Test {
         assertApproxEqRel(actualRewards, expectedRewards, 1e15); // Allow 0.1% deviation
     }
 
-    function testClaim(uint256 depositAmount, uint32 timeElapsed) public {
-        vm.assume(depositAmount > 1e6 && depositAmount <= type(uint96).max);
-        vm.assume(timeElapsed > 1e6 && timeElapsed <= 30 days);
+    function testClaim(uint96 _depositAmount, uint32 timeElapsed) public {
+        uint256 depositAmount = _depositAmount;
+        
+        vm.assume(depositAmount > 1e6);
+        vm.assume(depositAmount <= type(uint96).max);
+        vm.assume(timeElapsed > 1e6);
+        vm.assume(timeElapsed <= 30 days);
 
         uint256 rewardAmount = 1000 * WAD;
         uint32 start = uint32(block.timestamp);
