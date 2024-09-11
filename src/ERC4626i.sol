@@ -38,6 +38,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     error NoIntervalInProgress();
     error RateCannotDecrease();
     error FrontendFeeBelowMinimum();
+    error InvalidReward();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -83,8 +84,10 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @dev The fee taken by the referring frontend, out of WAD
     uint256 public frontendFee;
 
-    /// @dev Tokens {and,or} used as rewards
+    /// @dev Tokens {and,or} Points campaigns used as rewards
     address[] public rewards;
+    /// @dev Maps a reward address to whether it has been added via addRewardsToken
+    mapping(address => bool) public isReward;
     /// @dev Maps a reward to the interval in which rewards are distributed over
     mapping(address => RewardsInterval) public rewardToInterval;
     /// @dev maps a reward (either token or points) to the accumulator to track reward distribution
@@ -119,6 +122,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     function addRewardsToken(address rewardsToken) public onlyOwner {
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
         rewards.push(rewardsToken);
+        isReward[rewardsToken] = true;
         emit RewardsTokenAdded(rewardsToken);
     }
 
@@ -167,6 +171,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param newEnd The end date of the rewards campaign 
     /// @param frontendFeeRecipient The address to reward for directing IP flow
     function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) public onlyOwner {
+        if (!isReward[reward]) revert InvalidReward();
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         if(newEnd <= rewardsInterval.end) revert InvalidInterval();
         if(block.timestamp >= rewardsInterval.end) revert NoIntervalInProgress();
@@ -203,6 +208,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param totalRewards The amount of rewards to distribute over the interval
     /// @param frontendFeeRecipient The address to reward the frontendFee
     function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) external onlyOwner {
+        if (!isReward[reward]) revert InvalidReward();
         if(start >= end) revert InvalidInterval();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
