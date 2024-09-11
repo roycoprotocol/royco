@@ -138,10 +138,8 @@ contract ERC4626iTest is Test {
           additionalRewards = ((initialRewards / initialDuration) * extension) + 1e18; 
         }
 
-        console.log("here3");
         uint32 initialEnd = start + initialDuration;
         uint32 newEnd = initialEnd + extension;
-        console.log("here4");
 
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
 
@@ -158,8 +156,6 @@ contract ERC4626iTest is Test {
 
         testIncentivizedVault.extendRewardsInterval(address(rewardToken1), additionalRewards, newEnd, address(this));
         
-        console.log("here5");
-        
         frontendFee = additionalRewards.mulWadDown(testIncentivizedVault.frontendFee());
         protocolFee = additionalRewards.mulWadDown(testFactory.protocolFee());
         additionalRewards -= frontendFee + protocolFee;
@@ -168,9 +164,9 @@ contract ERC4626iTest is Test {
         assertEq(actualStart, block.timestamp);
         assertEq(actualEnd, newEnd);
         
-        /* uint256 remainingInitialRewards = (initialRewards / initialDuration) * (initialEnd - block.timestamp);
+        uint256 remainingInitialRewards = (initialRewards / initialDuration) * (initialEnd - block.timestamp);
         uint256 expectedRate = (remainingInitialRewards + additionalRewards) / (newEnd - block.timestamp);
-        assertEq(actualRate, expectedRate); */
+        assertEq(actualRate, expectedRate);
     }
 
     function testDeposit(uint256 amount) public {
