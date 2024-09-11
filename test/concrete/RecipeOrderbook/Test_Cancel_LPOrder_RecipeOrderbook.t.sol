@@ -7,7 +7,7 @@ import "../../../src/ERC4626i.sol";
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 
-contract Test_CancelLPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
+contract Test_Cancel_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     address LP_ADDRESS;
     address IP_ADDRESS;
 

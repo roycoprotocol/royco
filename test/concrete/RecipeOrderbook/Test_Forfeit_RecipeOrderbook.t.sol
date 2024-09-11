@@ -87,7 +87,7 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[1].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
 
         vm.startPrank(LP_ADDRESS);
         orderbook.forfeit(weirollWallet);
@@ -124,7 +124,7 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[1].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.NotOwner.selector));
         vm.startPrank(IP_ADDRESS);

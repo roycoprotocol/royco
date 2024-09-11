@@ -492,7 +492,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             params.amounts = new uint256[](order.tokensOffered.length);
             params.ip = order.ip;
 
-            for (uint256 i = 0; i < order.tokensOffered.length; i++) {
+            for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
                 address token = order.tokensOffered[i];
 
                 // Calculate incentives to give based on percentage of fill
@@ -691,7 +691,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 ERC20(token).safeTransfer(order.ip, (incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeAmount));
             }
 
-            /// This is pre-emptive to protect against re-entrancy in some cases
+            /// This is pre-emptive to protect against re-entrancy in some cases (dynamic arrays and mappings don't get auto cleared)
             delete order.tokensOffered[i];
             delete order.tokenAmountsOffered[token];
             delete order.tokenToFrontendFeeAmount[token];
@@ -711,13 +711,14 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         WeirollWallet(payable(weirollWallet)).forfeit();
 
         // Return the locked rewards to the IP
-        LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];
-        for (uint256 i = 0; i < params.tokens.length; i++) {
+        LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
+        for (uint256 i = 0; i < params.tokens.length; ++i) {
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
                 uint256 amount = params.amounts[i];
                 ERC20(params.tokens[i]).safeTransfer(params.ip, amount);
             }
-            // This is pre-emptive to protect against re-entrancy in some cases
+
+            /// This is pre-emptive to protect against re-entrancy in some cases (dynamic arrays and mappings don't get auto cleared)
             delete params.tokens[i];
             delete params.amounts[i];
         }
@@ -735,16 +736,19 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
             revert WalletLocked();
         }
-        LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];
-        for (uint256 i = 0; i < params.tokens.length; i++) {
-            uint256 amount = params.amounts[i];
+
+        // Get locked reward details to facilitate claim
+        LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
+
+        for (uint256 i = 0; i < params.tokens.length; ++i) {
+            // Reward incentives to LP upon wallet unlock
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
-                Points(params.tokens[i]).award(to, amount, params.ip);
+                Points(params.tokens[i]).award(to, params.amounts[i], params.ip);
             } else {
-                ERC20(params.tokens[i]).safeTransfer(to, amount);
+                ERC20(params.tokens[i]).safeTransfer(to, params.amounts[i]);
             }
 
-            /// This is pre-emptive to protect against re-entrancy in some cases
+            /// This is pre-emptive to protect against re-entrancy in some cases (dynamic arrays and mappings don't get auto cleared)
             delete params.tokens[i];
             delete params.amounts[i];
         }

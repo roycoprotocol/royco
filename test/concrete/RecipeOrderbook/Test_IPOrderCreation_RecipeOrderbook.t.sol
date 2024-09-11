@@ -107,10 +107,6 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 incentiveAmount = tokenAmountsOffered[0] - protocolFeeAmount - frontendFeeAmount;
 
         // Expect the IPOrderCreated event to be emitted
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, protocolFeeAmount);
-
-        // Expect the IPOrderCreated event to be emitted
         vm.expectEmit(true, true, true, true, address(orderbook));
         emit RecipeOrderbook.IPOrderCreated(
             0, // Expected order ID (starts at 0)

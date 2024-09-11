@@ -8,7 +8,7 @@ import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 
-contract TestFuzz_CancelIPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
+contract TestFuzz_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     using FixedPointMathLib for uint256;
 
     address LP_ADDRESS;
@@ -49,15 +49,17 @@ contract TestFuzz_CancelIPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (,,,, uint256 remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
 
         // Calculate amount to be refunded
+        uint256 protocolFeeStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, address(mockIncentiveToken));
         uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, address(mockIncentiveToken));
         uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, address(mockIncentiveToken));
 
         uint256 percentNotFilled = remainingQuantity.divWadDown(quantity);
         uint256 unchargedFrontendFeeAmount = frontendFeeStored.mulWadDown(percentNotFilled);
+        uint256 unchargedProtocolFeeStored = protocolFeeStored.mulWadDown(percentNotFilled);
         uint256 incentivesRemaining = incentiveAmountStored.mulWadDown(percentNotFilled);
 
         vm.expectEmit(true, true, true, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(address(orderbook), IP_ADDRESS, incentivesRemaining + unchargedFrontendFeeAmount);
+        emit ERC20.Transfer(address(orderbook), IP_ADDRESS, incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored);
 
         vm.expectEmit(true, false, false, true, address(orderbook));
         emit RecipeOrderbook.IPOrderCancelled(orderId);
@@ -75,7 +77,7 @@ contract TestFuzz_CancelIPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(_remainingQuantity, 0);
 
         // Check that refund was made
-        assertEq(mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount);
+        assertEq(mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored);
     }
 
     function test_RevertIf_cancelIPOrder_NotOwner(address _nonOwner) external {
