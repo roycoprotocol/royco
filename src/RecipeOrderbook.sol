@@ -441,7 +441,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public {
         // Retreive the IPOrder and WeirollMarket structs
         IPOrder storage order = orderIDToIPOrder[orderID];
-        WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
+        WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
 
         // Check that the order isn't expired
         if (order.expiry != 0 && block.timestamp > order.expiry) {
@@ -546,7 +546,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
 
         // Get Weiroll market
-        WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
+        WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
 
         // Create the weiroll wallet with the appropriate params
         uint256 unlockTime = block.timestamp + market.lockupTime;
@@ -636,7 +636,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         emit LPOrderCancelled(order.orderID);
     }
 
-    /// @notice Cancel an LP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
+    /// @notice Cancel an IP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
     function cancelIPOrder(uint256 orderID) public {
         IPOrder storage order = orderIDToIPOrder[orderID];
         if (order.ip != msg.sender) revert NotOwner();
@@ -645,20 +645,24 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
         if (order.remainingQuantity == 0) revert NotEnoughRemainingQuantity();
 
-        // Cache the remaining quantity and zero it out to prevent re-entry
-        uint256 remainingQuantity = order.remainingQuantity;
-        order.remainingQuantity = 0;
-
-        emit IPOrderCancelled(orderID);
+        uint256 percentNotFilled = order.remainingQuantity.divWadDown(order.quantity);
 
         // Transfer the remaining incentives back to the IP
         for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
-            // Calculate the incentives which are still available for takeback
-            address token = order.tokensOffered[i];
-            uint256 percentFill = remainingQuantity.divWadDown(order.quantity);
-            uint256 incentivesRemaining = order.tokenAmountsOffered[token].mulWadDown(percentFill);
-            ERC20(token).safeTransfer(order.ip, incentivesRemaining);
+            if (!PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensOffered[i])) {
+                address token = order.tokensOffered[i];
+                // Calculate the unused frontend fee amount to reimburse to the IP
+                uint256 unchargedFrontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(percentNotFilled);
+                // Calculate the incentives which are still available for takeback if its a token
+                uint256 incentivesRemaining = order.tokenAmountsOffered[token].mulWadDown(percentNotFilled);
+                ERC20(token).safeTransfer(order.ip, (incentivesRemaining + unchargedFrontendFeeAmount));
+            }
         }
+
+        // Delete order from mapping since its not needed anymore
+        delete orderIDToIPOrder[orderID];
+
+        emit IPOrderCancelled(orderID);
     }
 
     /// @notice For wallets of Forfeitable markets, an LP can call this function to forgo their rewards and unlock their wallet
