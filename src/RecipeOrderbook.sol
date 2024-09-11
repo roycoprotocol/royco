@@ -703,15 +703,16 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
         LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];
         for (uint256 i = 0; i < params.tokens.length; i++) {
-            /// This is pre-emptive to protect against re-entrancy in some cases
             uint256 amount = params.amounts[i];
-            params.amounts[i] = 0;
-
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
                 Points(params.tokens[i]).award(to, amount, params.ip);
             } else {
                 ERC20(params.tokens[i]).safeTransfer(to, amount);
             }
+            
+            /// This is pre-emptive to protect against re-entrancy in some cases
+            delete params.tokens[i];
+            delete params.amounts[i];
         }
 
         // zero out the mapping
