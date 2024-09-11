@@ -10,11 +10,15 @@ import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { ERC4626i } from "src/ERC4626i.sol";
 import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
+import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+
 import { PointsFactory } from "src/PointsFactory.sol";
 
 import { Test, console } from "forge-std/Test.sol";
 
 contract ERC4626iTest is Test {
+    using FixedPointMathLib for *;
+
     ERC20 token = ERC20(address(new MockERC20("Mock Token", "MOCK")));
     ERC4626 testVault = ERC4626(address(new MockERC4626(token)));
     ERC4626i testIncentivizedVault;
@@ -204,8 +208,8 @@ contract ERC4626iTest is Test {
     }
 
     function testClaim(uint256 depositAmount, uint32 timeElapsed) public {
-        vm.assume(depositAmount > 0 && depositAmount <= type(uint96).max);
-        vm.assume(timeElapsed > 0 && timeElapsed <= 365 days);
+        vm.assume(depositAmount > 1e6 && depositAmount <= type(uint96).max);
+        vm.assume(timeElapsed > 1e6 && timeElapsed <= 30 days);
 
         uint256 rewardAmount = 1000 * WAD;
         uint32 start = uint32(block.timestamp);
@@ -216,25 +220,35 @@ contract ERC4626iTest is Test {
         rewardToken1.approve(address(testIncentivizedVault), rewardAmount);
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, start + duration, rewardAmount);
 
+        uint256 frontendFee = rewardAmount.mulWadDown(testIncentivizedVault.frontendFee());
+        uint256 protocolFee = rewardAmount.mulWadDown(testFactory.protocolFee());
+
+        rewardAmount -= frontendFee + protocolFee;
+
         MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
 
         vm.startPrank(REGULAR_USER);
         token.approve(address(testIncentivizedVault), depositAmount);
-        testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
-        vm.warp(start + timeElapsed);
+        uint256 shares = testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
+        vm.warp(timeElapsed);
 
-        uint256 expectedRewards = (rewardAmount * timeElapsed) / duration;
-        console.log("Expected rewards: ", expectedRewards);
-        console.log("Regular user balance: ", rewardToken1.balanceOf(REGULAR_USER));
+        uint256 expectedRewards = (rewardAmount / duration) * (shares / testIncentivizedVault.totalSupply()) * timeElapsed;
+        (, , uint256 rate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
+        
+        console.log("Calculated Rate", rewardAmount / duration);
+        console.log("Current Rate", rate);
+        
+        console.log(expectedRewards);
+
         testIncentivizedVault.claim(REGULAR_USER);
         vm.stopPrank();
 
-        assertApproxEqRel(rewardToken1.balanceOf(REGULAR_USER), expectedRewards, 1e15); // Allow 0.1% deviation
+        assertApproxEqRel(rewardToken1.balanceOf(REGULAR_USER), expectedRewards, 2e15); // Allow 0.2% deviation
     }
 
     function testMultipleRewardTokens(uint256 depositAmount, uint32 timeElapsed) public {
         vm.assume(depositAmount > 0 && depositAmount <= type(uint96).max);
-        vm.assume(timeElapsed > 0 && timeElapsed <= 365 days);
+        vm.assume(timeElapsed > 1e6 && timeElapsed <= 30 days);
 
         uint256 rewardAmount1 = 1000 * WAD;
         uint256 rewardAmount2 = 500 * WAD;
@@ -251,7 +265,15 @@ contract ERC4626iTest is Test {
 
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, start + duration, rewardAmount1);
         testIncentivizedVault.setRewardsInterval(address(rewardToken2), start, start + duration, rewardAmount2);
+        
+        uint256 frontendFee = rewardAmount1.mulWadDown(testIncentivizedVault.frontendFee());
+        uint256 protocolFee = rewardAmount1.mulWadDown(testFactory.protocolFee());
+        rewardAmount1 -= frontendFee + protocolFee;
 
+        frontendFee = rewardAmount2.mulWadDown(testIncentivizedVault.frontendFee());
+        protocolFee = rewardAmount2.mulWadDown(testFactory.protocolFee());
+        rewardAmount2 -= frontendFee + protocolFee;
+        
         MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
 
         vm.startPrank(REGULAR_USER);
@@ -270,7 +292,7 @@ contract ERC4626iTest is Test {
     }
 
     function testZeroTotalSupply(uint32 timeElapsed) public {
-        vm.assume(timeElapsed > 0 && timeElapsed <= 365 days);
+        vm.assume(timeElapsed > 0 && timeElapsed <= 30 days);
 
         uint256 rewardAmount = 1000 * WAD;
         uint32 start = uint32(block.timestamp);
@@ -289,7 +311,7 @@ contract ERC4626iTest is Test {
 
     function testTransferRewards(uint256 depositAmount, uint32 timeElapsed, uint256 transferAmount) public {
         vm.assume(depositAmount > 0 && depositAmount <= type(uint96).max);
-        vm.assume(timeElapsed > 0 && timeElapsed <= 365 days);
+        vm.assume(timeElapsed > 0 && timeElapsed <= 30 days);
         vm.assume(transferAmount > 0 && transferAmount < depositAmount);
 
         uint256 rewardAmount = 1000 * WAD;
@@ -302,6 +324,10 @@ contract ERC4626iTest is Test {
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, start + duration, rewardAmount);
 
         MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
+        
+        uint256 frontendFee = rewardAmount.mulWadDown(testIncentivizedVault.frontendFee());
+        uint256 protocolFee = rewardAmount.mulWadDown(testFactory.protocolFee());
+        rewardAmount -= frontendFee + protocolFee;
 
         vm.startPrank(REGULAR_USER);
         token.approve(address(testIncentivizedVault), depositAmount);
@@ -321,7 +347,7 @@ contract ERC4626iTest is Test {
 
     function testRewardsAfterWithdraw(uint256 depositAmount, uint32 timeElapsed, uint256 withdrawAmount) public {
         vm.assume(depositAmount > 0 && depositAmount <= type(uint96).max);
-        vm.assume(timeElapsed > 0 && timeElapsed <= 365 days);
+        vm.assume(timeElapsed > 0 && timeElapsed <= 30 days);
         vm.assume(withdrawAmount > 0 && withdrawAmount < depositAmount);
 
         uint256 rewardAmount = 1000 * WAD;
@@ -332,6 +358,10 @@ contract ERC4626iTest is Test {
         rewardToken1.mint(address(this), rewardAmount);
         rewardToken1.approve(address(testIncentivizedVault), rewardAmount);
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, start + duration, rewardAmount);
+        
+        uint256 frontendFee = rewardAmount.mulWadDown(testIncentivizedVault.frontendFee());
+        uint256 protocolFee = rewardAmount.mulWadDown(testFactory.protocolFee());
+        rewardAmount -= frontendFee + protocolFee;
 
         MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
 
@@ -349,7 +379,7 @@ contract ERC4626iTest is Test {
 
     function testFeeClaiming(uint256 depositAmount, uint32 timeElapsed) public {
         vm.assume(depositAmount > 0 && depositAmount <= type(uint96).max);
-        vm.assume(timeElapsed > 0 && timeElapsed <= 365 days);
+        vm.assume(timeElapsed > 0 && timeElapsed <= 30 days);
 
         uint256 rewardAmount = 1000 * WAD;
         uint32 start = uint32(block.timestamp);

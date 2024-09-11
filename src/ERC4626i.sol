@@ -266,7 +266,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         if (totalSupply_ == 0) return rewardsPerTokenOut;
 
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + 1e18 * elapsed * rewardsInterval_.rate / totalSupply_).toUint128(); // The rewards per
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (1e18 * elapsed * rewardsInterval_.rate / totalSupply_)).toUint128(); // The rewards per
             // token are scaled up for precision
         return rewardsPerTokenOut;
     }
