@@ -691,9 +691,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 ERC20(token).safeTransfer(order.ip, (incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeAmount));
             }
 
-            /// This is pre-emptive to protect against re-entrancy in some cases (dynamic arrays and mappings don't get auto cleared)
+            /// Delete cancelled fields of dynamic arrays and mappings
             delete order.tokensOffered[i];
             delete order.tokenAmountsOffered[token];
+            delete order.tokenToProtocolFeeAmount[token];
             delete order.tokenToFrontendFeeAmount[token];
         }
 
@@ -718,7 +719,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 ERC20(params.tokens[i]).safeTransfer(params.ip, amount);
             }
 
-            /// This is pre-emptive to protect against re-entrancy in some cases (dynamic arrays and mappings don't get auto cleared)
+            /// Delete cancelled fields of dynamic arrays and mappings
             delete params.tokens[i];
             delete params.amounts[i];
         }
@@ -748,7 +749,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 ERC20(params.tokens[i]).safeTransfer(to, params.amounts[i]);
             }
 
-            /// This is pre-emptive to protect against re-entrancy in some cases (dynamic arrays and mappings don't get auto cleared)
+            /// Delete cancelled fields of dynamic arrays and mappings
             delete params.tokens[i];
             delete params.amounts[i];
         }
