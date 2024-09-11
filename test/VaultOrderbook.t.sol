@@ -54,13 +54,9 @@ contract VaultOrderbookTest is Test {
         vm.prank(alice);
         baseToken.burn(alice, 1000 * 1e18);
 
-        uint256 limit = (2**237)-1;
-        console.log("Quantity: ", quantity);
-        console.log("limit: ", limit);
-        vm.assume(quantity <= limit);
-        // vm.assume(quantity <= type(uint256).max / 2); //TEST FAILS WHEN THIS IS UNCOMMENTED
-        // vm.assume(quantity < 1e24); //TEST PASSES IF THIS IN UNCOMMENTED
         vm.assume(quantity > 0);
+        vm.assume(quantity <= type(uint256).max / quantity);
+        vm.assume(quantity < 2**150);
         vm.assume(expiry >= block.timestamp);
 
        baseToken.mint(alice, 2*quantity);
