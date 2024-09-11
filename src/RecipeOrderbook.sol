@@ -58,8 +58,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 quantity;
         uint256 remainingQuantity;
         address[] tokensOffered;
-        mapping(address => uint256) tokenAmountsOffered;
-        mapping(address => uint256) tokenToFrontendFeeAmount;
+        mapping(address => uint256) tokenAmountsOffered; // amounts to be released to LP (per incentive)
+        mapping(address => uint256) tokenToProtocolFeeAmount; // amounts to be released to protocolFeeClaimant (per incentive)
+        mapping(address => uint256) tokenToFrontendFeeAmount; // amounts to be released to frontend provider (per incentive)
     }
 
     /// @custom:field weirollCommands The weiroll script that will be executed on an LP's weiroll wallet after receiving the inputToken
@@ -119,7 +120,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @notice Tracks the unfilled quantity of each LP order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
-    mapping(address => LockedRewardParams) internal weirollWalletToLockedRewardParams;
+    mapping(address => LockedRewardParams) public weirollWalletToLockedRewardParams;
 
     /// @param _weirollWalletImplementation The address of the WeirollWallet implementation contract
     /// @param _protocolFee The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant
@@ -192,12 +193,12 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @param IPOrderID The ID of the IP order that was filled
     /// @param lp The address of the liquidity provider that filled the order
     /// @param quantity The amount of input tokens that were deposited
-    event IPOrderFilled(uint256 indexed IPOrderID, address indexed lp, uint256 quantity);
+    event IPOrderFilled(uint256 indexed marketID, uint256 indexed IPOrderID, address indexed lp, uint256 fillAmount, uint256 quantity, address weirollWallet);
 
     /// @param LPOrderID The ID of the LP order that was filled
     /// @param ip The address of the incentive provider that filled the order
     /// @param quantity The amount of input tokens that were deposited
-    event LPOrderFilled(uint256 indexed LPOrderID, address indexed ip, uint256 quantity);
+    event LPOrderFilled(uint256 indexed marketID, uint256 indexed LPOrderID, address indexed ip, uint256 fillAmount, uint256 quantity, address weirollWallet);
 
     /// @param IPOrderID The ID of the IP order that was cancelled
     event IPOrderCancelled(uint256 indexed IPOrderID);
@@ -242,8 +243,18 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         return orderIDToIPOrder[orderId].tokenAmountsOffered[tokenAddress];
     }
 
+    function getTokenToProtocolFeeAmountForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
+        return orderIDToIPOrder[orderId].tokenToProtocolFeeAmount[tokenAddress];
+    }
+
     function getTokenToFrontendFeeAmountForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
         return orderIDToIPOrder[orderId].tokenToFrontendFeeAmount[tokenAddress];
+    }
+
+    // Single getter function that returns the entire LockedRewardParams struct as a tuple
+    function getLockedRewardParams(address weirollWallet) external view returns (address[] memory tokens, uint256[] memory amounts, address ip) {
+        LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
+        return (params.tokens, params.amounts, params.ip);
     }
 
     /// @notice Create a new recipe market
@@ -377,15 +388,16 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         // Transfer the IP's incentives to the orderbook and set aside fees
         for (uint256 i = 0; i < tokensOffered.length; ++i) {
             uint256 amount = tokenAmounts[i];
+            // Calculate incentive and fee breakdown
             uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
             uint256 frontendFeeAmount = amount.mulWadDown(marketIDToWeirollMarket[targetMarketID].frontendFee);
             uint256 incentiveAmount = amount - protocolFeeAmount - frontendFeeAmount;
 
+            // Set appropriate amounts
+            order.tokenToProtocolFeeAmount[tokensOffered[i]] = protocolFeeAmount;
+            order.tokenToFrontendFeeAmount[tokensOffered[i]] = frontendFeeAmount;
             order.tokenAmountsOffered[tokensOffered[i]] = incentiveAmount;
 
-            order.tokenToFrontendFeeAmount[tokensOffered[i]] = frontendFeeAmount;
-            // Take protocol fee
-            accountFee(protocolFeeClaimant, tokensOffered[i], protocolFeeAmount, msg.sender);
             // Check if not points
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(tokensOffered[i])) {
                 // Transfer frontend fee + protocol fee + incentiveAmount to orderbook
@@ -435,7 +447,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public {
         // Retreive the IPOrder and WeirollMarket structs
         IPOrder storage order = orderIDToIPOrder[orderID];
-        WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
+        WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
 
         // Check that the order isn't expired
         if (order.expiry != 0 && block.timestamp > order.expiry) {
@@ -450,7 +462,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
 
         // Check that the order's base asset matches the market's base asset
-        if (market.inputToken != ERC4626(fundingVault).asset()) {
+        if (fundingVault != address(0) && market.inputToken != ERC4626(fundingVault).asset()) {
             revert MismatchedBaseAsset();
         }
         // Check that the order isn't empty
@@ -458,58 +470,82 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             revert CannotPlaceZeroQuantityOrder();
         }
 
+        // Calculate the percentage of the order the LP is filling
+        uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
+
         // Update the order's remaining quantity before interacting with external contracts
         order.remainingQuantity -= fillAmount;
 
         // Create a new weiroll wallet for the LP with an appropriate unlock time
         uint256 unlockTime = block.timestamp + market.lockupTime;
 
+        // Create weiroll wallet to lock liquidity for recipe execution(s)
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
         WeirollWallet wallet =
             WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable))));
 
-        if (market.rewardStyle == RewardStyle.Forfeitable || market.rewardStyle == RewardStyle.Arrear) {
+        if (market.rewardStyle != RewardStyle.Upfront) {
+            // If RewardStyle is either Forfeitable or Arrear
+            // Create locked rewards params to account for payouts upon wallet unlocking
             LockedRewardParams memory params;
             params.tokens = order.tokensOffered;
             params.amounts = new uint256[](order.tokensOffered.length);
-            for (uint256 i = 0; i < order.tokensOffered.length; i++) {
+            params.ip = order.ip;
+
+            for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
                 address token = order.tokensOffered[i];
-                uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
+
+                // Calculate incentives to give based on percentage of fill
                 uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
                 params.amounts[i] = incentiveAmount;
+
+                // Calculate fees to take based on percentage of fill
+                uint256 protocolFeeAmount = order.tokenToProtocolFeeAmount[token].mulWadDown(fillPercentage);
                 uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
+
+                // Take fees
+                accountFee(protocolFeeClaimant, order.tokensOffered[i], protocolFeeAmount, order.ip);
                 accountFee(frontendFeeRecipient, order.tokensOffered[i], frontendFeeAmount, order.ip);
             }
-            params.ip = order.ip;
+
+            // Set params for future payout
             weirollWalletToLockedRewardParams[address(wallet)] = params;
         } else {
             // Transfer the IP's incentives to the LP and set aside fees
             for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
                 address token = order.tokensOffered[i];
-                uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
-                // Fees are taken as a percentage of the incentive amount
-                uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
-                uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
 
+                // Calculate fees to take based on percentage of fill
+                uint256 protocolFeeAmount = order.tokenToProtocolFeeAmount[token].mulWadDown(fillPercentage);
+                uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
+
+                // Take fees
+                accountFee(protocolFeeClaimant, order.tokensOffered[i], protocolFeeAmount, order.ip);
+                accountFee(frontendFeeRecipient, order.tokensOffered[i], frontendFeeAmount, order.ip);
+
+                // Calculate incentives to give based on percentage of fill
+                uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
+                // Give incentives to LP immediately in an Upfront market
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
                     Points(token).award(msg.sender, incentiveAmount, order.ip);
                 } else {
                     ERC20(token).safeTransfer(msg.sender, incentiveAmount);
                 }
-
-                accountFee(frontendFeeRecipient, token, frontendFeeAmount, order.ip);
             }
         }
 
-        // If the fundingVault is set to 0, fund the fill directly via the base asset
         if (fundingVault == address(0)) {
+            // If the no fundingVault specified, fund the wallet directly from LP
             ERC20(market.inputToken).safeTransferFrom(msg.sender, address(wallet), fillAmount);
         } else {
-            // Withdraw the LP from the funding vault into the wallet
+            // Withdraw the liquidity from the funding vault into the wallet
             ERC4626(fundingVault).withdraw(fillAmount, address(wallet), msg.sender);
         }
 
+        // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
+
+        emit IPOrderFilled(order.targetMarketID, orderID, order.ip, fillAmount, order.quantity, address(wallet));
     }
 
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
@@ -530,55 +566,88 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             revert CannotFillZeroQuantityOrder();
         }
 
+        // Adjust remaining order quantity by amount filled
         orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
-        WeirollMarket memory market = marketIDToWeirollMarket[order.targetMarketID];
+        // Calculate percentage of LP oder that IP is fulfilling (IP gets this percantage of the order quantity in a Weiroll wallet specified by the market)
+        uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
 
+        // Get Weiroll market
+        WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
+
+        // Create weiroll wallet to lock liquidity for recipe execution(s)
         uint256 unlockTime = block.timestamp + market.lockupTime;
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
         WeirollWallet wallet =
             WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime, forfeitable))));
 
-        if (market.rewardStyle == RewardStyle.Forfeitable || market.rewardStyle == RewardStyle.Arrear) {
+        if (market.rewardStyle != RewardStyle.Upfront) {
+            // If RewardStyle is either Forfeitable or Arrear
+            // Create locked rewards params to account for payouts upon wallet unlocking
             LockedRewardParams memory params;
             params.tokens = order.tokensRequested;
-            params.amounts = order.tokenAmountsRequested;
+            params.amounts = new uint256[](order.tokensRequested.length);
             params.ip = msg.sender;
-            weirollWalletToLockedRewardParams[address(wallet)] = params;
-        }
 
-        uint256 len = order.tokensRequested.length;
-        for (uint256 i = 0; i < len; ++i) {
-            // if the token is points
-            if (market.rewardStyle == RewardStyle.Upfront) {
-                if (PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
-                    Points(order.tokensRequested[i]).award(order.lp, order.tokenAmountsRequested[i], msg.sender);
-                } else {
-                    //safetransfer the token to the LP
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, order.tokenAmountsRequested[i]);
-                }
-            } else {
-                //safetransfer the token to the orderbook
+            for (uint256 i = 0; i < order.tokensRequested.length; ++i) {
+                // This is the amount (per incentive) that the LP can claim once weiroll wallet is unlocked (fees are taken on top of this amount from the IP)
+                params.amounts[i] = order.tokenAmountsRequested[i].mulWadDown(fillPercentage);
+
+                // Calculate fees based on fill percentage. These fees will be taken on top of the LP's requested amount.
+                uint256 protocolFeeAmount = params.amounts[i].mulWadDown(protocolFee);
+                uint256 frontendFeeAmount = params.amounts[i].mulWadDown(market.frontendFee);
+
+                // Account for protocol and frontend fees
+                accountFee(protocolFeeClaimant, order.tokensRequested[i], protocolFeeAmount, msg.sender);
+                accountFee(frontendFeeRecipient, order.tokensRequested[i], frontendFeeAmount, msg.sender);
+
+                // If incentives will be paid out later, only handle the token case. Points will be awarded on claim.
                 if (!PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), order.tokenAmountsRequested[i]);
+                    // If not a points program, transfer amount requested (based on fill percentage) to the orderbook in addition to protocol and frontend fees.
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), params.amounts[i] + protocolFeeAmount + frontendFeeAmount);
                 }
             }
+            // write locked params for use in claiming fees
+            weirollWalletToLockedRewardParams[address(wallet)] = params;
+        } else {
+            // market.rewardStyle == RewardStyle.Upfront
+            for (uint256 i = 0; i < order.tokensRequested.length; ++i) {
+                // This is the amount that the LP can claim once weiroll wallet is unlocked (fees are taken on top of this amount from the IP)
+                uint256 amount = order.tokenAmountsRequested[i].mulWadDown(fillPercentage);
 
-            //safetransfer the fee to the frontendFeeRecipient
-            uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
-            accountFee(frontendFeeRecipient, order.tokensRequested[i], order.tokenAmountsRequested[i].mulWadDown(fillPercentage), msg.sender);
+                // Calculate fees based on fill percentage. These fees will be taken on top of the LP's requested amount.
+                uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
+                uint256 frontendFeeAmount = amount.mulWadDown(market.frontendFee);
+
+                // Account for protocol and frontend fees
+                accountFee(protocolFeeClaimant, order.tokensRequested[i], protocolFeeAmount, msg.sender);
+                accountFee(frontendFeeRecipient, order.tokensRequested[i], frontendFeeAmount, msg.sender);
+
+                // If incentives should be paid out upfront to LP
+                if (PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
+                    // Award points right now if points program
+                    Points(order.tokensRequested[i]).award(order.lp, amount, msg.sender);
+                } else {
+                    // Transfer protcol and frontend fees to orderbook for the claimants to withdraw them on-demand
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), protocolFeeAmount + frontendFeeAmount);
+                    // Transfer LP's incentives to them on fill if token incentive
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, amount);
+                }
+            }
         }
 
-        // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (order.fundingVault == address(0)) {
-            // Transfer the base asset from the LP to the target vault
+            // If the no fundingVault specified, fund the wallet directly from LP
             ERC20(market.inputToken).safeTransferFrom(order.lp, address(wallet), fillAmount);
         } else {
-            // Withdraw from the funding vault
+            // Withdraw the liquidity from the funding vault into the wallet
             ERC4626(order.fundingVault).withdraw(fillAmount, address(wallet), order.lp);
         }
 
+        // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
+
+        emit LPOrderFilled(order.targetMarketID, order.orderID, order.lp, fillAmount, order.quantity, address(wallet));
     }
 
     /// @notice Cancel an LP order, setting the remaining quantity available to fill to 0
@@ -596,7 +665,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         emit LPOrderCancelled(order.orderID);
     }
 
-    /// @notice Cancel an LP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
+    /// @notice Cancel an IP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
     function cancelIPOrder(uint256 orderID) public {
         IPOrder storage order = orderIDToIPOrder[orderID];
         if (order.ip != msg.sender) revert NotOwner();
@@ -605,20 +674,34 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
         if (order.remainingQuantity == 0) revert NotEnoughRemainingQuantity();
 
-        // Cache the remaining quantity and zero it out to prevent re-entry
-        uint256 remainingQuantity = order.remainingQuantity;
-        order.remainingQuantity = 0;
-
-        emit IPOrderCancelled(orderID);
+        uint256 percentNotFilled = order.remainingQuantity.divWadDown(order.quantity);
 
         // Transfer the remaining incentives back to the IP
         for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
-            // Calculate the incentives which are still available for takeback
             address token = order.tokensOffered[i];
-            uint256 percentFill = remainingQuantity.divWadDown(order.quantity);
-            uint256 incentivesRemaining = order.tokenAmountsOffered[token].mulWadDown(percentFill);
-            ERC20(token).safeTransfer(order.ip, incentivesRemaining);
+            if (!PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensOffered[i])) {
+                // Calculate the incentives which are still available for takeback if its a token
+                uint256 incentivesRemaining = order.tokenAmountsOffered[token].mulWadDown(percentNotFilled);
+
+                // Calculate the unused fee amounts to reimburse to the IP
+                uint256 unchargedFrontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(percentNotFilled);
+                uint256 unchargedProtocolFeeAmount = order.tokenToProtocolFeeAmount[token].mulWadDown(percentNotFilled);
+
+                // Transfer reimbursements to the IP
+                ERC20(token).safeTransfer(order.ip, (incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeAmount));
+            }
+
+            /// Delete cancelled fields of dynamic arrays and mappings
+            delete order.tokensOffered[i];
+            delete order.tokenAmountsOffered[token];
+            delete order.tokenToProtocolFeeAmount[token];
+            delete order.tokenToFrontendFeeAmount[token];
         }
+
+        // Delete order from mapping since its not needed anymore
+        delete orderIDToIPOrder[orderID];
+
+        emit IPOrderCancelled(orderID);
     }
 
     /// @notice For wallets of Forfeitable markets, an LP can call this function to forgo their rewards and unlock their wallet
@@ -628,15 +711,17 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
         WeirollWallet(payable(weirollWallet)).forfeit();
 
-        //return the locked rewards to the LP
-        LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];
-        for (uint256 i = 0; i < params.tokens.length; i++) {
-            /// This is pre-emptive to protect against re-entrancy in some cases
-            uint256 amount = params.amounts[i];
-            params.amounts[i] = 0;
+        // Return the locked rewards to the IP
+        LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
+        for (uint256 i = 0; i < params.tokens.length; ++i) {
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
+                uint256 amount = params.amounts[i];
                 ERC20(params.tokens[i]).safeTransfer(params.ip, amount);
             }
+
+            /// Delete cancelled fields of dynamic arrays and mappings
+            delete params.tokens[i];
+            delete params.amounts[i];
         }
 
         // zero out the mapping
@@ -652,17 +737,21 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
             revert WalletLocked();
         }
-        LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];
-        for (uint256 i = 0; i < params.tokens.length; i++) {
-            /// This is pre-emptive to protect against re-entrancy in some cases
-            uint256 amount = params.amounts[i];
-            params.amounts[i] = 0;
 
+        // Get locked reward details to facilitate claim
+        LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
+
+        for (uint256 i = 0; i < params.tokens.length; ++i) {
+            // Reward incentives to LP upon wallet unlock
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
-                Points(params.tokens[i]).award(to, amount, params.ip);
+                Points(params.tokens[i]).award(to, params.amounts[i], params.ip);
             } else {
-                ERC20(params.tokens[i]).safeTransfer(to, amount);
+                ERC20(params.tokens[i]).safeTransfer(to, params.amounts[i]);
             }
+
+            /// Delete cancelled fields of dynamic arrays and mappings
+            delete params.tokens[i];
+            delete params.amounts[i];
         }
 
         // zero out the mapping

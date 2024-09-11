@@ -35,11 +35,11 @@ contract TestFuzz_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         // Generate random token addresses and counts
         for (uint256 i = 0; i < _tokenCount; i++) {
             tokensRequested[i] = address(uint160(uint256(keccak256(abi.encodePacked(expectedMarketId, i)))));
-            tokenAmountsRequested[i] = (uint256(keccak256(abi.encodePacked(expectedMarketId, i)))) % 1000e18 + 1e18;
+            tokenAmountsRequested[i] = (uint256(keccak256(abi.encodePacked(expectedMarketId, i)))) % 100000e18 + 1e18;
         }
 
         // Generate a random quantity and valid expiry
-        _quantity = _quantity % 1000e18 + 1e6;
+        _quantity = _quantity % 100000e18 + 1e6;
         _expiry = _expiry % 100_000 days + block.timestamp;
 
         address fundingVault = _fundingVaultSeed % 2 == 0 ? address(0) : address(mockVault);
@@ -59,7 +59,7 @@ contract TestFuzz_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.createLPOrder(
             _marketId, // Non-existent market ID
             address(0),
-            1000e18,
+            100000e18,
             block.timestamp + 1 days,
             new address[](1),
             new uint256[](1)
@@ -92,7 +92,7 @@ contract TestFuzz_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.createLPOrder(
             marketId,
             address(0),
-            1000e18,
+            100000e18,
             _expiry, // Expired timestamp
             new address[](1),
             new uint256[](1)
@@ -108,7 +108,7 @@ contract TestFuzz_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256[] memory tokenAmountsRequested = new uint256[](_tokenAmountsRequestedLen);
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.ArrayLengthMismatch.selector));
-        orderbook.createLPOrder(marketId, address(0), 1000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
+        orderbook.createLPOrder(marketId, address(0), 100000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
     }
 
     function TestFuzz_RevertIf_CreateLPOrderWithMismatchedBaseAsset(string memory _tokenName, string memory _tokenSymbol) external {
@@ -117,7 +117,7 @@ contract TestFuzz_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
-        tokenAmountsRequested[0] = 100e18;
+        tokenAmountsRequested[0] = 1000e18;
 
         MockERC4626 mismatchedTokenVault = new MockERC4626(new MockERC20(_tokenName, _tokenSymbol));
 
@@ -125,7 +125,7 @@ contract TestFuzz_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.createLPOrder(
             marketId,
             address(mismatchedTokenVault), // Funding vault with mismatched base asset
-            1000e18,
+            100000e18,
             block.timestamp + 1 days,
             tokensRequested,
             tokenAmountsRequested

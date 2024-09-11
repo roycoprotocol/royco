@@ -12,6 +12,8 @@ import { RoycoTestBase } from "../RoycoTestBase.sol";
 import { RecipeUtils } from "./RecipeUtils.sol";
 
 contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
+    using FixedPointMathLib for uint256;
+
     // Fees set in orderbook constructor
     uint256 initialProtocolFee;
     uint256 initialMinimumFrontendFee;
@@ -49,5 +51,167 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         RewardStyle rewardStyle = RewardStyle(uint8(uint256(keccak256(abi.encodePacked(block.timestamp))) % 3));
         // Create market
         marketId = orderbook.createMarket(address(mockLiquidityToken), lockupTime, frontendFee, _depositRecipe, _withdrawRecipe, rewardStyle);
+    }
+
+    function createIPOrder_WithTokens(
+        uint256 _targetMarketID,
+        uint256 _quantity,
+        address _ipAddress
+    )
+        public
+        prankModifier(_ipAddress)
+        returns (uint256 orderId)
+    {
+        address[] memory tokensOffered = new address[](1);
+        tokensOffered[0] = address(mockIncentiveToken);
+        uint256[] memory tokenAmountsOffered = new uint256[](1);
+        tokenAmountsOffered[0] = 1000e18;
+
+        mockIncentiveToken.mint(_ipAddress, 1000e18);
+        mockIncentiveToken.approve(address(orderbook), 1000e18);
+
+        orderId = orderbook.createIPOrder(
+            _targetMarketID, // Referencing the created market
+            _quantity, // Total input token amount
+            block.timestamp + 30 days, // Expiry time
+            tokensOffered, // Incentive tokens offered
+            tokenAmountsOffered // Incentive amounts offered
+        );
+    }
+
+    function createLPOrder_ForTokens(
+        uint256 _targetMarketID,
+        address _fundingVault,
+        uint256 _quantity,
+        address _lpAddress
+    )
+        public
+        prankModifier(_lpAddress)
+        returns (uint256 orderId, RecipeOrderbook.LPOrder memory order)
+    {
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(mockIncentiveToken);
+        uint256[] memory tokenAmountsRequested = new uint256[](1);
+        tokenAmountsRequested[0] = 1000e18;
+
+        orderId = orderbook.createLPOrder(
+            _targetMarketID, // Referencing the created market
+            _fundingVault, // Address of funding vault
+            _quantity, // Total input token amount
+            30 days, // Expiry time
+            tokensRequested, // Incentive tokens requested
+            tokenAmountsRequested // Incentive amounts requested
+        );
+
+        order = RecipeOrderbook.LPOrder(orderId, _targetMarketID, _lpAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+    }
+
+    function createLPOrder_ForPoints(
+        uint256 _targetMarketID,
+        address _fundingVault,
+        uint256 _quantity,
+        address _lpAddress,
+        address _ipAddress
+    )
+        public
+        returns (uint256 orderId, RecipeOrderbook.LPOrder memory order, Points points)
+    {
+        address[] memory tokensRequested = new address[](1);
+        uint256[] memory tokenAmountsRequested = new uint256[](1);
+
+        string memory name = "POINTS";
+        string memory symbol = "PTS";
+
+        vm.startPrank(_ipAddress);
+        // Create a new Points program
+        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress, orderbook);
+
+        // Allow _ipAddress to mint points in the Points program
+        points.addAllowedIP(_ipAddress);
+        vm.stopPrank();
+
+        // Add the Points program to the tokensOffered array
+        tokensRequested[0] = address(points);
+        tokenAmountsRequested[0] = 1000e18;
+
+        vm.startPrank(_lpAddress);
+        orderId = orderbook.createLPOrder(
+            _targetMarketID, // Referencing the created market
+            _fundingVault, // Address of funding vault
+            _quantity, // Total input token amount
+            30 days, // Expiry time
+            tokensRequested, // Incentive tokens requested
+            tokenAmountsRequested // Incentive amounts requested
+        );
+        vm.stopPrank();
+        order = RecipeOrderbook.LPOrder(orderId, _targetMarketID, _lpAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+    }
+
+    function createIPOrder_WithPoints(
+        uint256 _targetMarketID,
+        uint256 _quantity,
+        address _ipAddress
+    )
+        public
+        prankModifier(_ipAddress)
+        returns (uint256 orderId, Points points)
+    {
+        address[] memory tokensOffered = new address[](1);
+        uint256[] memory tokenAmountsOffered = new uint256[](1);
+
+        string memory name = "POINTS";
+        string memory symbol = "PTS";
+
+        // Create a new Points program
+        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress, orderbook);
+
+        // Allow _ipAddress to mint points in the Points program
+        points.addAllowedIP(_ipAddress);
+
+        // Add the Points program to the tokensOffered array
+        tokensOffered[0] = address(points);
+        tokenAmountsOffered[0] = 1000e18;
+
+        orderId = orderbook.createIPOrder(
+            _targetMarketID, // Referencing the created market
+            _quantity, // Total input token amount
+            block.timestamp + 30 days, // Expiry time
+            tokensOffered, // Incentive tokens offered
+            tokenAmountsOffered // Incentive amounts offered
+        );
+    }
+
+    function calculateIPOrderExpectedIncentiveAndFrontendFee(
+        uint256 orderId,
+        uint256 orderAmount,
+        uint256 fillAmount,
+        address tokenOffered
+    )
+        internal
+        view
+        returns (uint256 fillPercentage, uint256 protocolFeeAmount, uint256 frontendFeeAmount, uint256 incentiveAmount)
+    {
+        fillPercentage = fillAmount.divWadDown(orderAmount);
+        // Fees are taken as a percentage of the promised amounts
+        protocolFeeAmount = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
+        frontendFeeAmount = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
+        incentiveAmount = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
+    }
+
+    function calculateLPOrderExpectedIncentiveAndFrontendFee(
+        uint256 protocolFee,
+        uint256 frontendFee,
+        uint256 orderAmount,
+        uint256 fillAmount,
+        uint256 tokenAmountRequested
+    )
+        internal
+        pure
+        returns (uint256 fillPercentage, uint256 frontendFeeAmount, uint256 protocolFeeAmount, uint256 incentiveAmount)
+    {
+        fillPercentage = fillAmount.divWadDown(orderAmount);
+        incentiveAmount = tokenAmountRequested.mulWadDown(fillPercentage);
+        protocolFeeAmount = incentiveAmount.mulWadDown(protocolFee);
+        frontendFeeAmount = incentiveAmount.mulWadDown(frontendFee);
     }
 }

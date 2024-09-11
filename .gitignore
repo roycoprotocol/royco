@@ -14,3 +14,9 @@ docs/
 
 # Dotenv file
 .env
+
+report.txt
+
+output.txt
+
+lcov.info

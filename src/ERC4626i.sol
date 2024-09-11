@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import { SafeCast } from "src/libraries/SafeCast.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { Points } from "src/Points.sol";
@@ -15,8 +16,13 @@ import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 /// by the size of their holdings.
 contract ERC4626i is Owned, ERC20, IERC4626 {
     using SafeTransferLib for ERC20;
-    using Cast for uint256;
+
+    using SafeCast for uint256;
     using FixedPointMathLib for uint256;
+
+    /*//////////////////////////////////////////////////////////////
+                               INTERFACE
+    //////////////////////////////////////////////////////////////*/
 
     event RewardsSet(uint32 start, uint32 end, uint256 rate);
     event RewardsPerTokenUpdated(uint256 accumulated);
@@ -33,57 +39,96 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     error RateCannotDecrease();
     error FrontendFeeBelowMinimum();
 
+    /*//////////////////////////////////////////////////////////////
+                                STORAGE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @custom:field start The start time of the rewards schedule 
+    /// @custom:field end   The end time of the rewards schedule
+    /// @custom:field rate  The reward rate split among all token holders a second in Wei
     struct RewardsInterval {
-        uint32 start; // Start time for the current rewardsToken schedule
-        uint32 end; // End time for the current rewardsToken schedule
-        uint96 rate; // Wei rewarded per second among all token holders
+        uint32 start;
+        uint32 end; 
+        uint96 rate; 
     }
 
+    /// @custom:field accumulated The accumulated rewards per token for the intervaled, scaled up by WAD
+    /// @custom:field lastUpdated THe last time rewards per token (accumulated) was updated
     struct RewardsPerToken {
-        uint128 accumulated; // Accumulated rewards per token for the interval, scaled up by 1e18
-        uint32 lastUpdated; // Last time the rewards per token accumulator was updated
+        uint128 accumulated;
+        uint32 lastUpdated;
     }
 
+    /// @custom:field accumulated Rewards accumulated for the user until the checkpoint 
+    /// @custom:field checkpoint  RewardsPerToken the last time the user rewards were updated
     struct UserRewards {
-        uint128 accumulated; // Accumulated rewards for the user until the checkpoint
-        uint128 checkpoint; // RewardsPerToken the last time the user rewards were updated
+        uint128 accumulated; 
+        uint128 checkpoint;
     }
 
+    /// @dev The max amount of reward campaigns a user can be involved in 
     uint256 public constant MAX_REWARDS = 5;
+    /// @dev The minimum duration a reward campaign must last
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
 
+    /// @dev The address of the underlying vault being incentivized 
     IERC4626 public immutable VAULT;
+    /// @dev The underlying asset being deposited into the vault 
     ERC20 public immutable DEPOSIT_ASSET;
-    ERC4626iFactory public immutable ERC4626I_FACTORY;
+    /// @dev The address of the canonical points program factory 
     PointsFactory public immutable POINTS_FACTORY;
+    /// @dev The address of the canonical ERC4626i factory
+    ERC4626iFactory public immutable ERC4626I_FACTORY;
 
+    /// @dev The fee taken by the referring frontend, out of WAD
     uint256 public frontendFee;
 
-    address[] public rewards; // Tokens or points programs used as rewards
-    mapping(address => RewardsInterval) public rewardToInterval; // Maps a reward to its interval in which rewards are accumulated by users
-    mapping(address => RewardsPerToken) public rewardToRPT; // Maps a reward to its accumulator to track rewards per token
-    mapping(address => mapping(address => UserRewards)) public rewardToUserToAR; // Maps a reward to a user to their accumulated rewards
+    /// @dev Tokens {and,or} used as rewards
+    address[] public rewards;
+    /// @dev Maps a reward to the interval in which rewards are distributed over
+    mapping(address => RewardsInterval) public rewardToInterval;
+    /// @dev maps a reward (either token or points) to the accumulator to track reward distribution
+    mapping(address => RewardsPerToken) public rewardToRPT;
+    /// @dev Maps a reward (either token or points) to a user, and that users accumulated rewards
+    mapping(address => mapping(address => UserRewards)) public rewardToUserToAR; 
+    /// @dev Maps a reward (either token or points) to a claimant, to accrued fees
     mapping(address => mapping(address => uint256)) public rewardToClaimantToFees;
 
-    constructor(address _owner, string memory name, string memory symbol, uint8 decimals, address vault, uint256 initialFrontendFee, address erc4626iFactory, address pointsFactory) ERC20(name, symbol, decimals) Owned(_owner) {
+    /*//////////////////////////////////////////////////////////////
+                              CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+    /// @param _owner The owner of the incentivized vault
+    /// @param name The name of the incentivized vault token 
+    /// @param symbol The symbol to use for the incentivized vault token 
+    /// @param decimals The decimals for incentivized vault tokens, if deployed by factory same as underlying vault 
+    /// @param vault The underlying vault being incentivized 
+    /// @param initialFrontendFee The initial fee set for the frontend out of WAD 
+    /// @param pointsFactory The canonical factory responsible for deploying all points programs
+    constructor(address _owner, string memory name, string memory symbol, uint8 decimals, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, 18) Owned(_owner) {
         frontendFee = initialFrontendFee;
         VAULT = IERC4626(vault);
         DEPOSIT_ASSET = ERC20(VAULT.asset());
-        ERC4626I_FACTORY = ERC4626iFactory(erc4626iFactory);
+        ERC4626I_FACTORY = ERC4626iFactory(msg.sender);
         POINTS_FACTORY = PointsFactory(pointsFactory);
+
+        DEPOSIT_ASSET.approve(vault, type(uint256).max);
     }
 
+    /// @param rewardsToken The new reward token / points program to be used as incentives
     function addRewardsToken(address rewardsToken) public onlyOwner {
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
         rewards.push(rewardsToken);
         emit RewardsTokenAdded(rewardsToken);
     }
 
+    /// @param newFrontendFee The new front-end fee out of WAD
     function setFrontendFee(uint256 newFrontendFee) public onlyOwner {
         if (newFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
         frontendFee = newFrontendFee;
     }
 
+    /// @param to The address to send all fees owed to msg.sender to
     function claimFees(address to) public {
         emit FeesClaimed(to);
         for (uint256 i = 0; i < rewards.length; i++) {
@@ -94,14 +139,20 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         }
     }
 
+    /// @param reward The reward token / points program 
+    /// @param from The address to pull rewards from 
+    /// @param amount The amount of rewards to deduct from the user
     function pullReward(address reward, address from, uint256 amount) internal {
         if (POINTS_FACTORY.isPointsProgram(reward)) {
             if (!Points(reward).isAllowedVault(address(this))) revert VaultNotAuthorizedToRewardPoints();
         } else {
-            ERC20(reward).safeTransfer(from, amount);
+            ERC20(reward).safeTransferFrom(from, address(this), amount);
         }
     }
 
+    /// @param reward The reward token / points program 
+    /// @param to The address to send rewards to 
+    /// @param amount The amount of rewards to deduct from the user
     function pushReward(address reward, address to, uint256 amount) internal {
         if (POINTS_FACTORY.isPointsProgram(reward)) {
             Points(reward).award(to, amount);
@@ -110,6 +161,11 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         }
     }
 
+    /// @notice Extend the rewards interval for a given rewards campaign by adding more rewards 
+    /// @param reward The reward token / points campaign to extend rewards for 
+    /// @param rewardsAdded The amount of rewards to add to the campaign 
+    /// @param newEnd The end date of the rewards campaign 
+    /// @param frontendFeeRecipient The address to reward for directing IP flow
     function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) public onlyOwner {
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         if(newEnd <= rewardsInterval.end) revert InvalidInterval();
@@ -126,29 +182,33 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
         // Calculate the new rate
         uint256 rewardsAfterFee = rewardsAdded - frontendFeeTaken - protocolFeeTaken;
-        uint256 remainingRewards = rewardsInterval.end < block.timestamp ? 0 : rewardsInterval.rate * (rewardsInterval.end - block.timestamp.u32());
+        uint256 remainingRewards = rewardsInterval.end < block.timestamp ? 0 : rewardsInterval.rate * (rewardsInterval.end - block.timestamp.toUint32());
         uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - block.timestamp);
 
         if (rate < rewardsInterval.rate) revert RateCannotDecrease();
 
-        rewardsInterval.start = block.timestamp.u32();
-        rewardsInterval.end = newEnd.u32();
-        rewardsInterval.rate = rate.u96();
+        rewardsInterval.start = block.timestamp.toUint32();
+        rewardsInterval.end = newEnd.toUint32();
+        rewardsInterval.rate = rate.toUint96();
 
-        emit RewardsSet(block.timestamp.u32(), newEnd.u32(), rate);
+        emit RewardsSet(block.timestamp.toUint32(), newEnd.toUint32(), rate);
 
         pullReward(reward, msg.sender, rewardsAdded);
     }
 
     /// @dev Set a rewards schedule
+    /// @param reward The reward token or points program to set the interval for 
+    /// @param start The start timestamp of the interval 
+    /// @param end The end timestamp of the interval 
+    /// @param totalRewards The amount of rewards to distribute over the interval
     function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
-        if(start < end) revert InvalidInterval();
+        if (start > end) revert InvalidInterval();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         RewardsPerToken storage rewardsPerToken = rewardToRPT[reward];
 
         // A new rewards program can be set if one is not running
-        if (block.timestamp.u32() >= rewardsInterval.start && block.timestamp.u32() <= rewardsInterval.end) revert IntervalInProgress();
+        if (block.timestamp.toUint32() >= rewardsInterval.start && block.timestamp.toUint32() <= rewardsInterval.end) revert IntervalInProgress();
 
         // Update the rewards per token so that we don't lose any rewards
         _updateRewardsPerToken(reward);
@@ -165,17 +225,17 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         uint256 rewardsAfterFee = totalRewards - frontendFeeTaken - protocolFeeTaken;
         uint256 rate = rewardsAfterFee / (end - start);
 
-        rewardsInterval.start = start.u32();
-        rewardsInterval.end = end.u32();
-        rewardsInterval.rate = rate.u96();
+        rewardsInterval.start = start.toUint32();
+        rewardsInterval.end = end.toUint32();
+        rewardsInterval.rate = rate.toUint96();
 
         // If setting up a new rewards program, the rewardsPerToken.accumulated is used and built upon
         // New rewards start accumulating from the new rewards program start
         // Any unaccounted rewards from last program can still be added to the user rewards
         // Any unclaimed rewards can still be claimed
-        rewardsPerToken.lastUpdated = start.u32();
+        rewardsPerToken.lastUpdated = start.toUint32();
 
-        emit RewardsSet(start.u32(), end.u32(), rate);
+        emit RewardsSet(start.toUint32(), end.toUint32(), rate);
 
         pullReward(reward, msg.sender, totalRewards);
     }
@@ -201,13 +261,13 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
         // No changes if no time has passed
         if (elapsed == 0) return rewardsPerTokenOut;
-        rewardsPerTokenOut.lastUpdated = updateTime.u32();
+        rewardsPerTokenOut.lastUpdated = updateTime.toUint32();
 
         // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
         if (totalSupply_ == 0) return rewardsPerTokenOut;
 
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + 1e18 * elapsed * rewardsInterval_.rate / totalSupply_).u128(); // The rewards per
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (1e18 * elapsed * rewardsInterval_.rate / totalSupply_)).toUint128(); // The rewards per
             // token are scaled up for precision
         return rewardsPerTokenOut;
     }
@@ -249,7 +309,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         if (userRewards_.checkpoint == rewardsPerToken_.accumulated) return userRewards_;
 
         // Calculate and update the new value user reserves.
-        userRewards_.accumulated += _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerToken_.accumulated).u128();
+        userRewards_.accumulated += _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerToken_.accumulated).toUint128();
         userRewards_.checkpoint = rewardsPerToken_.accumulated;
 
         rewardToUserToAR[reward][user] = userRewards_;
@@ -273,7 +333,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @notice Claim rewards for an user
     function _claim(address reward, address from, address to, uint256 amount) internal virtual {
         _updateUserRewards(reward, from);
-        rewardToUserToAR[reward][from].accumulated -= amount.u128();
+        rewardToUserToAR[reward][from].accumulated -= amount.toUint128();
         pushReward(reward, to, amount);
         emit Claimed(reward, from, to, amount);
     }
@@ -428,22 +488,4 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         assets = VAULT.previewRedeem(shares);
     }
 
-}
-
-library Cast {
-    error CastOverflow();
-    function u128(uint256 x) internal pure returns (uint128 y) {
-        if( x > type(uint128).max) revert CastOverflow();
-        y = uint128(x);
-    }
-
-    function u96(uint256 x) internal pure returns (uint96 y) {
-        if( x > type(uint128).max) revert CastOverflow();
-        y = uint96(x);
-    }
-
-    function u32(uint256 x) internal pure returns (uint32 y) {
-        if( x > type(uint128).max) revert CastOverflow();
-        y = uint32(x);
-    }
 }
