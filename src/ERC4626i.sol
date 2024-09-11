@@ -386,11 +386,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         RewardsInterval memory rewardsInterval = rewardToInterval[reward];
         uint256 shares = VAULT.previewDeposit(assets);
 
-        // ratePerShare = rate * VAULT_PRECISION / (totalSupply + shares);
-        // rateOnDeposit = ratePerShare * shares / VAULT_PRECISION;
-        // return rateOnDeposit * DEPOSIT_TOKEN_PRECISION / amount;
-        // simplified to:
-        return (rewardsInterval.rate * shares / (totalSupply + shares)) * DEPOSIT_ASSET.decimals() / assets;
+        return (rewardsInterval.rate * shares / (totalSupply + shares)) * 1e18 / assets;
     }
 
     /*//////////////////////////////////////////////////////////////

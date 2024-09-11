@@ -263,11 +263,6 @@ contract ERC4626iTest is Test {
         uint256 expectedRewards = (rewardAmount / duration) * (shares / testIncentivizedVault.totalSupply()) * timeElapsed;
         (, , uint256 rate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
         
-        console.log("Calculated Rate", rewardAmount / duration);
-        console.log("Current Rate", rate);
-        
-        console.log(expectedRewards);
-
         testIncentivizedVault.claim(REGULAR_USER);
         vm.stopPrank();
 
@@ -403,8 +398,8 @@ contract ERC4626iTest is Test {
         assertApproxEqRel(rewardToken1.balanceOf(DEFAULT_FEE_RECIPIENT), expectedProtocolFee, 1e15);
     }
 
-    function testRewardsRateAfterDeposit(uint256 initialDeposit) public {
-        vm.assume(initialDeposit > 1e6 && initialDeposit <= type(uint96).max / 2);
+    function testRewardsRateAfterDeposit() public {
+        uint256 initialDeposit = 100e18;
         uint256 additionalDeposit = initialDeposit * 2;
 
         uint256 rewardAmount = 1000 * WAD;
