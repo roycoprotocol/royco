@@ -83,10 +83,6 @@ contract VaultOrderbook is Ownable2Step {
     error ArrayLengthMismatch();
     /// @notice emitted when the LP tries to cancel an order that they did not create
     error NotOrderCreator();
-    /// @notice Enforce the max campaignIds supplied to be the same as the amount of campaigns a user can opt into
-    error TooManyCampaignIds();
-    /// @notice emitted when the LP tries to allocate multiple orders, but they did not provide enough campaignIds to match the orders
-    error NotEnoughCampaignIds();
 
     constructor() Ownable(msg.sender) {
         // Redundant
@@ -129,13 +125,11 @@ contract VaultOrderbook is Ownable2Step {
             revert MismatchedBaseAsset();
         }
 
-        for (uint256 i; i < tokensRequested.length; ++i) {
-            //Check that the LP has enough base asset in the funding vault for the order
-            if (fundingVault == address(0) && ERC20(tokensRequested[i]).balanceOf(msg.sender) < quantity) {
-                revert NotEnoughBaseAssetToOrder();
-            } else if(fundingVault != address(0) && ERC4626(fundingVault).maxWithdraw(msg.sender) < quantity) {
-                revert NotEnoughBaseAssetToOrder();
-            }
+        //Check that the LP has enough base asset in the funding vault for the order
+        if (fundingVault == address(0) && ERC20(ERC4626(targetVault).asset()).balanceOf(msg.sender) < quantity) {
+            revert NotEnoughBaseAssetToOrder();
+        } else if(fundingVault != address(0) && ERC4626(fundingVault).maxWithdraw(msg.sender) < quantity) {
+            revert NotEnoughBaseAssetToOrder();
         }
 
         // Emit the order creation event, used for matching orders
@@ -170,11 +164,17 @@ contract VaultOrderbook is Ownable2Step {
             revert NotEnoughRemainingQuantity();
         }
 
+        //Check that the LP has enough base asset in the funding vault for the order
+        if (order.fundingVault == address(0) && ERC20(ERC4626(order.targetVault).asset()).balanceOf(order.lp) < quantity) {
+            revert NotEnoughBaseAssetToAllocate();
+        } else if(order.fundingVault != address(0) && ERC4626(order.fundingVault).maxWithdraw(order.lp) < quantity) {
+            revert NotEnoughBaseAssetToAllocate();
+        }
+
         for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
             if (order.tokenRatesRequested[i] > ERC4626i(order.targetVault).previewRateAfterDeposit(order.tokensRequested[i], quantity)) {
                 revert OrderConditionsNotMet();
             }
-
         }
         // If transaction has not reverted yet, the order is within its conditions
 

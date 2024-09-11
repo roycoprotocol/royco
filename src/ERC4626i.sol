@@ -11,6 +11,7 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IERC4626 } from "src/interfaces/IERC4626.sol";
 import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
+
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
@@ -38,6 +39,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     error NoIntervalInProgress();
     error RateCannotDecrease();
     error FrontendFeeBelowMinimum();
+    error InvalidReward();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -83,8 +85,10 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @dev The fee taken by the referring frontend, out of WAD
     uint256 public frontendFee;
 
-    /// @dev Tokens {and,or} used as rewards
+    /// @dev Tokens {and,or} Points campaigns used as rewards
     address[] public rewards;
+    /// @dev Maps a reward address to whether it has been added via addRewardsToken
+    mapping(address => bool) public isReward;
     /// @dev Maps a reward to the interval in which rewards are distributed over
     mapping(address => RewardsInterval) public rewardToInterval;
     /// @dev maps a reward (either token or points) to the accumulator to track reward distribution
@@ -106,6 +110,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param initialFrontendFee The initial fee set for the frontend out of WAD 
     /// @param pointsFactory The canonical factory responsible for deploying all points programs
     constructor(address _owner, string memory name, string memory symbol, uint8 decimals, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, 18) Owned(_owner) {
+        if(initialFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
         frontendFee = initialFrontendFee;
         VAULT = IERC4626(vault);
         DEPOSIT_ASSET = ERC20(VAULT.asset());
@@ -119,6 +124,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     function addRewardsToken(address rewardsToken) public onlyOwner {
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
         rewards.push(rewardsToken);
+        isReward[rewardsToken] = true;
         emit RewardsTokenAdded(rewardsToken);
     }
 
@@ -167,6 +173,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param newEnd The end date of the rewards campaign 
     /// @param frontendFeeRecipient The address to reward for directing IP flow
     function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) public onlyOwner {
+        if (!isReward[reward]) revert InvalidReward();
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         if(newEnd <= rewardsInterval.end) revert InvalidInterval();
         if(block.timestamp >= rewardsInterval.end) revert NoIntervalInProgress();
@@ -201,8 +208,10 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param start The start timestamp of the interval 
     /// @param end The end timestamp of the interval 
     /// @param totalRewards The amount of rewards to distribute over the interval
-    function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
-        if (start > end) revert InvalidInterval();
+    /// @param frontendFeeRecipient The address to reward the frontendFee
+    function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) external onlyOwner {
+        if (!isReward[reward]) revert InvalidReward();
+        if(start >= end) revert InvalidInterval();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         RewardsPerToken storage rewardsPerToken = rewardToRPT[reward];
@@ -218,7 +227,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         uint256 protocolFeeTaken = totalRewards.mulWadDown(ERC4626I_FACTORY.protocolFee());
 
         // Make fees available for claiming
-        rewardToClaimantToFees[reward][msg.sender] += frontendFeeTaken;
+        rewardToClaimantToFees[reward][frontendFeeRecipient] += frontendFeeTaken;
         rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the rate
@@ -266,9 +275,10 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
         if (totalSupply_ == 0) return rewardsPerTokenOut;
 
+        uint256 elapsedWAD = elapsed * 1e18;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (1e18 * elapsed * rewardsInterval_.rate / totalSupply_)).toUint128(); // The rewards per
-            // token are scaled up for precision
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply_))).toUint128(); // The rewards per token are scaled up for precision
+
         return rewardsPerTokenOut;
     }
 
@@ -377,11 +387,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         RewardsInterval memory rewardsInterval = rewardToInterval[reward];
         uint256 shares = VAULT.previewDeposit(assets);
 
-        // ratePerShare = rate * VAULT_PRECISION / (totalSupply + shares);
-        // rateOnDeposit = ratePerShare * shares / VAULT_PRECISION;
-        // return rateOnDeposit * DEPOSIT_TOKEN_PRECISION / amount;
-        // simplified to:
-        return (rewardsInterval.rate * shares / (totalSupply + shares)) * DEPOSIT_ASSET.decimals() / assets;
+        return (rewardsInterval.rate * shares / (totalSupply + shares)) * 1e18 / assets;
     }
 
     /*//////////////////////////////////////////////////////////////
