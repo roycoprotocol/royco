@@ -24,11 +24,11 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsOffered = new uint256[](1);
-        tokenAmountsOffered[0] = 100e18;
-        mockIncentiveToken.mint(ALICE_ADDRESS, 100e18);
-        mockIncentiveToken.approve(address(orderbook), 100e18);
+        tokenAmountsOffered[0] = 1000e18;
+        mockIncentiveToken.mint(ALICE_ADDRESS, 1000e18);
+        mockIncentiveToken.approve(address(orderbook), 1000e18);
 
-        uint256 quantity = 1000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
         uint256 expiry = block.timestamp + 1 days; // Order expires in 1 day
 
         // Calculate expected fees
@@ -71,14 +71,13 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Use the helper function to retrieve values from storage
         uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[0]);
+        uint256 protocolFeeAmountStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokensOffered[0]);
         uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokensOffered[0]);
 
         // Assert that the values match expected values
         assertEq(frontendFeeStored, frontendFeeAmount);
         assertEq(incentiveAmountStored, incentiveAmount);
-
-        // Check that the protocol fee is correctly accounted for
-        assertEq(orderbook.feeClaimantToTokenToAmount(orderbook.protocolFeeClaimant(), address(mockIncentiveToken)), protocolFeeAmount);
+        assertEq(protocolFeeAmountStored, protocolFeeAmount);
 
         // Ensure the transfer was successful
         assertEq(MockERC20(address(mockIncentiveToken)).balanceOf(address(orderbook)), protocolFeeAmount + frontendFeeAmount + incentiveAmount);
@@ -96,9 +95,9 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(points);
         uint256[] memory tokenAmountsOffered = new uint256[](1);
-        tokenAmountsOffered[0] = 100e18;
+        tokenAmountsOffered[0] = 1000e18;
 
-        uint256 quantity = 1000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
         uint256 expiry = block.timestamp + 1 days; // Order expires in 1 day
 
         // Calculate expected fees
@@ -106,10 +105,6 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         (,, uint256 frontendFee,,,) = orderbook.marketIDToWeirollMarket(marketId);
         uint256 frontendFeeAmount = tokenAmountsOffered[0].mulWadDown(frontendFee);
         uint256 incentiveAmount = tokenAmountsOffered[0] - protocolFeeAmount - frontendFeeAmount;
-
-        // Expect the IPOrderCreated event to be emitted
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, protocolFeeAmount);
 
         // Expect the IPOrderCreated event to be emitted
         vm.expectEmit(true, true, true, true, address(orderbook));
@@ -122,9 +117,6 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             tokenAmountsOffered, // Amounts offered
             quantity // Total quantity
         );
-
-        // MockERC20 should track calls to `award` in points contract
-        vm.expectCall(address(points), abi.encodeWithSignature("award(address,uint256,address)", OWNER_ADDRESS, protocolFeeAmount, ALICE_ADDRESS));
 
         vm.startPrank(ALICE_ADDRESS);
         // Create the IP order
@@ -144,18 +136,20 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Use the helper function to retrieve values from storage
         uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[0]);
+        uint256 protocolFeeAmountStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokensOffered[0]);
         uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokensOffered[0]);
 
         // Assert that the values match expected values
         assertEq(frontendFeeStored, frontendFeeAmount);
         assertEq(incentiveAmountStored, incentiveAmount);
+        assertEq(protocolFeeAmountStored, protocolFeeAmount);
     }
 
     function test_RevertIf_CreateIPOrderWithNonExistentMarket() external {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.MarketDoesNotExist.selector));
         orderbook.createIPOrder(
             0, // Non-existent market ID
-            1000e18, // Quantity
+            100000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -168,7 +162,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceExpiredOrder.selector));
         orderbook.createIPOrder(
             marketId,
-            1000e18, // Quantity
+            100000e18, // Quantity
             block.timestamp - 1 seconds, // Expired timestamp
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -193,12 +187,12 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsOffered = new uint256[](2);
-        tokenAmountsOffered[0] = 100e18;
+        tokenAmountsOffered[0] = 1000e18;
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.ArrayLengthMismatch.selector));
         orderbook.createIPOrder(
             marketId,
-            1000e18, // Quantity
+            100000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             tokensOffered, // Mismatched arrays
             tokenAmountsOffered

@@ -65,10 +65,10 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsOffered = new uint256[](1);
-        tokenAmountsOffered[0] = 100e18;
+        tokenAmountsOffered[0] = 1000e18;
 
-        mockIncentiveToken.mint(_ipAddress, 100e18);
-        mockIncentiveToken.approve(address(orderbook), 100e18);
+        mockIncentiveToken.mint(_ipAddress, 1000e18);
+        mockIncentiveToken.approve(address(orderbook), 1000e18);
 
         orderId = orderbook.createIPOrder(
             _targetMarketID, // Referencing the created market
@@ -92,7 +92,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
-        tokenAmountsRequested[0] = 100e18;
+        tokenAmountsRequested[0] = 1000e18;
 
         orderId = orderbook.createLPOrder(
             _targetMarketID, // Referencing the created market
@@ -132,7 +132,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
 
         // Add the Points program to the tokensOffered array
         tokensRequested[0] = address(points);
-        tokenAmountsRequested[0] = 100e18;
+        tokenAmountsRequested[0] = 1000e18;
 
         vm.startPrank(_lpAddress);
         orderId = orderbook.createLPOrder(
@@ -170,7 +170,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
 
         // Add the Points program to the tokensOffered array
         tokensOffered[0] = address(points);
-        tokenAmountsOffered[0] = 100e18;
+        tokenAmountsOffered[0] = 1000e18;
 
         orderId = orderbook.createIPOrder(
             _targetMarketID, // Referencing the created market
@@ -189,10 +189,11 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
     )
         internal
         view
-        returns (uint256 fillPercentage, uint256 frontendFeeAmount, uint256 incentiveAmount)
+        returns (uint256 fillPercentage, uint256 protocolFeeAmount, uint256 frontendFeeAmount, uint256 incentiveAmount)
     {
         fillPercentage = fillAmount.divWadDown(orderAmount);
         // Fees are taken as a percentage of the promised amounts
+        protocolFeeAmount = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
         frontendFeeAmount = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
         incentiveAmount = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
     }

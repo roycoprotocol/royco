@@ -30,8 +30,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -42,7 +42,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         // Expect events for transfers
@@ -79,14 +79,75 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Check the frontend fee recipient received the correct fee
         assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
+    }
+
+    function test_DirectFullFill_Upfront_IPOrder_ForTokens() external {
+        uint256 frontendFee = orderbook.minimumFrontendFee();
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 100000e18; // Fill amount
+
+        // Create a fillable IP order
+        uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
+
+        // Mint liquidity tokens to the LP to fill the order
+        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
+        vm.startPrank(LP_ADDRESS);
+        mockLiquidityToken.approve(address(orderbook), fillAmount);
+        vm.stopPrank();
+
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+            calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
+
+        // Expect events for transfers
+        vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
+        emit ERC20.Transfer(address(orderbook), LP_ADDRESS, expectedIncentiveAmount);
+
+        vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
+        emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
+
+        vm.expectEmit(false, false, false, false, address(orderbook));
+        emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
+
+        // Record the logs to capture Transfer events to get Weiroll wallet address
+        vm.recordLogs();
+        // Fill the order
+        vm.startPrank(LP_ADDRESS);
+        orderbook.fillIPOrder(orderId, type(uint256).max, address(0), FRONTEND_FEE_RECIPIENT);
+        vm.stopPrank();
+
+        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
+
+        // Extract the Weiroll wallet address (the 'to' address from the second Transfer event)
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[1].topics[2])));
+
+        // Ensure there is a weirollWallet at the expected address
+        assertGt(weirollWallet.code.length, 0);
+
+        // Ensure the LP received the correct incentive amount
+        assertEq(mockIncentiveToken.balanceOf(LP_ADDRESS), expectedIncentiveAmount);
+
+        // Ensure the weiroll wallet got the liquidity
+        assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
+
+        // Check the frontend fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
     }
 
     function test_DirectFill_Upfront_IPOrder_ForPoints() external {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to the LP to fill the order
         mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
@@ -97,15 +158,18 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(LP_ADDRESS, expectedIncentiveAmount);
+        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(points));
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
+
+        vm.expectEmit(true, true, false, true, address(points));
+        emit Points.Award(LP_ADDRESS, expectedIncentiveAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
@@ -124,7 +188,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[3].topics[2])));
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
@@ -137,8 +201,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -154,7 +218,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.stopPrank();
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         // Expect events for transfers
@@ -198,14 +262,17 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Check the frontend fee recipient received the correct fee
         assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
     }
 
     function test_VaultFill_Upfront_IPOrder_ForPoints() external {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to deposit into the vault
         mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
@@ -221,15 +288,18 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(LP_ADDRESS, expectedIncentiveAmount);
+        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(points));
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
+
+        vm.expectEmit(true, true, false, true, address(points));
+        emit Points.Award(LP_ADDRESS, expectedIncentiveAmount);
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
@@ -255,7 +325,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[4].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[5].topics[2])));
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
@@ -268,8 +338,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -280,7 +350,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
@@ -313,14 +383,17 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Check the frontend fee recipient received the correct fee
         assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
     }
 
     function test_DirectFill_Forfeitable_IPOrder_ForPoints() external {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to the LP to fill the order
         mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
@@ -331,8 +404,11 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
+
+        vm.expectEmit(true, true, false, true, address(points));
+        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(points));
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
@@ -354,7 +430,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[1].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -370,8 +446,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -387,7 +463,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.stopPrank();
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         // burn shares
@@ -427,14 +503,17 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Check the frontend fee recipient received the correct fee
         assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
     }
 
     function test_VaultFill_Forfeitable_IPOrder_ForPoints() external {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to deposit into the vault
         mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
@@ -450,8 +529,11 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
+
+        vm.expectEmit(true, true, false, true, address(points));
+        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(points));
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
@@ -479,7 +561,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[3].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[4].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -495,8 +577,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -507,7 +589,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
@@ -540,14 +622,17 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Check the frontend fee recipient received the correct fee
         assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
     }
 
     function test_DirectFill_Arrear_IPOrder_ForPoints() external {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to the LP to fill the order
         mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
@@ -558,8 +643,11 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
+
+        vm.expectEmit(true, true, false, true, address(points));
+        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(points));
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
@@ -581,7 +669,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[1].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -597,8 +685,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -614,7 +702,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.stopPrank();
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         // burn shares
@@ -654,14 +742,17 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Check the frontend fee recipient received the correct fee
         assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
     }
 
     function test_VaultFill_Arrear_IPOrder_ForPoints() external {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to deposit into the vault
         mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
@@ -677,8 +768,11 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
+
+        vm.expectEmit(true, true, false, true, address(points));
+        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(points));
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
@@ -706,7 +800,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[3].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[4].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -722,8 +816,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 1000e18;
-        uint256 fillAmount = 100e18;
+        uint256 orderAmount = 100000e18;
+        uint256 fillAmount = 1000e18;
 
         // Create an order with a past expiry date
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -740,8 +834,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 1000e18;
-        uint256 fillAmount = 1100e18; // Fill amount exceeds the order amount
+        uint256 orderAmount = 100000e18;
+        uint256 fillAmount = 100001e18; // Fill amount exceeds the order amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -755,8 +849,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 1000e18;
-        uint256 fillAmount = 100e18;
+        uint256 orderAmount = 100000e18;
+        uint256 fillAmount = 1000e18;
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -773,7 +867,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 1000e18;
+        uint256 orderAmount = 100000e18;
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
