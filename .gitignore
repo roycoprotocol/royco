@@ -16,3 +16,7 @@ docs/
 .env
 
 report.txt
+
+output.txt
+
+lcov.info

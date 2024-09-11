@@ -18,9 +18,9 @@ contract Test_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
-        tokenAmountsRequested[0] = 100e18;
+        tokenAmountsRequested[0] = 1000e18;
 
-        uint256 quantity = 1000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
         uint256 expiry = block.timestamp + 1 days; // Order expires in 1 day
 
         // Expect the LPOrderCreated event to be emitted
@@ -62,7 +62,7 @@ contract Test_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.createLPOrder(
             0, // Non-existent market ID
             address(0),
-            1000e18,
+            100000e18,
             block.timestamp + 1 days,
             new address[](1),
             new uint256[](1)
@@ -76,7 +76,7 @@ contract Test_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.createLPOrder(
             marketId,
             address(0),
-            1000e18,
+            100000e18,
             block.timestamp - 1 seconds, // Expired timestamp
             new address[](1),
             new uint256[](1)
@@ -103,7 +103,7 @@ contract Test_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256[] memory tokenAmountsRequested = new uint256[](2);
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.ArrayLengthMismatch.selector));
-        orderbook.createLPOrder(marketId, address(0), 1000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
+        orderbook.createLPOrder(marketId, address(0), 100000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
     }
 
     function test_RevertIf_CreateLPOrderWithMismatchedBaseAsset() external {
@@ -112,7 +112,7 @@ contract Test_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
-        tokenAmountsRequested[0] = 100e18;
+        tokenAmountsRequested[0] = 1000e18;
 
         MockERC4626 incentiveVault = new MockERC4626(mockIncentiveToken);
 
@@ -120,7 +120,7 @@ contract Test_LPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.createLPOrder(
             marketId,
             address(incentiveVault), // Funding vault with mismatched base asset
-            1000e18,
+            100000e18,
             block.timestamp + 1 days,
             tokensRequested,
             tokenAmountsRequested

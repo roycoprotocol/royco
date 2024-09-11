@@ -46,7 +46,8 @@ contract Test_Points is RoycoTestBase {
     // function test_RevertIf_NonOwnerCreatesPointsRewardsCampaign() external prankModifier(BOB_ADDRESS) {
     //     uint256 start = block.timestamp;
     //     uint256 end = start + 30 days;
-    //     uint256 totalRewards = 1000e18;
+
+    //     uint256 totalRewards = 100000e18;
 
     //     vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
     //     pointsProgram.createPointsRewardsCampaign(start, end, totalRewards);
@@ -100,7 +101,12 @@ contract Test_Points is RoycoTestBase {
     //     pointsProgram.award(BOB_ADDRESS, 500e18);
     // }
 
-    function test_AwardPoints_AllowedIP() external prankModifier(address(orderbook)) {
+    function test_AwardPoints_AllowedIP() external {
+        vm.startPrank(pointsProgram.owner());
+        pointsProgram.addAllowedIP(ipAddress);
+        vm.stopPrank();
+        vm.startPrank(address(orderbook));
+
         // Check if the event was emitted (Points awarded)
         vm.expectEmit(true, true, false, true, address(pointsProgram));
         emit Points.Award(BOB_ADDRESS, 300e18);

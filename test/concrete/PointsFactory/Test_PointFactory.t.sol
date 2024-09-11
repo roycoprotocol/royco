@@ -23,6 +23,9 @@ contract Test_PointFactory is RoycoTestBase {
         vm.expectEmit(false, true, true, true, address(pointsFactory));
         // Emit the expected event (don't know Points program address before hand)
         emit PointsFactory.NewPointsProgram(Points(address(0)), programName, programSymbol, address(orderbook));
+        
+        // Call the PointsFactory to create a new Points program
+        Points pointsProgram = pointsFactory.createPointsProgram(programName, programSymbol, decimals, programOwner, orderbook);
 
         // Assert that the Points program has been created correctly
         assertEq(pointsProgram.name(), programName); // Check the name

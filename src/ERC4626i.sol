@@ -16,6 +16,7 @@ import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 /// by the size of their holdings.
 contract ERC4626i is Owned, ERC20, IERC4626 {
     using SafeTransferLib for ERC20;
+
     using SafeCast for uint256;
     using FixedPointMathLib for uint256;
 
@@ -110,6 +111,8 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         DEPOSIT_ASSET = ERC20(VAULT.asset());
         ERC4626I_FACTORY = ERC4626iFactory(msg.sender);
         POINTS_FACTORY = PointsFactory(pointsFactory);
+
+        DEPOSIT_ASSET.approve(vault, type(uint256).max);
     }
 
     /// @param rewardsToken The new reward token / points program to be used as incentives
@@ -265,7 +268,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         if (totalSupply_ == 0) return rewardsPerTokenOut;
 
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + 1e18 * elapsed * rewardsInterval_.rate / totalSupply_).toUint128(); // The rewards per
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (1e18 * elapsed * rewardsInterval_.rate / totalSupply_)).toUint128(); // The rewards per
             // token are scaled up for precision
         return rewardsPerTokenOut;
     }
