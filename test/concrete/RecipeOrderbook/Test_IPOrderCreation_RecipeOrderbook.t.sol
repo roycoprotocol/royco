@@ -71,14 +71,13 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Use the helper function to retrieve values from storage
         uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[0]);
+        uint256 protocolFeeAmountStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokensOffered[0]);
         uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokensOffered[0]);
 
         // Assert that the values match expected values
         assertEq(frontendFeeStored, frontendFeeAmount);
         assertEq(incentiveAmountStored, incentiveAmount);
-
-        // Check that the protocol fee is correctly accounted for
-        assertEq(orderbook.feeClaimantToTokenToAmount(orderbook.protocolFeeClaimant(), address(mockIncentiveToken)), protocolFeeAmount);
+        assertEq(protocolFeeAmountStored, protocolFeeAmount);
 
         // Ensure the transfer was successful
         assertEq(MockERC20(address(mockIncentiveToken)).balanceOf(address(orderbook)), protocolFeeAmount + frontendFeeAmount + incentiveAmount);
@@ -123,9 +122,6 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             quantity // Total quantity
         );
 
-        // MockERC20 should track calls to `award` in points contract
-        vm.expectCall(address(points), abi.encodeWithSignature("award(address,uint256,address)", OWNER_ADDRESS, protocolFeeAmount, ALICE_ADDRESS));
-
         vm.startPrank(ALICE_ADDRESS);
         // Create the IP order
         uint256 orderId = orderbook.createIPOrder(
@@ -144,11 +140,13 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Use the helper function to retrieve values from storage
         uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[0]);
+        uint256 protocolFeeAmountStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokensOffered[0]);
         uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokensOffered[0]);
 
         // Assert that the values match expected values
         assertEq(frontendFeeStored, frontendFeeAmount);
         assertEq(incentiveAmountStored, incentiveAmount);
+        assertEq(protocolFeeAmountStored, protocolFeeAmount);
     }
 
     function test_RevertIf_CreateIPOrderWithNonExistentMarket() external {

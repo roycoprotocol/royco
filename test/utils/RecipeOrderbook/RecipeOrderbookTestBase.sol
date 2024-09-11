@@ -189,10 +189,11 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
     )
         internal
         view
-        returns (uint256 fillPercentage, uint256 frontendFeeAmount, uint256 incentiveAmount)
+        returns (uint256 fillPercentage, uint256 protocolFeeAmount, uint256 frontendFeeAmount, uint256 incentiveAmount)
     {
         fillPercentage = fillAmount.divWadDown(orderAmount);
         // Fees are taken as a percentage of the promised amounts
+        protocolFeeAmount = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
         frontendFeeAmount = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
         incentiveAmount = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
     }

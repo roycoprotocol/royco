@@ -34,9 +34,8 @@ contract Test_ClaimFees_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         // Calculate expected frontend and protocol fees
-        (, uint256 expectedFrontendFeeAmount,) = calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
-
-        uint256 protocolFeeAmount = fillAmount.mulWadDown(orderbook.protocolFee());
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, ) =
+            calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         // Fill the order and accumulate fees
         vm.startPrank(BOB_ADDRESS);
@@ -46,17 +45,17 @@ contract Test_ClaimFees_RecipeOrderbook is RecipeOrderbookTestBase {
         // **Claim protocol fees by owner**
         vm.startPrank(OWNER_ADDRESS);
         vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(address(orderbook), OWNER_ADDRESS, protocolFeeAmount);
+        emit ERC20.Transfer(address(orderbook), OWNER_ADDRESS, expectedProtocolFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(orderbook));
-        emit RecipeOrderbook.FeesClaimed(OWNER_ADDRESS, protocolFeeAmount);
+        emit RecipeOrderbook.FeesClaimed(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
         // Protocol fee claim
         orderbook.claimFees(address(mockIncentiveToken), OWNER_ADDRESS);
         vm.stopPrank();
 
         // **Verify that protocol fees were claimed**
-        assertEq(mockIncentiveToken.balanceOf(OWNER_ADDRESS), protocolFeeAmount);
+        assertEq(mockIncentiveToken.balanceOf(OWNER_ADDRESS), expectedProtocolFeeAmount);
         assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
 
         // **Claim frontend fees by CHARLIE**

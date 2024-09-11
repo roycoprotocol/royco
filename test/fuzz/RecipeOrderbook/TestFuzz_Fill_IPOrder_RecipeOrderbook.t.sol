@@ -37,7 +37,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         // Expect events for transfers
@@ -46,6 +46,9 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(BOB_ADDRESS, address(0), fillAmount);
+
+        vm.expectEmit(false, false, false, false, address(orderbook));
+        emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
 
         // Record logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -69,6 +72,9 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Check frontend fee recipient received correct fee
         assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
     }
 
     function testFuzz_DirectFill_Upfront_IPOrder_ForPoints(uint256 orderAmount, uint256 fillAmount) external {
@@ -87,18 +93,25 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
 
-        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
-            calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+            calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
+
+        // Expect events for transfers
+        vm.expectEmit(true, true, false, true, address(points));
+        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
+
+        vm.expectEmit(true, true, false, true, address(points));
+        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(points));
         emit Points.Award(BOB_ADDRESS, expectedIncentiveAmount);
 
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
-
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(BOB_ADDRESS, address(0), fillAmount);
+
+        vm.expectEmit(false, false, false, false, address(orderbook));
+        emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
 
         // Record logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -111,7 +124,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[3].topics[2])));
         assertGt(weirollWallet.code.length, 0); // Ensure weirollWallet is valid
 
         // Ensure weiroll wallet got the liquidity

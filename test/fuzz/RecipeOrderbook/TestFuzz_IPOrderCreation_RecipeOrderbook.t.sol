@@ -89,15 +89,15 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(orderbook.numLPOrders(), 0); // LP orders should remain 0
 
         for (uint256 i = 0; i < _tokenCount; i++) {
+            // Use the helper function to retrieve values from storage
             uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[i]);
+            uint256 protocolFeeAmountStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokensOffered[i]);
             uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokensOffered[i]);
 
             // Assert that the values match expected values
             assertEq(frontendFeeStored, frontendFeeAmount[i]);
             assertEq(incentiveAmountStored, incentiveAmount[i]);
-
-            // Check that the protocol fee is correctly accounted for
-            assertEq(orderbook.feeClaimantToTokenToAmount(orderbook.protocolFeeClaimant(), tokensOffered[i]), protocolFeeAmount[i]);
+            assertEq(protocolFeeAmountStored, protocolFeeAmount[i]);
 
             // Ensure the transfer was successful
             assertEq(MockERC20(tokensOffered[i]).balanceOf(address(orderbook)), protocolFeeAmount[i] + frontendFeeAmount[i] + incentiveAmount[i]);
@@ -164,11 +164,6 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             _quantity // Total quantity
         );
 
-        // Expect calls to award function for each Points program
-        for (uint256 i = 0; i < _programCount; i++) {
-            vm.expectCall(tokensOffered[i], abi.encodeWithSignature("award(address,uint256,address)", OWNER_ADDRESS, protocolFeeAmount[i], _creator));
-        }
-
         vm.startPrank(_creator);
         // Create the IP order
         uint256 orderId = orderbook.createIPOrder(
@@ -187,12 +182,15 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Use the helper function to retrieve values from storage and assert them
         for (uint256 i = 0; i < _programCount; i++) {
+            // Use the helper function to retrieve values from storage
             uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[i]);
+            uint256 protocolFeeAmountStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokensOffered[i]);
             uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokensOffered[i]);
 
             // Assert that the values match expected values
             assertEq(frontendFeeStored, frontendFeeAmount[i]);
             assertEq(incentiveAmountStored, incentiveAmount[i]);
+            assertEq(protocolFeeAmountStored, protocolFeeAmount[i]);
         }
     }
 
@@ -289,11 +287,6 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             );
         }
 
-        // Expect calls to `award` function for Points programs
-        for (uint256 i = _tokenCount; i < totalCount; i++) {
-            vm.expectCall(tokensOffered[i], abi.encodeWithSignature("award(address,uint256,address)", OWNER_ADDRESS, protocolFeeAmount[i], _creator));
-        }
-
         vm.startPrank(_creator);
         // Create the IP order
         uint256 orderId = orderbook.createIPOrder(
@@ -312,29 +305,30 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Use the helper function to retrieve values from storage and assert them
         for (uint256 i = 0; i < _tokenCount; i++) {
-            // Handle ERC20 token cases
+            // Use the helper function to retrieve values from storage
             uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[i]);
+            uint256 protocolFeeAmountStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokensOffered[i]);
             uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokensOffered[i]);
 
             // Assert that the values match expected values
             assertEq(frontendFeeStored, frontendFeeAmount[i]);
             assertEq(incentiveAmountStored, incentiveAmount[i]);
-
-            // Check that the protocol fee is correctly accounted for
-            assertEq(orderbook.feeClaimantToTokenToAmount(orderbook.protocolFeeClaimant(), tokensOffered[i]), protocolFeeAmount[i]);
+            assertEq(protocolFeeAmountStored, protocolFeeAmount[i]);
 
             // Ensure the ERC20 transfer was successful
             assertEq(MockERC20(tokensOffered[i]).balanceOf(address(orderbook)), protocolFeeAmount[i] + frontendFeeAmount[i] + incentiveAmount[i]);
         }
 
         for (uint256 i = _tokenCount; i < totalCount; i++) {
-            // Handle Points program cases
+            // Use the helper function to retrieve values from storage
             uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[i]);
+            uint256 protocolFeeAmountStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, tokensOffered[i]);
             uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokensOffered[i]);
 
             // Assert that the values match expected values
             assertEq(frontendFeeStored, frontendFeeAmount[i]);
             assertEq(incentiveAmountStored, incentiveAmount[i]);
+            assertEq(protocolFeeAmountStored, protocolFeeAmount[i]);
         }
     }
 
