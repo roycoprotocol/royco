@@ -16,3 +16,5 @@ docs/
 .env
 
 report.txt
+
+lcov.info

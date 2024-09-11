@@ -81,6 +81,61 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
     }
 
+    function test_DirectFullFill_Upfront_IPOrder_ForTokens() external {
+        uint256 frontendFee = orderbook.minimumFrontendFee();
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+
+        uint256 orderAmount = 1000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
+
+        // Create a fillable IP order
+        uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
+
+        // Mint liquidity tokens to the LP to fill the order
+        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
+        vm.startPrank(LP_ADDRESS);
+        mockLiquidityToken.approve(address(orderbook), fillAmount);
+        vm.stopPrank();
+
+        (, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+            calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
+
+        // Expect events for transfers
+        vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
+        emit ERC20.Transfer(address(orderbook), LP_ADDRESS, expectedIncentiveAmount);
+
+        vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
+        emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
+
+        vm.expectEmit(false, false, false, false, address(orderbook));
+        emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
+
+        // Record the logs to capture Transfer events to get Weiroll wallet address
+        vm.recordLogs();
+        // Fill the order
+        vm.startPrank(LP_ADDRESS);
+        orderbook.fillIPOrder(orderId, type(uint256).max, address(0), FRONTEND_FEE_RECIPIENT);
+        vm.stopPrank();
+
+        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
+
+        // Extract the Weiroll wallet address (the 'to' address from the second Transfer event)
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[1].topics[2])));
+
+        // Ensure there is a weirollWallet at the expected address
+        assertGt(weirollWallet.code.length, 0);
+
+        // Ensure the LP received the correct incentive amount
+        assertEq(mockIncentiveToken.balanceOf(LP_ADDRESS), expectedIncentiveAmount);
+
+        // Ensure the weiroll wallet got the liquidity
+        assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
+
+        // Check the frontend fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+    }
+
     function test_DirectFill_Upfront_IPOrder_ForPoints() external {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
