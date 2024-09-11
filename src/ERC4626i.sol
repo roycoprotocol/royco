@@ -11,6 +11,8 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IERC4626 } from "src/interfaces/IERC4626.sol";
 import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
+import { console } from "forge-std/console.sol";
+
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
@@ -274,9 +276,10 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
         if (totalSupply_ == 0) return rewardsPerTokenOut;
 
+        uint256 elapsedWAD = elapsed * 1e18;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (1e18 * elapsed * rewardsInterval_.rate / totalSupply_)).toUint128(); // The rewards per
-            // token are scaled up for precision
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply_))).toUint128(); // The rewards per token are scaled up for precision
+
         return rewardsPerTokenOut;
     }
 
@@ -385,6 +388,12 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         RewardsInterval memory rewardsInterval = rewardToInterval[reward];
         uint256 shares = VAULT.previewDeposit(assets);
 
+
+        console.log("shares", shares);
+        console.log("rate", rewardsInterval.rate);
+        console.log("totalSupply", totalSupply);
+        console.log("Decimals ", DEPOSIT_ASSET.decimals());
+        console.log((rewardsInterval.rate * shares / (totalSupply + shares)) * DEPOSIT_ASSET.decimals() / assets);
         // ratePerShare = rate * VAULT_PRECISION / (totalSupply + shares);
         // rateOnDeposit = ratePerShare * shares / VAULT_PRECISION;
         // return rateOnDeposit * DEPOSIT_TOKEN_PRECISION / amount;
