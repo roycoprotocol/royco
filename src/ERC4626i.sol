@@ -198,8 +198,9 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param start The start timestamp of the interval 
     /// @param end The end timestamp of the interval 
     /// @param totalRewards The amount of rewards to distribute over the interval
-    function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards) external onlyOwner {
-        if(start < end) revert InvalidInterval();
+    /// @param frontendFeeRecipient The address to reward the frontendFee
+    function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) external onlyOwner {
+        if(start >= end) revert InvalidInterval();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         RewardsPerToken storage rewardsPerToken = rewardToRPT[reward];
@@ -215,7 +216,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         uint256 protocolFeeTaken = totalRewards.mulWadDown(ERC4626I_FACTORY.protocolFee());
 
         // Make fees available for claiming
-        rewardToClaimantToFees[reward][msg.sender] += frontendFeeTaken;
+        rewardToClaimantToFees[reward][frontendFeeRecipient] += frontendFeeTaken;
         rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the rate
