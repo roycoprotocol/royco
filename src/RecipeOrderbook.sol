@@ -649,14 +649,18 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
         // Transfer the remaining incentives back to the IP
         for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
+            address token = order.tokensOffered[i];
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensOffered[i])) {
-                address token = order.tokensOffered[i];
                 // Calculate the unused frontend fee amount to reimburse to the IP
                 uint256 unchargedFrontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(percentNotFilled);
                 // Calculate the incentives which are still available for takeback if its a token
                 uint256 incentivesRemaining = order.tokenAmountsOffered[token].mulWadDown(percentNotFilled);
                 ERC20(token).safeTransfer(order.ip, (incentivesRemaining + unchargedFrontendFeeAmount));
             }
+            /// This is pre-emptive to protect against re-entrancy in some cases
+            delete order.tokensOffered[i];
+            delete order.tokenAmountsOffered[token];
+            delete order.tokenToFrontendFeeAmount[token];
         }
 
         // Delete order from mapping since its not needed anymore
@@ -672,15 +676,16 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
         WeirollWallet(payable(weirollWallet)).forfeit();
 
-        //return the locked rewards to the LP
+        // Return the locked rewards to the IP
         LockedRewardParams memory params = weirollWalletToLockedRewardParams[weirollWallet];
         for (uint256 i = 0; i < params.tokens.length; i++) {
-            /// This is pre-emptive to protect against re-entrancy in some cases
-            uint256 amount = params.amounts[i];
-            params.amounts[i] = 0;
             if (!PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
+                uint256 amount = params.amounts[i];
                 ERC20(params.tokens[i]).safeTransfer(params.ip, amount);
             }
+            // This is pre-emptive to protect against re-entrancy in some cases
+            delete params.tokens[i];
+            delete params.amounts[i];
         }
 
         // zero out the mapping
