@@ -24,9 +24,7 @@ contract ERC4626iTest is Test {
     ERC4626i testIncentivizedVault;
 
     PointsFactory pointsFactory = new PointsFactory();
-
     ERC4626iFactory testFactory;
-
     uint256 constant WAD = 1e18;
 
     uint256 constant DEFAULT_REFERRAL_FEE = 0.025e18;

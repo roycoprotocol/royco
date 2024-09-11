@@ -16,6 +16,9 @@ contract Test_PointFactory is RoycoTestBase {
         uint256 decimals = 18;
         address programOwner = ALICE_ADDRESS;
 
+        // Call the PointsFactory to create a new Points program
+        Points pointsProgram = pointsFactory.createPointsProgram(programName, programSymbol, decimals, programOwner, orderbook);
+
         // Expect the NewPointsProgram event to be emitted
         vm.expectEmit(false, true, true, true, address(pointsFactory));
         // Emit the expected event (don't know Points program address before hand)

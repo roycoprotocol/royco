@@ -24,6 +24,7 @@ contract TestFuzz_PointFactory is RoycoTestBase {
         assertEq(pointsProgram.symbol(), _programSymbol); // Check the symbol
         assertEq(pointsProgram.decimals(), _decimals); // Check the decimals
         assertEq(pointsProgram.owner(), _programOwner); // Check the owner
+
         assertFalse(pointsProgram.isAllowedVault(address(mockVault))); // Check the allowed vault
         assertEq(address(pointsProgram.orderbook()), address(orderbook)); // Check the orderbook
 

@@ -16,6 +16,7 @@ import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 /// by the size of their holdings.
 contract ERC4626i is Owned, ERC20, IERC4626 {
     using SafeTransferLib for ERC20;
+
     using SafeCast for uint256;
     using FixedPointMathLib for uint256;
 

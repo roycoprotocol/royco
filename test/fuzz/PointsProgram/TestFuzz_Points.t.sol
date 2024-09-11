@@ -28,6 +28,7 @@ contract TestFuzz_Points is RoycoTestBase {
         // Create a rewards campaign
         vm.startPrank(owner);
         pointsProgram.addAllowedVault(address(vault));
+        
         vm.stopPrank();
     }
 
@@ -71,7 +72,6 @@ contract TestFuzz_Points is RoycoTestBase {
         vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
         pointsProgram.removeAllowedIP(_ip);
     }
-
 
     function testFuzz_AwardPoints_AllowedIP(address _to, uint256 _amount, address _ip) external prankModifier(address(orderbook)) {
         pointsProgram.addAllowedIP(_ip);
