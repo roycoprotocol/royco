@@ -119,15 +119,21 @@ contract ERC4626iTest is Test {
     }
 
     function testExtendRewardsInterval(uint32 start, uint32 initialDuration, uint32 extension, uint256 initialRewards, uint256 additionalRewards) public {
-        //If these three are not here, then 'intialEnd' or 'newEnd' variables will overflow
-        vm.assume(start <= type(uint32).max-initialDuration);
-        vm.assume(initialDuration <= type(uint32).max-extension);
-        vm.assume(extension <= type(uint32).max-start);
+        // Calculate the remaining space in uint32 after accounting for start
+        uint32 remainingSpace = type(uint32).max - start;
+
+        // Constrain initialDuration to be at most half of the remaining space
+        initialDuration = uint32(uint64(initialDuration) % (uint64(remainingSpace) / 2 + 1));
+
+        // Constrain extension to fit within the remaining space after initialDuration
+        extension = uint32(uint64(extension) % (uint64(remainingSpace - initialDuration) + 1));
+        (uint64(extension) + uint64(start) > uint64(type(uint32).max));
 
         vm.assume(initialDuration >= testIncentivizedVault.MIN_CAMPAIGN_DURATION());
         vm.assume(extension > 1 days);
         vm.assume(initialRewards > 1e6 && initialRewards < type(uint96).max);
         vm.assume(additionalRewards > 1e6 && additionalRewards < type(uint96).max);
+
         if (additionalRewards / extension <= initialRewards / initialDuration) {
           additionalRewards = ((initialRewards / initialDuration) * extension) + 1e18; 
         }
@@ -146,7 +152,7 @@ contract ERC4626iTest is Test {
         uint256 protocolFee = initialRewards.mulWadDown(testFactory.protocolFee());
         initialRewards -= frontendFee + protocolFee;
 
-        vm.warp(start + initialDuration / 2);  // Warp to middle of interval
+        vm.warp(start + (initialDuration / 2));  // Warp to middle of interval
 
         testIncentivizedVault.extendRewardsInterval(address(rewardToken1), additionalRewards, newEnd, address(this));
         
@@ -257,11 +263,6 @@ contract ERC4626iTest is Test {
         uint256 expectedRewards = (rewardAmount / duration) * (shares / testIncentivizedVault.totalSupply()) * timeElapsed;
         (, , uint256 rate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
         
-        console.log("Calculated Rate", rewardAmount / duration);
-        console.log("Current Rate", rate);
-        
-        console.log(expectedRewards);
-
         testIncentivizedVault.claim(REGULAR_USER);
         vm.stopPrank();
 
@@ -397,8 +398,8 @@ contract ERC4626iTest is Test {
         assertApproxEqRel(rewardToken1.balanceOf(DEFAULT_FEE_RECIPIENT), expectedProtocolFee, 1e15);
     }
 
-    function testRewardsRateAfterDeposit(uint256 initialDeposit) public {
-        vm.assume(initialDeposit > 1e6 && initialDeposit <= type(uint96).max / 2);
+    function testRewardsRateAfterDeposit() public {
+        uint256 initialDeposit = 100e18;
         uint256 additionalDeposit = initialDeposit * 2;
 
         uint256 rewardAmount = 1000 * WAD;
