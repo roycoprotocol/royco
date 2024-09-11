@@ -28,7 +28,7 @@ contract TestFuzz_Points is RoycoTestBase {
         // Create a rewards campaign
         vm.startPrank(owner);
         pointsProgram.addAllowedVault(address(vault));
-        // campaignId = pointsProgram.createPointsRewardsCampaign(block.timestamp, block.timestamp + 30 days, 1000e18);
+        // campaignId = pointsProgram.createPointsRewardsCampaign(block.timestamp, block.timestamp + 30 days, 100000e18);
         // pointsProgram.addAllowedIP(ipAddress);
         vm.stopPrank();
     }

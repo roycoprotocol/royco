@@ -32,13 +32,13 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             vm.etch(tokenAddress, address(mockToken).code);
 
             tokensOffered[i] = tokenAddress;
-            tokenAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 1000e18 + 1e18;
+            tokenAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100000e18 + 1e18;
 
             MockERC20(tokensOffered[i]).mint(_creator, tokenAmountsOffered[i]);
             MockERC20(tokensOffered[i]).approve(address(orderbook), tokenAmountsOffered[i]);
         }
 
-        _quantity = _quantity % 1000e18 + 1e6; // Bound quantity
+        _quantity = _quantity % 100000e18 + 1e6; // Bound quantity
         _expiry = _expiry % 100_000 days + block.timestamp; // Bound expiry time
 
         // Calculate expected fees
@@ -134,10 +134,10 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
             // Add the Points program to the tokensOffered array
             tokensOffered[i] = address(points);
-            tokenAmountsOffered[i] = _quantity % 100e18 + 1e6;
+            tokenAmountsOffered[i] = _quantity % 1000e18 + 1e6;
         }
 
-        _quantity = _quantity % 1000e18 + 1e6; // Bound quantity
+        _quantity = _quantity % 100000e18 + 1e6; // Bound quantity
         _expiry = _expiry % 100_000 days + block.timestamp; // Bound expiry time
 
         // Calculate expected fees for each points program
@@ -223,7 +223,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             vm.etch(tokenAddress, address(mockToken).code);
 
             tokensOffered[i] = tokenAddress;
-            tokenAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 1000e18 + 1e18;
+            tokenAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100000e18 + 1e18;
 
             // Mint and approve tokens for the creator
             MockERC20(tokensOffered[i]).mint(_creator, tokenAmountsOffered[i]);
@@ -247,10 +247,10 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
             // Add the Points program to the tokensOffered array after ERC20 tokens
             tokensOffered[_tokenCount + i] = address(points);
-            tokenAmountsOffered[_tokenCount + i] = _quantity % 100e18 + 1e18;
+            tokenAmountsOffered[_tokenCount + i] = _quantity % 1000e18 + 1e18;
         }
 
-        _quantity = _quantity % 1000e18 + 1e6; // Bound quantity
+        _quantity = _quantity % 100000e18 + 1e6; // Bound quantity
         _expiry = _expiry % 100_000 days + block.timestamp; // Bound expiry time
 
         // Calculate expected fees for both ERC20 tokens and Points programs
@@ -336,7 +336,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.MarketDoesNotExist.selector));
         orderbook.createIPOrder(
             _marketId, // Non-existent market ID
-            1000e18, // Quantity
+            100000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -368,7 +368,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceExpiredOrder.selector));
         orderbook.createIPOrder(
             marketId,
-            1000e18, // Quantity
+            100000e18, // Quantity
             _expiry, // Expired timestamp
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -382,12 +382,12 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = _tokenAddress;
         uint256[] memory tokenAmountsOffered = new uint256[](2);
-        tokenAmountsOffered[0] = 100e18;
+        tokenAmountsOffered[0] = 1000e18;
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.TokenDoesNotExist.selector));
         orderbook.createIPOrder(
             marketId,
-            1000e18, // Quantity
+            100000e18, // Quantity
             1 days, // Expired timestamp
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -405,7 +405,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.ArrayLengthMismatch.selector));
         orderbook.createIPOrder(
             marketId,
-            1000e18, // Quantity
+            100000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             tokensOffered, // Mismatched arrays
             tokenAmountsOffered

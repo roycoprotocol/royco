@@ -94,7 +94,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
 
         (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
-            calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
+            calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(points));
@@ -151,8 +151,8 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function testFuzz_RevertIf_NotEnoughRemainingQuantity(uint256 orderAmount, uint256 fillAmount) external {
-        orderAmount = bound(orderAmount, 1e6, 1e30);
-        fillAmount = orderAmount + bound(fillAmount, 1, 1e18); // Fill amount exceeds orderAmount
+        orderAmount = bound(orderAmount, 1e18, 1e30);
+        fillAmount = orderAmount + bound(fillAmount, 1, 100e18); // Fill amount exceeds orderAmount
 
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);

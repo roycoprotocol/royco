@@ -23,8 +23,8 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
@@ -68,8 +68,8 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to the LP to fill the order
         mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
@@ -111,8 +111,8 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to the LP to fill the order
         mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
@@ -143,8 +143,8 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to the LP to fill the order
         mockLiquidityToken.mint(LP_ADDRESS, fillAmount);

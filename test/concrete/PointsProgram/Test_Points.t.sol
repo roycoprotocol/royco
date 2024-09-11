@@ -46,7 +46,7 @@ contract Test_Points is RoycoTestBase {
     // function test_RevertIf_NonOwnerCreatesPointsRewardsCampaign() external prankModifier(BOB_ADDRESS) {
     //     uint256 start = block.timestamp;
     //     uint256 end = start + 30 days;
-    //     uint256 totalRewards = 1000e18;
+    //     uint256 totalRewards = 100000e18;
 
     //     vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
     //     pointsProgram.createPointsRewardsCampaign(start, end, totalRewards);

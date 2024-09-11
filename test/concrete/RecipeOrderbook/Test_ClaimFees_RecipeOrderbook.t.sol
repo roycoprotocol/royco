@@ -21,8 +21,8 @@ contract Test_ClaimFees_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 1000e18; // Order amount requested
-        uint256 fillAmount = 100e18; // Fill amount
+        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, ALICE_ADDRESS);

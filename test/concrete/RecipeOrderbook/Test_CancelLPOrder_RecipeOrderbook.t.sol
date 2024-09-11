@@ -23,7 +23,7 @@ contract Test_CancelLPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_cancelLPOrder_WithTokens() external {
         uint256 marketId = createMarket();
 
-        uint256 quantity = 1000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the LP order
         (uint256 orderId, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), quantity, LP_ADDRESS);
@@ -44,7 +44,7 @@ contract Test_CancelLPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function test_cancelLPOrder_WithPoints() external {
         uint256 marketId = createMarket();
-        uint256 quantity = 1000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the LP order
         (uint256 orderId, RecipeOrderbook.LPOrder memory order,) = createLPOrder_ForPoints(marketId, address(0), quantity, LP_ADDRESS, IP_ADDRESS);
@@ -65,7 +65,7 @@ contract Test_CancelLPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function test_RevertIf_cancelLPOrder_NotOwner() external {
         uint256 marketId = createMarket();
-        uint256 quantity = 1000e18;
+        uint256 quantity = 100000e18;
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), quantity, LP_ADDRESS);
 
@@ -77,7 +77,7 @@ contract Test_CancelLPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function test_RevertIf_cancelLPOrder_OrderExpired() external {
         uint256 marketId = createMarket();
-        uint256 quantity = 1000e18;
+        uint256 quantity = 100000e18;
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), quantity, LP_ADDRESS);
 
@@ -91,7 +91,7 @@ contract Test_CancelLPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function test_RevertIf_cancelLPOrder_NoRemainingQuantity() external {
         uint256 marketId = createMarket();
-        uint256 quantity = 1000e18;
+        uint256 quantity = 100000e18;
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), quantity, LP_ADDRESS);
 
@@ -101,9 +101,9 @@ contract Test_CancelLPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         // Mint incentive tokens to IP and fill
-        mockIncentiveToken.mint(IP_ADDRESS, 1000e18);
+        mockIncentiveToken.mint(IP_ADDRESS, 100000e18);
         vm.startPrank(IP_ADDRESS);
-        mockIncentiveToken.approve(address(orderbook), 1000e18);
+        mockIncentiveToken.approve(address(orderbook), 100000e18);
 
         orderbook.fillLPOrder(order, quantity, DAN_ADDRESS);
         vm.stopPrank();

@@ -70,16 +70,16 @@ contract RecipeOrderbookTest is Test {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockToken);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
-        tokenAmountsRequested[0] = 100e18;
+        tokenAmountsRequested[0] = 1000e18;
 
         vm.startPrank(user1);
-        mockToken.mint(user1, 1000e18);
-        mockToken.approve(address(orderbook), 1000e18);
+        mockToken.mint(user1, 100000e18);
+        mockToken.approve(address(orderbook), 100000e18);
 
         uint256 orderId = orderbook.createLPOrder(
             0, // marketId
             address(0), // No funding vault
-            1000e18, // quantity
+            100000e18, // quantity
             block.timestamp + 1 days, // expiry
             tokensRequested,
             tokenAmountsRequested
@@ -94,14 +94,14 @@ contract RecipeOrderbookTest is Test {
                 0, // marketId
                 user1,
                 address(0),
-                1000e18,
+                100000e18,
                 block.timestamp + 1 days,
                 tokensRequested,
                 tokenAmountsRequested
             )
         );
 
-        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 1000e18);
+        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 100000e18);
         vm.stopPrank();
     }
 
@@ -112,15 +112,15 @@ contract RecipeOrderbookTest is Test {
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(mockToken);
         uint256[] memory tokenAmounts = new uint256[](1);
-        tokenAmounts[0] = 100e18;
+        tokenAmounts[0] = 1000e18;
 
         vm.startPrank(user2);
-        mockToken.mint(user2, 100e18);
-        mockToken.approve(address(orderbook), 100e18);
+        mockToken.mint(user2, 1000e18);
+        mockToken.approve(address(orderbook), 1000e18);
 
         uint256 orderId = orderbook.createIPOrder(
             0, // marketId
-            1000e18, // quantity
+            100000e18, // quantity
             block.timestamp + 1 days, // expiry
             tokensOffered,
             tokenAmounts
@@ -131,8 +131,8 @@ contract RecipeOrderbookTest is Test {
 
         (uint256 targetMarketID, address ip, uint256 expiry, uint256 quantity, uint256 remainingQuantity) = orderbook.orderIDToIPOrder(0);
         assertEq(targetMarketID, 0);
-        assertEq(quantity, 1000e18);
-        assertEq(remainingQuantity, 1000e18);
+        assertEq(quantity, 100000e18);
+        assertEq(remainingQuantity, 100000e18);
         assertEq(expiry, block.timestamp + 1 days);
         vm.stopPrank();
     }
@@ -142,11 +142,11 @@ contract RecipeOrderbookTest is Test {
         testCreateIPOrder();
 
         vm.startPrank(user1);
-        mockToken.mint(user1, 1000e18);
+        mockToken.mint(user1, 100000e18);
         mockToken.approve(address(mockVault), 500e18);
         mockToken.approve(address(orderbook), 500e18);
         mockVault.deposit(500e18, user1);
-        mockVault.approve(address(orderbook), 1000e18);
+        mockVault.approve(address(orderbook), 100000e18);
 
         orderbook.fillIPOrder(0, 500e18, address(mockVault), user2);
 

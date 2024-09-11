@@ -24,7 +24,7 @@ contract TestFuzz_CancelIPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function test_cancelIPOrder_WithTokens_PartiallyFilled(uint256 _fillAmount) external {
-        uint256 quantity = 1000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
         vm.assume(_fillAmount > 0);
         vm.assume(_fillAmount <= quantity);
 
@@ -83,7 +83,7 @@ contract TestFuzz_CancelIPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 quantity = 1000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, quantity, IP_ADDRESS);
@@ -100,7 +100,7 @@ contract TestFuzz_CancelIPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 quantity = 1000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, quantity, IP_ADDRESS);
