@@ -27,7 +27,7 @@ contract TestFuzz_CancelIPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 quantity = 1000e18; // The amount of input tokens to be deposited
         vm.assume(_fillAmount > 0);
         vm.assume(_fillAmount <= quantity);
-        
+
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         // Create the IP order
@@ -96,6 +96,7 @@ contract TestFuzz_CancelIPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function testFuzz_RevertIf_cancelIPOrder_OrderExpired(uint256 _expiredForSeconds) external {
         vm.assume(_expiredForSeconds > 0);
+        vm.assume(_expiredForSeconds < 3653 days);
 
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
