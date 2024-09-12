@@ -595,6 +595,7 @@ contract VaultOrderbookTest is Test {
 
        vm.startPrank(alice);
         baseToken.approve(address(orderbook), quantity*3);
+        baseToken.approve(address(fundingVault), quantity);
         baseToken.approve(address(targetVault), quantity*3);
 
        address[] memory tokensRequested = new address[](3);
@@ -606,17 +607,19 @@ contract VaultOrderbookTest is Test {
         tokenRatesRequested[1] = tokenRateRequested;
         tokenRatesRequested[2] = tokenRateRequested;
 
+        fundingVault.deposit(quantity, alice);
+
        uint256 order1Id =
            orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
        uint256 order2Id =
-           orderbook.createLPOrder(address(targetVault2), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+           orderbook.createLPOrder(address(targetVault2), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
        uint256 order3Id =
            orderbook.createLPOrder(address(targetVault3), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
        VaultOrderbook.LPOrder memory order1 =
            VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
        VaultOrderbook.LPOrder memory order2 =
-           VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+           VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
        VaultOrderbook.LPOrder memory order3 =
            VaultOrderbook.LPOrder(order3Id, address(targetVault3), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
       
@@ -649,7 +652,7 @@ contract VaultOrderbookTest is Test {
 
        orderbook.allocateOrders(orders);
 
-       //Verify none of the orders allocated
+       //Verify all of the orders allocated
        assertEq(targetVault.balanceOf(alice), quantity);
        assertEq(targetVault2.balanceOf(alice), quantity);
        assertEq(targetVault3.balanceOf(alice), quantity);
@@ -659,6 +662,7 @@ contract VaultOrderbookTest is Test {
        assertEq(orderbook.orderHashToRemainingQuantity(order3Hash), 0);
 
        assertEq(baseToken.balanceOf(address(alice)), 0);
+       assertEq(fundingVault.balanceOf(alice), 0); 
 
        vm.stopPrank();
    }
