@@ -115,12 +115,18 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     /// @notice Holds all WeirollMarket structs
     mapping(uint256 => WeirollMarket) public marketIDToWeirollMarket;
+
     /// @notice Holds all IPOrder structs
     mapping(uint256 => IPOrder) public orderIDToIPOrder;
+
     /// @notice Tracks the unfilled quantity of each LP order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
+    // Tracks the locked incentives associated with a weiroll wallet
     mapping(address => LockedRewardParams) public weirollWalletToLockedRewardParams;
+
+    // Structure to store each fee claimant's accrued fees for a particular token (claimant => token => feesAccrued)
+    mapping(address => mapping(address => uint256)) public feeClaimantToTokenToAmount;
 
     /// @param _weirollWalletImplementation The address of the WeirollWallet implementation contract
     /// @param _protocolFee The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant
@@ -237,6 +243,14 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     error TotalFeeTooHigh();
     /// @notice emitted when trying to fill an order that doesn't exist anymore/yet
     error CannotFillZeroQuantityOrder();
+
+    // modifier to check if msg.sender is owner of a weirollWallet
+    modifier isWeirollOwner(address weirollWallet) {
+        if (WeirollWallet(payable(weirollWallet)).owner() != msg.sender) {
+            revert NotOwner();
+        }
+        _;
+    }
 
     // Getters to access nested mappings
     function getTokenAmountsOfferedForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
@@ -412,8 +426,6 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
         return (numIPOrders++);
     }
-
-    mapping(address => mapping(address => uint256)) public feeClaimantToTokenToAmount;
 
     /// @param recipient The address to send fees to
     /// @param token The token address where fees are accrued in
@@ -705,10 +717,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice For wallets of Forfeitable markets, an LP can call this function to forgo their rewards and unlock their wallet
-    function forfeit(address weirollWallet) public nonReentrant {
-        if (WeirollWallet(payable(weirollWallet)).owner() != msg.sender) {
-            revert NotOwner();
-        }
+    function forfeit(address weirollWallet) public isWeirollOwner(weirollWallet) nonReentrant {
         WeirollWallet(payable(weirollWallet)).forfeit();
 
         // Return the locked rewards to the IP
@@ -728,12 +737,12 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
 
+    /// @notice Execute the withdrawal script in the weiroll wallet
+    function executeWithdrawalScript(address weirollWallet) public isWeirollOwner(weirollWallet) nonReentrant { }
+
     /// @param weirollWallet The wallet to claim for
     /// @param to The address to claim all rewards to
-    function claim(address weirollWallet, address to) public nonReentrant {
-        if (WeirollWallet(payable(weirollWallet)).owner() != msg.sender) {
-            revert NotOwner();
-        }
+    function claim(address weirollWallet, address to) public isWeirollOwner(weirollWallet) nonReentrant {
         if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
             revert WalletLocked();
         }
