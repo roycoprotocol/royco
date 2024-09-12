@@ -19,7 +19,8 @@ contract VaultOrderbook is Ownable2Step {
     /// @custom:field fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @custom:field expiry The timestamp after which the order is considered expired
     /// @custom:field tokensRequested The incentive tokens requested by the AP in order to fill the order
-    /// @custom:field tokenRatesRequested The desired rewards per input token per second to fill the order
+    /// @custom:field tokenRatesRequested The desired rewards per input token per second to fill the order, measured in
+            /// wei of rewards token per wei of deposited assets per second, scaled up by 1e18 to avoid precision loss
     struct APOrder {
         uint256 orderID;
         address targetVault;

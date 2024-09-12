@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
@@ -386,6 +386,8 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         return accumulatedRewards_.accumulated + _calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerToken_.accumulated);
     }
 
+    /// @notice Calculates the rate a user would receive in rewards after depositing assets
+    /// @return The rate of rewards, measured in wei of rewards token per wei of assets per second, scaled up by 1e18 to avoid precision loss
     function previewRateAfterDeposit(address reward, uint256 assets) public view returns (uint256) {
         RewardsInterval memory rewardsInterval = rewardToInterval[reward];
         uint256 shares = VAULT.previewDeposit(assets);
