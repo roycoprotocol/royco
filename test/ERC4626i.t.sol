@@ -433,6 +433,7 @@ contract ERC4626iTest is Test {
         uint256 expectedFrontendFee = (rewardAmount * DEFAULT_FRONTEND_FEE) / WAD;
         uint256 expectedProtocolFee = (rewardAmount * DEFAULT_PROTOCOL_FEE) / WAD;
 
+        vm.prank(FRONTEND_FEE_RECIPIENT);
         testIncentivizedVault.claimFees(FRONTEND_FEE_RECIPIENT);
         assertApproxEqRel(rewardToken1.balanceOf(FRONTEND_FEE_RECIPIENT), expectedFrontendFee, 1e15);
 
