@@ -13,7 +13,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     using FixedPointMathLib for uint256;
 
     address IP_ADDRESS;
-    address LP_ADDRESS;
+    address AP_ADDRESS;
     address FRONTEND_FEE_RECIPIENT;
 
     function setUp() external {
@@ -22,7 +22,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         setUpRecipeOrderbookTests(protocolFee, minimumFrontendFee);
 
         IP_ADDRESS = ALICE_ADDRESS;
-        LP_ADDRESS = BOB_ADDRESS;
+        AP_ADDRESS = BOB_ADDRESS;
         FRONTEND_FEE_RECIPIENT = CHARLIE_ADDRESS;
     }
 
@@ -36,9 +36,9 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -47,10 +47,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(address(orderbook), LP_ADDRESS, expectedIncentiveAmount);
+        emit ERC20.Transfer(address(orderbook), AP_ADDRESS, expectedIncentiveAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
         emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
@@ -58,7 +58,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -75,7 +75,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the LP received the correct incentive amount
-        assertEq(mockIncentiveToken.balanceOf(LP_ADDRESS), expectedIncentiveAmount);
+        assertEq(mockIncentiveToken.balanceOf(AP_ADDRESS), expectedIncentiveAmount);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
@@ -97,9 +97,9 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -108,10 +108,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(address(orderbook), LP_ADDRESS, expectedIncentiveAmount);
+        emit ERC20.Transfer(address(orderbook), AP_ADDRESS, expectedIncentiveAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
         emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
@@ -119,7 +119,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, type(uint256).max, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -136,7 +136,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the LP received the correct incentive amount
-        assertEq(mockIncentiveToken.balanceOf(LP_ADDRESS), expectedIncentiveAmount);
+        assertEq(mockIncentiveToken.balanceOf(AP_ADDRESS), expectedIncentiveAmount);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
@@ -155,9 +155,9 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -175,10 +175,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(LP_ADDRESS, expectedIncentiveAmount);
+        emit Points.Award(AP_ADDRESS, expectedIncentiveAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
         emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
@@ -186,7 +186,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -217,12 +217,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
         // Mint liquidity tokens to deposit into the vault
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(mockVault), fillAmount);
 
         // Deposit tokens into the vault and approve orderbook to spend them
-        mockVault.deposit(fillAmount, LP_ADDRESS);
+        mockVault.deposit(fillAmount, AP_ADDRESS);
         mockVault.approve(address(orderbook), fillAmount);
 
         vm.stopPrank();
@@ -232,14 +232,14 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(address(orderbook), LP_ADDRESS, expectedIncentiveAmount);
+        emit ERC20.Transfer(address(orderbook), AP_ADDRESS, expectedIncentiveAmount);
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), 0);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), 0);
 
         vm.expectEmit(true, false, true, false, address(mockVault));
-        emit ERC4626.Withdraw(address(orderbook), address(0), LP_ADDRESS, fillAmount, 0);
+        emit ERC4626.Withdraw(address(orderbook), address(0), AP_ADDRESS, fillAmount, 0);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
@@ -250,7 +250,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -267,7 +267,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the LP received the correct incentive amount
-        assertEq(mockIncentiveToken.balanceOf(LP_ADDRESS), expectedIncentiveAmount);
+        assertEq(mockIncentiveToken.balanceOf(AP_ADDRESS), expectedIncentiveAmount);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
@@ -287,12 +287,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to deposit into the vault
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(mockVault), fillAmount);
 
         // Deposit tokens into the vault and approve orderbook to spend them
-        mockVault.deposit(fillAmount, LP_ADDRESS);
+        mockVault.deposit(fillAmount, AP_ADDRESS);
         mockVault.approve(address(orderbook), fillAmount);
 
         vm.stopPrank();
@@ -311,14 +311,14 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(LP_ADDRESS, expectedIncentiveAmount);
+        emit Points.Award(AP_ADDRESS, expectedIncentiveAmount);
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), 0);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), 0);
 
         vm.expectEmit(true, false, true, false, address(mockVault));
-        emit ERC4626.Withdraw(address(orderbook), address(0), LP_ADDRESS, fillAmount, 0);
+        emit ERC4626.Withdraw(address(orderbook), address(0), AP_ADDRESS, fillAmount, 0);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
@@ -329,7 +329,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -359,9 +359,9 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -369,7 +369,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
         emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
@@ -377,7 +377,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -413,9 +413,9 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -432,7 +432,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
         emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
@@ -440,7 +440,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -474,12 +474,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
         // Mint liquidity tokens to deposit into the vault
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(mockVault), fillAmount);
 
         // Deposit tokens into the vault and approve orderbook to spend them
-        mockVault.deposit(fillAmount, LP_ADDRESS);
+        mockVault.deposit(fillAmount, AP_ADDRESS);
         mockVault.approve(address(orderbook), fillAmount);
 
         vm.stopPrank();
@@ -489,10 +489,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), 0);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), 0);
 
         vm.expectEmit(true, false, true, false, address(mockVault));
-        emit ERC4626.Withdraw(address(orderbook), address(0), LP_ADDRESS, fillAmount, 0);
+        emit ERC4626.Withdraw(address(orderbook), address(0), AP_ADDRESS, fillAmount, 0);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
@@ -503,7 +503,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -540,12 +540,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to deposit into the vault
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(mockVault), fillAmount);
 
         // Deposit tokens into the vault and approve orderbook to spend them
-        mockVault.deposit(fillAmount, LP_ADDRESS);
+        mockVault.deposit(fillAmount, AP_ADDRESS);
         mockVault.approve(address(orderbook), fillAmount);
 
         vm.stopPrank();
@@ -564,10 +564,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), 0);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), 0);
 
         vm.expectEmit(true, false, true, false, address(mockVault));
-        emit ERC4626.Withdraw(address(orderbook), address(0), LP_ADDRESS, fillAmount, 0);
+        emit ERC4626.Withdraw(address(orderbook), address(0), AP_ADDRESS, fillAmount, 0);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
@@ -578,7 +578,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -610,9 +610,9 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -620,7 +620,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(mockIncentiveToken));
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
         emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
@@ -628,7 +628,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -664,9 +664,9 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -683,7 +683,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), fillAmount);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
         emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
@@ -691,7 +691,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -725,12 +725,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
         // Mint liquidity tokens to deposit into the vault
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(mockVault), fillAmount);
 
         // Deposit tokens into the vault and approve orderbook to spend them
-        mockVault.deposit(fillAmount, LP_ADDRESS);
+        mockVault.deposit(fillAmount, AP_ADDRESS);
         mockVault.approve(address(orderbook), fillAmount);
 
         vm.stopPrank();
@@ -740,10 +740,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), 0);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), 0);
 
         vm.expectEmit(true, false, true, false, address(mockVault));
-        emit ERC4626.Withdraw(address(orderbook), address(0), LP_ADDRESS, fillAmount, 0);
+        emit ERC4626.Withdraw(address(orderbook), address(0), AP_ADDRESS, fillAmount, 0);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
@@ -754,7 +754,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -791,12 +791,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Mint liquidity tokens to deposit into the vault
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(mockVault), fillAmount);
 
         // Deposit tokens into the vault and approve orderbook to spend them
-        mockVault.deposit(fillAmount, LP_ADDRESS);
+        mockVault.deposit(fillAmount, AP_ADDRESS);
         mockVault.approve(address(orderbook), fillAmount);
 
         vm.stopPrank();
@@ -815,10 +815,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
-        emit ERC20.Transfer(LP_ADDRESS, address(0), 0);
+        emit ERC20.Transfer(AP_ADDRESS, address(0), 0);
 
         vm.expectEmit(true, false, true, false, address(mockVault));
-        emit ERC4626.Withdraw(address(orderbook), address(0), LP_ADDRESS, fillAmount, 0);
+        emit ERC4626.Withdraw(address(orderbook), address(0), AP_ADDRESS, fillAmount, 0);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
@@ -829,7 +829,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 

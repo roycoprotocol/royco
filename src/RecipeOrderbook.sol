@@ -20,23 +20,23 @@ enum RewardStyle {
 
 /// @title RecipeOrderbook
 /// @author CopyPaste, corddry, ShivaanshK
-/// @notice Orderbook Contract for Incentivizing LP/IPs to participate in "recipes" which perform arbitrary actions
+/// @notice Orderbook Contract for Incentivizing AP/IPs to participate in "recipes" which perform arbitrary actions
 contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    /// @custom:field orderID Set to numLPOrders - 1 on order creation (zero-indexed)
+    /// @custom:field orderID Set to numAPOrders - 1 on order creation (zero-indexed)
     /// @custom:field targetMarketID The ID of the weiroll market which will be executed on fill
-    /// @custom:field lp The address of the liquidity provider
+    /// @custom:field ap The address of the action provider
     /// @custom:field fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @custom:field expiry The timestamp after which the order is considered expired
-    /// @custom:field tokensRequested The incentive tokens requested by the LP
+    /// @custom:field tokensRequested The incentive tokens requested by the AP
     /// @custom:field tokenAmountsRequested The desired rewards per input token
-    struct LPOrder {
+    struct APOrder {
         uint256 orderID;
         uint256 targetMarketID;
-        address lp;
+        address ap;
         address fundingVault;
         uint256 quantity;
         uint256 expiry;
@@ -58,12 +58,12 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256 quantity;
         uint256 remainingQuantity;
         address[] tokensOffered;
-        mapping(address => uint256) tokenAmountsOffered; // amounts to be released to LP (per incentive)
+        mapping(address => uint256) tokenAmountsOffered; // amounts to be released to AP (per incentive)
         mapping(address => uint256) tokenToProtocolFeeAmount; // amounts to be released to protocolFeeClaimant (per incentive)
         mapping(address => uint256) tokenToFrontendFeeAmount; // amounts to be released to frontend provider (per incentive)
     }
 
-    /// @custom:field weirollCommands The weiroll script that will be executed on an LP's weiroll wallet after receiving the inputToken
+    /// @custom:field weirollCommands The weiroll script that will be executed on an AP's weiroll wallet after receiving the inputToken
     /// @custom:field weirollState State of the weiroll VM, necessary for executing the weiroll script
     struct Recipe {
         bytes32[] weirollCommands;
@@ -99,8 +99,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @notice The address of the PointsFactory contract
     address public immutable POINTS_FACTORY;
 
-    /// @notice The number of LP orders that have been created
-    uint256 public numLPOrders;
+    /// @notice The number of AP orders that have been created
+    uint256 public numAPOrders;
     /// @notice The number of IP orders that have been created
     uint256 public numIPOrders;
     /// @notice The number of unique weiroll markets added
@@ -118,8 +118,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     /// @notice Holds all IPOrder structs
     mapping(uint256 => IPOrder) public orderIDToIPOrder;
-
-    /// @notice Tracks the unfilled quantity of each LP order
+    /// @notice Tracks the unfilled quantity of each AP order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
     // Tracks the locked incentives associated with a weiroll wallet
@@ -148,7 +147,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         minimumFrontendFee = _minimumFrontendFee;
 
         // Redundant
-        numLPOrders = 0;
+        numAPOrders = 0;
         numIPOrders = 0;
         numMarkets = 0;
     }
@@ -160,18 +159,18 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @custom:field rewardStyle Whether the rewards are paid at the beginning, locked until the end, or forfeitable until the end
     event MarketCreated(uint256 indexed marketID, address indexed inputToken, uint256 lockupTime, uint256 frontendFee, RewardStyle rewardStyle);
 
-    /// @param orderID Set to numLPOrders - 1 on order creation (zero-indexed), ordered separately for LP and IP orders
+    /// @param orderID Set to numAPOrders - 1 on order creation (zero-indexed), ordered separately for AP and IP orders
     /// @param targetMarketID The ID of the weiroll market which will be executed on fill
-    /// @param lp The address of the liquidity provider
+    /// @param ap The address of the action provider
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param expiry The timestamp after which the order is considered expired
-    /// @param tokensRequested The incentive tokens requested by the LP
+    /// @param tokensRequested The incentive tokens requested by the AP
     /// @param tokenAmountsRequested The desired rewards per input token
     /// @param quantity The total amount of input tokens to be deposited
-    event LPOrderCreated(
+    event APOrderCreated(
         uint256 indexed orderID,
         uint256 indexed targetMarketID,
-        address indexed lp,
+        address indexed ap,
         address fundingVault,
         uint256 quantity,
         uint256 expiry,
@@ -179,7 +178,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256[] tokenAmountsRequested
     );
 
-    /// @param orderID Set to numIPOrders - 1 on order creation (zero-indexed), ordered separately for LP and IP orders
+    /// @param orderID Set to numIPOrders - 1 on order creation (zero-indexed), ordered separately for AP and IP orders
     /// @param targetMarketID The ID of the weiroll market which will be executed on fill
     /// @param ip The address of the incentive provider
     /// @param expiry The timestamp after which the order is considered expired
@@ -197,19 +196,19 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     );
 
     /// @param IPOrderID The ID of the IP order that was filled
-    /// @param lp The address of the liquidity provider that filled the order
+    /// @param ap The address of the action provider that filled the order
     /// @param quantity The amount of input tokens that were deposited
-    event IPOrderFilled(uint256 indexed marketID, uint256 indexed IPOrderID, address indexed lp, uint256 fillAmount, uint256 quantity, address weirollWallet);
+    event IPOrderFilled(uint256 indexed marketID, uint256 indexed IPOrderID, address indexed ap, uint256 fillAmount, uint256 quantity, address weirollWallet);
 
-    /// @param LPOrderID The ID of the LP order that was filled
+    /// @param APOrderID The ID of the AP order that was filled
     /// @param ip The address of the incentive provider that filled the order
     /// @param quantity The amount of input tokens that were deposited
-    event LPOrderFilled(uint256 indexed marketID, uint256 indexed LPOrderID, address indexed ip, uint256 fillAmount, uint256 quantity, address weirollWallet);
+    event APOrderFilled(uint256 indexed marketID, uint256 indexed APOrderID, address indexed ip, uint256 fillAmount, uint256 quantity, address weirollWallet);
 
     /// @param IPOrderID The ID of the IP order that was cancelled
     event IPOrderCancelled(uint256 indexed IPOrderID);
-    /// @param LPOrderID The ID of the LP order that was cancelled
-    event LPOrderCancelled(uint256 indexed LPOrderID);
+    /// @param APOrderID The ID of the AP order that was cancelled
+    event APOrderCancelled(uint256 indexed APOrderID);
 
     event FeesClaimed(address indexed claimant, uint256 amount);
 
@@ -219,7 +218,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     error NotEnoughRemainingQuantity();
     /// @notice emitted when the base asset of the target vault and the funding vault do not match
     error MismatchedBaseAsset();
-    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet
+    /// @notice emitted when the AP does not have sufficient assets in the funding vault, or in their wallet
     error NotEnoughBaseAsset();
     /// @notice emitted if a market with the given ID does not exist
     error MarketDoesNotExist();
@@ -311,17 +310,17 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         return (numMarkets++);
     }
 
-    /// @notice Create a new LP order. Order params will be emitted in an event while only the hash of the order and order quantity is stored onchain
-    /// @dev LP orders are funded via approvals to ensure multiple orders can be placed off of a single input
+    /// @notice Create a new AP order. Order params will be emitted in an event while only the hash of the order and order quantity is stored onchain
+    /// @dev AP orders are funded via approvals to ensure multiple orders can be placed off of a single input
     /// @dev Setting an expiry of 0 means the order never expires
     /// @param targetMarketID The ID of the weiroll market which will be executed on fill
-    /// @param fundingVault The address of the vault where the input tokens will be withdrawn from, if set to 0, the LP will deposit the base asset directly
+    /// @param fundingVault The address of the vault where the input tokens will be withdrawn from, if set to 0, the AP will deposit the base asset directly
     /// @param quantity The total amount of input tokens to be deposited
     /// @param expiry The timestamp after which the order is considered expired
-    /// @param tokensRequested The incentive token addresses requested by the LP in order to satisfy the order
-    /// @param tokenAmountsRequested The amount of each token requested by the LP in order to satisfy the order
+    /// @param tokensRequested The incentive token addresses requested by the AP in order to satisfy the order
+    /// @param tokenAmountsRequested The amount of each token requested by the AP in order to satisfy the order
     /// @return orderID ID of the newly created order
-    function createLPOrder(
+    function createAPOrder(
         uint256 targetMarketID,
         address fundingVault,
         uint256 quantity,
@@ -354,13 +353,13 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             revert MismatchedBaseAsset();
         }
 
-        /// @dev LPOrder events are stored in events and do not exist onchain outside of the orderHashToRemainingQuantity mapping
-        emit LPOrderCreated(numLPOrders, targetMarketID, msg.sender, fundingVault, quantity, expiry, tokensRequested, tokenAmountsRequested);
+        /// @dev APOrder events are stored in events and do not exist onchain outside of the orderHashToRemainingQuantity mapping
+        emit APOrderCreated(numAPOrders, targetMarketID, msg.sender, fundingVault, quantity, expiry, tokensRequested, tokenAmountsRequested);
 
         // Map the order hash to the order quantity
-        LPOrder memory order = LPOrder(numLPOrders, targetMarketID, msg.sender, fundingVault, quantity, expiry, tokensRequested, tokenAmountsRequested);
+        APOrder memory order = APOrder(numAPOrders, targetMarketID, msg.sender, fundingVault, quantity, expiry, tokensRequested, tokenAmountsRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
-        return (numLPOrders++);
+        return (numAPOrders++);
     }
 
     /// @notice Create a new IP order, transferring the IP's incentives to the orderbook and putting all the order params in contract storage
@@ -458,7 +457,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         emit FeesClaimed(msg.sender, amount);
     }
 
-    /// @notice Fill an IP order, transferring the IP's incentives to the LP, withdrawing the LP from their funding vault into a fresh weiroll wallet, and
+    /// @notice Fill an IP order, transferring the IP's incentives to the AP, withdrawing the AP from their funding vault into a fresh weiroll wallet, and
     /// executing the weiroll recipe
     /// @param orderID The ID of the IP order to fill
     /// @param fillAmount The amount of input tokens to fill the order with
@@ -490,16 +489,16 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             revert CannotPlaceZeroQuantityOrder();
         }
 
-        // Calculate the percentage of the order the LP is filling
+        // Calculate the percentage of the order the AP is filling
         uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
 
         // Update the order's remaining quantity before interacting with external contracts
         order.remainingQuantity -= fillAmount;
 
-        // Create a new weiroll wallet for the LP with an appropriate unlock time
+        // Create a new weiroll wallet for the AP with an appropriate unlock time
         uint256 unlockTime = block.timestamp + market.lockupTime;
 
-        // Create weiroll wallet to lock liquidity for recipe execution(s)
+        // Create weiroll wallet to lock assets for recipe execution(s)
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
         WeirollWallet wallet = WeirollWallet(
             payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable, order.targetMarketID)))
@@ -532,7 +531,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             // Set params for future payout
             weirollWalletToLockedRewardParams[address(wallet)] = params;
         } else {
-            // Transfer the IP's incentives to the LP and set aside fees
+            // Transfer the IP's incentives to the AP and set aside fees
             for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
                 address token = order.tokensOffered[i];
 
@@ -546,7 +545,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
                 // Calculate incentives to give based on percentage of fill
                 uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
-                // Give incentives to LP immediately in an Upfront market
+                // Give incentives to AP immediately in an Upfront market
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
                     Points(token).award(msg.sender, incentiveAmount, order.ip);
                 } else {
@@ -556,10 +555,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         }
 
         if (fundingVault == address(0)) {
-            // If the no fundingVault specified, fund the wallet directly from LP
+            // If the no fundingVault specified, fund the wallet directly from AP
             ERC20(market.inputToken).safeTransferFrom(msg.sender, address(wallet), fillAmount);
         } else {
-            // Withdraw the liquidity from the funding vault into the wallet
+            // Withdraw the tokens from the funding vault into the wallet
             ERC4626(fundingVault).withdraw(fillAmount, address(wallet), msg.sender);
         }
 
@@ -570,7 +569,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
-    function fillLPOrder(LPOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public {
+    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public {
         if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
 
         bytes32 orderHash = getOrderHash(order);
@@ -590,17 +589,17 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         // Adjust remaining order quantity by amount filled
         orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
-        // Calculate percentage of LP oder that IP is fulfilling (IP gets this percantage of the order quantity in a Weiroll wallet specified by the market)
+        // Calculate percentage of AP oder that IP is fulfilling (IP gets this percantage of the order quantity in a Weiroll wallet specified by the market)
         uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
 
         // Get Weiroll market
         WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
 
-        // Create weiroll wallet to lock liquidity for recipe execution(s)
+        // Create weiroll wallet to lock assets for recipe execution(s)
         uint256 unlockTime = block.timestamp + market.lockupTime;
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
         WeirollWallet wallet = WeirollWallet(
-            payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime, forfeitable, order.targetMarketID)))
+            payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.ap, address(this), fillAmount, unlockTime, forfeitable, order.targetMarketID)))
         );
 
         if (market.rewardStyle != RewardStyle.Upfront) {
@@ -612,10 +611,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             params.ip = msg.sender;
 
             for (uint256 i = 0; i < order.tokensRequested.length; ++i) {
-                // This is the amount (per incentive) that the LP can claim once weiroll wallet is unlocked (fees are taken on top of this amount from the IP)
+                // This is the amount (per incentive) that the AP can claim once weiroll wallet is unlocked (fees are taken on top of this amount from the IP)
                 params.amounts[i] = order.tokenAmountsRequested[i].mulWadDown(fillPercentage);
 
-                // Calculate fees based on fill percentage. These fees will be taken on top of the LP's requested amount.
+                // Calculate fees based on fill percentage. These fees will be taken on top of the AP's requested amount.
                 uint256 protocolFeeAmount = params.amounts[i].mulWadDown(protocolFee);
                 uint256 frontendFeeAmount = params.amounts[i].mulWadDown(market.frontendFee);
 
@@ -634,10 +633,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         } else {
             // market.rewardStyle == RewardStyle.Upfront
             for (uint256 i = 0; i < order.tokensRequested.length; ++i) {
-                // This is the amount that the LP can claim once weiroll wallet is unlocked (fees are taken on top of this amount from the IP)
+                // This is the amount that the AP can claim once weiroll wallet is unlocked (fees are taken on top of this amount from the IP)
                 uint256 amount = order.tokenAmountsRequested[i].mulWadDown(fillPercentage);
 
-                // Calculate fees based on fill percentage. These fees will be taken on top of the LP's requested amount.
+                // Calculate fees based on fill percentage. These fees will be taken on top of the AP's requested amount.
                 uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
                 uint256 frontendFeeAmount = amount.mulWadDown(market.frontendFee);
 
@@ -645,36 +644,36 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 accountFee(protocolFeeClaimant, order.tokensRequested[i], protocolFeeAmount, msg.sender);
                 accountFee(frontendFeeRecipient, order.tokensRequested[i], frontendFeeAmount, msg.sender);
 
-                // If incentives should be paid out upfront to LP
+                // If incentives should be paid out upfront to AP
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
                     // Award points right now if points program
-                    Points(order.tokensRequested[i]).award(order.lp, amount, msg.sender);
+                    Points(order.tokensRequested[i]).award(order.ap, amount, msg.sender);
                 } else {
                     // Transfer protcol and frontend fees to orderbook for the claimants to withdraw them on-demand
                     ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), protocolFeeAmount + frontendFeeAmount);
-                    // Transfer LP's incentives to them on fill if token incentive
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.lp, amount);
+                    // Transfer AP's incentives to them on fill if token incentive
+                    ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, order.ap, amount);
                 }
             }
         }
 
         if (order.fundingVault == address(0)) {
-            // If the no fundingVault specified, fund the wallet directly from LP
-            ERC20(market.inputToken).safeTransferFrom(order.lp, address(wallet), fillAmount);
+            // If the no fundingVault specified, fund the wallet directly from AP
+            ERC20(market.inputToken).safeTransferFrom(order.ap, address(wallet), fillAmount);
         } else {
-            // Withdraw the liquidity from the funding vault into the wallet
-            ERC4626(order.fundingVault).withdraw(fillAmount, address(wallet), order.lp);
+            // Withdraw the tokens from the funding vault into the wallet
+            ERC4626(order.fundingVault).withdraw(fillAmount, address(wallet), order.ap);
         }
 
         // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
 
-        emit LPOrderFilled(order.targetMarketID, order.orderID, order.lp, fillAmount, order.quantity, address(wallet));
+        emit APOrderFilled(order.targetMarketID, order.orderID, order.ap, fillAmount, order.quantity, address(wallet));
     }
 
-    /// @notice Cancel an LP order, setting the remaining quantity available to fill to 0
-    function cancelLPOrder(LPOrder calldata order) public {
-        if (order.lp != msg.sender) revert NotOwner();
+    /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
+    function cancelAPOrder(APOrder calldata order) public {
+        if (order.ap != msg.sender) revert NotOwner();
 
         // Check that the order isn't already filled, expired, or cancelled
         if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
@@ -684,7 +683,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         // Zero out the remaining quantity
         orderHashToRemainingQuantity[orderHash] = 0;
 
-        emit LPOrderCancelled(order.orderID);
+        emit APOrderCancelled(order.orderID);
     }
 
     /// @notice Cancel an IP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
@@ -726,7 +725,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         emit IPOrderCancelled(orderID);
     }
 
-    /// @notice For wallets of Forfeitable markets, an LP can call this function to forgo their rewards and unlock their wallet
+    /// @notice For wallets of Forfeitable markets, an AP can call this function to forgo their rewards and unlock their wallet
     function forfeit(address weirollWallet) public isWeirollOwner(weirollWallet) nonReentrant {
         // Forfeit the locked rewards for the weirollWallet
         WeirollWallet(payable(weirollWallet)).forfeit();
@@ -763,7 +762,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
 
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            // Reward incentives to LP upon wallet unlock
+            // Reward incentives to AP upon wallet unlock
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
                 Points(params.tokens[i]).award(to, params.amounts[i], params.ip);
             } else {
@@ -796,7 +795,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice calculates the hash of an order
-    function getOrderHash(LPOrder memory order) public pure returns (bytes32) {
+    function getOrderHash(APOrder memory order) public pure returns (bytes32) {
         return keccak256(abi.encode(order));
     }
 

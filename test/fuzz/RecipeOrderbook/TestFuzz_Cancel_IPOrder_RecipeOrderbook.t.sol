@@ -11,7 +11,7 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 contract TestFuzz_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     using FixedPointMathLib for uint256;
 
-    address LP_ADDRESS;
+    address AP_ADDRESS;
     address IP_ADDRESS;
 
     function setUp() external {
@@ -19,7 +19,7 @@ contract TestFuzz_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 minimumFrontendFee = 0.001e18; // 0.1% minimum frontend fee
         setUpRecipeOrderbookTests(protocolFee, minimumFrontendFee);
 
-        LP_ADDRESS = ALICE_ADDRESS;
+        AP_ADDRESS = ALICE_ADDRESS;
         IP_ADDRESS = DAN_ADDRESS;
     }
 
@@ -35,13 +35,13 @@ contract TestFuzz_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (,,,, uint256 initialRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(initialRemainingQuantity, quantity);
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, quantity);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, quantity);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), quantity);
         vm.stopPrank();
 
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         // fill 50% of the order
         orderbook.fillIPOrder(orderId, _fillAmount, address(0), DAN_ADDRESS);
         vm.stopPrank();

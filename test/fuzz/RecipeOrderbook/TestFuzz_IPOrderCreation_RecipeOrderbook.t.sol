@@ -86,7 +86,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         // Assertions on the order
         assertEq(orderId, 0); // First IP order should have ID 0
         assertEq(orderbook.numIPOrders(), 1); // IP order count should be 1
-        assertEq(orderbook.numLPOrders(), 0); // LP orders should remain 0
+        assertEq(orderbook.numAPOrders(), 0); // AP orders should remain 0
 
         for (uint256 i = 0; i < _tokenCount; i++) {
             // Use the helper function to retrieve values from storage
@@ -178,7 +178,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         // Assertions on the order
         assertEq(orderId, 0); // First IP order should have ID 0
         assertEq(orderbook.numIPOrders(), 1); // IP order count should be 1
-        assertEq(orderbook.numLPOrders(), 0); // LP orders should remain 0
+        assertEq(orderbook.numAPOrders(), 0); // AP orders should remain 0
 
         // Use the helper function to retrieve values from storage and assert them
         for (uint256 i = 0; i < _programCount; i++) {
@@ -301,7 +301,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         // Assertions on the order
         assertEq(orderId, 0); // First IP order should have ID 0
         assertEq(orderbook.numIPOrders(), 1); // IP order count should be 1
-        assertEq(orderbook.numLPOrders(), 0); // LP orders should remain 0
+        assertEq(orderbook.numAPOrders(), 0); // AP orders should remain 0
 
         // Use the helper function to retrieve values from storage and assert them
         for (uint256 i = 0; i < _tokenCount; i++) {

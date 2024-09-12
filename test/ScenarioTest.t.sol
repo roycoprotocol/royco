@@ -80,18 +80,18 @@ contract ScenarioTest is Test {
     tokenRatesRequested[0] = 1e18;
 
     uint256 order1Id =
-        vaultOrderbook.createLPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        vaultOrderbook.createAPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
     uint256 order2Id =
-        vaultOrderbook.createLPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        vaultOrderbook.createAPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
     uint256 order3Id =
-        vaultOrderbook.createLPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        vaultOrderbook.createAPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-    VaultOrderbook.LPOrder memory order1 =
-        VaultOrderbook.LPOrder(order1Id, address(targetVault), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-    VaultOrderbook.LPOrder memory order2 =
-        VaultOrderbook.LPOrder(order2Id, address(targetVault2), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-    VaultOrderbook.LPOrder memory order3 =
-        VaultOrderbook.LPOrder(order3Id, address(targetVault3), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+    VaultOrderbook.APOrder memory order1 =
+        VaultOrderbook.APOrder(order1Id, address(targetVault), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+    VaultOrderbook.APOrder memory order2 =
+        VaultOrderbook.APOrder(order2Id, address(targetVault2), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+    VaultOrderbook.APOrder memory order3 =
+        VaultOrderbook.APOrder(order3Id, address(targetVault3), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
     
     uint256[][] memory moreCampaignIds = new uint256[][](3);
     moreCampaignIds[0] = new uint256[](1);
@@ -100,7 +100,7 @@ contract ScenarioTest is Test {
     moreCampaignIds[1][0] = 1;
     moreCampaignIds[2] = new uint256[](1);
     moreCampaignIds[2][0] = 2;
-    VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](3);
+    VaultOrderbook.APOrder[] memory orders = new VaultOrderbook.APOrder[](3);
 
     bytes32 order1Hash = vaultOrderbook.getOrderHash(order1);
     bytes32 order2Hash = vaultOrderbook.getOrderHash(order2);
@@ -169,7 +169,7 @@ contract ScenarioTest is Test {
     );
     vm.stopPrank();
 
-    // Mint liquidity tokens to the LP to fill the order
+    // Mint liquidity tokens to the AP to fill the order
     baseToken.mint(USER01, fillAmount);
     vm.startPrank(USER01);
     baseToken.approve(address(recipeOrderbook), fillAmount);

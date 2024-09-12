@@ -79,22 +79,22 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         );
     }
 
-    function createLPOrder_ForTokens(
+    function createAPOrder_ForTokens(
         uint256 _targetMarketID,
         address _fundingVault,
         uint256 _quantity,
-        address _lpAddress
+        address _apAddress
     )
         public
-        prankModifier(_lpAddress)
-        returns (uint256 orderId, RecipeOrderbook.LPOrder memory order)
+        prankModifier(_apAddress)
+        returns (uint256 orderId, RecipeOrderbook.APOrder memory order)
     {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
         tokenAmountsRequested[0] = 1000e18;
 
-        orderId = orderbook.createLPOrder(
+        orderId = orderbook.createAPOrder(
             _targetMarketID, // Referencing the created market
             _fundingVault, // Address of funding vault
             _quantity, // Total input token amount
@@ -103,18 +103,18 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        order = RecipeOrderbook.LPOrder(orderId, _targetMarketID, _lpAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        order = RecipeOrderbook.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
     }
 
-    function createLPOrder_ForPoints(
+    function createAPOrder_ForPoints(
         uint256 _targetMarketID,
         address _fundingVault,
         uint256 _quantity,
-        address _lpAddress,
+        address _apAddress,
         address _ipAddress
     )
         public
-        returns (uint256 orderId, RecipeOrderbook.LPOrder memory order, Points points)
+        returns (uint256 orderId, RecipeOrderbook.APOrder memory order, Points points)
     {
         address[] memory tokensRequested = new address[](1);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
@@ -134,8 +134,8 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         tokensRequested[0] = address(points);
         tokenAmountsRequested[0] = 1000e18;
 
-        vm.startPrank(_lpAddress);
-        orderId = orderbook.createLPOrder(
+        vm.startPrank(_apAddress);
+        orderId = orderbook.createAPOrder(
             _targetMarketID, // Referencing the created market
             _fundingVault, // Address of funding vault
             _quantity, // Total input token amount
@@ -144,7 +144,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
         vm.stopPrank();
-        order = RecipeOrderbook.LPOrder(orderId, _targetMarketID, _lpAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        order = RecipeOrderbook.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
     }
 
     function createIPOrder_WithPoints(
@@ -198,7 +198,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         incentiveAmount = orderbook.getTokenAmountsOfferedForIPOrder(orderId, tokenOffered).mulWadDown(fillPercentage);
     }
 
-    function calculateLPOrderExpectedIncentiveAndFrontendFee(
+    function calculateAPOrderExpectedIncentiveAndFrontendFee(
         uint256 protocolFee,
         uint256 frontendFee,
         uint256 orderAmount,

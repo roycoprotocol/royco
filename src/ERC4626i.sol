@@ -40,6 +40,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     error RateCannotDecrease();
     error FrontendFeeBelowMinimum();
     error InvalidReward();
+    error OnlyClaimant();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -105,11 +106,10 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param _owner The owner of the incentivized vault
     /// @param name The name of the incentivized vault token 
     /// @param symbol The symbol to use for the incentivized vault token 
-    /// @param decimals The decimals for incentivized vault tokens, if deployed by factory same as underlying vault 
     /// @param vault The underlying vault being incentivized 
     /// @param initialFrontendFee The initial fee set for the frontend out of WAD 
     /// @param pointsFactory The canonical factory responsible for deploying all points programs
-    constructor(address _owner, string memory name, string memory symbol, uint8 decimals, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, 18) Owned(_owner) {
+    constructor(address _owner, string memory name, string memory symbol, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, 18) Owned(_owner) {
         
         ERC4626I_FACTORY = ERC4626iFactory(msg.sender);
         
@@ -139,11 +139,11 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
     /// @param to The address to send all fees owed to msg.sender to
     function claimFees(address to) public {
-        emit FeesClaimed(to);
+        emit FeesClaimed(msg.sender);
         for (uint256 i = 0; i < rewards.length; i++) {
             address reward = rewards[i];
-            uint256 owed = rewardToClaimantToFees[reward][to];
-            rewardToClaimantToFees[reward][to] = 0;
+            uint256 owed = rewardToClaimantToFees[reward][msg.sender];
+            rewardToClaimantToFees[reward][msg.sender] = 0;
             pushReward(reward, to, owed);
         }
     }

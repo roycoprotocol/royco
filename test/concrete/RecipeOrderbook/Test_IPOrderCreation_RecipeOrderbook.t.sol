@@ -67,7 +67,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         // Assertions on the order
         assertEq(orderId, 0); // First IP order should have ID 0
         assertEq(orderbook.numIPOrders(), 1); // IP order count should be 1
-        assertEq(orderbook.numLPOrders(), 0); // LP orders should remain 0
+        assertEq(orderbook.numAPOrders(), 0); // AP orders should remain 0
 
         // Use the helper function to retrieve values from storage
         uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[0]);
@@ -132,7 +132,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         // Assertions on the order
         assertEq(orderId, 0); // First IP order should have ID 0
         assertEq(orderbook.numIPOrders(), 1); // IP order count should be 1
-        assertEq(orderbook.numLPOrders(), 0); // LP orders should remain 0
+        assertEq(orderbook.numAPOrders(), 0); // AP orders should remain 0
 
         // Use the helper function to retrieve values from storage
         uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, tokensOffered[0]);
