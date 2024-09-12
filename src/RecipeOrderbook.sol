@@ -728,7 +728,11 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     /// @notice For wallets of Forfeitable markets, an LP can call this function to forgo their rewards and unlock their wallet
     function forfeit(address weirollWallet) public isWeirollOwner(weirollWallet) nonReentrant {
+        // Forfeit the locked rewards for the weirollWallet
         WeirollWallet(payable(weirollWallet)).forfeit();
+
+        // Automatically execute the withdrawal script upon forfeiture
+        _executeWithdrawalScript(weirollWallet);
 
         // Return the locked rewards to the IP
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
@@ -748,18 +752,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice Execute the withdrawal script in the weiroll wallet
-    function executeWithdrawalScript(address weirollWallet) public isWeirollOwner(weirollWallet) weirollWalletIsUnLocked(weirollWallet) nonReentrant {
-        // Instantiate the WeirollWallet from the wallet address
-        WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
-
-        // Get the marketID associated with the weiroll wallet
-        uint256 weirollMarketId = wallet.marketId();
-
-        // Get the market in order to get the withdrawal recipe
-        WeirollMarket storage market = marketIDToWeirollMarket[weirollMarketId];
-
-        //Execute the withdrawal recipe
-        wallet.executeWeiroll(market.withdrawRecipe.weirollCommands, market.withdrawRecipe.weirollState);
+    function executeWithdrawalScript(address weirollWallet) external isWeirollOwner(weirollWallet) weirollWalletIsUnLocked(weirollWallet) nonReentrant {
+        _executeWithdrawalScript(weirollWallet);
     }
 
     /// @param weirollWallet The wallet to claim for
@@ -804,5 +798,19 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @notice calculates the hash of an order
     function getOrderHash(LPOrder memory order) public pure returns (bytes32) {
         return keccak256(abi.encode(order));
+    }
+
+    function _executeWithdrawalScript(address weirollWallet) internal {
+        // Instantiate the WeirollWallet from the wallet address
+        WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
+
+        // Get the marketID associated with the weiroll wallet
+        uint256 weirollMarketId = wallet.marketId();
+
+        // Get the market in order to get the withdrawal recipe
+        WeirollMarket storage market = marketIDToWeirollMarket[weirollMarketId];
+
+        //Execute the withdrawal recipe
+        wallet.executeWeiroll(market.withdrawRecipe.weirollCommands, market.withdrawRecipe.weirollState);
     }
 }
