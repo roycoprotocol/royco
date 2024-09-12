@@ -80,6 +80,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
@@ -143,6 +146,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
+
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
@@ -209,6 +215,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -270,6 +279,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
+
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the LP received the correct incentive amount
         assertEq(mockIncentiveToken.balanceOf(LP_ADDRESS), expectedIncentiveAmount);
@@ -343,6 +355,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -397,6 +412,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
+
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
@@ -463,6 +481,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -524,6 +545,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
+
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
@@ -594,6 +618,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -648,6 +675,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
+
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
@@ -714,6 +744,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -775,6 +808,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
+
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
@@ -844,6 +880,9 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
+
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
