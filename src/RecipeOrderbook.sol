@@ -252,6 +252,14 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         _;
     }
 
+    // modifier to check if the weiroll wallet is unlocked
+    modifier weirollWalletIsUnLocked(address weirollWallet) {
+        if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
+            revert WalletLocked();
+        }
+        _;
+    }
+
     // Getters to access nested mappings
     function getTokenAmountsOfferedForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
         return orderIDToIPOrder[orderId].tokenAmountsOffered[tokenAddress];
@@ -493,8 +501,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
         // Create weiroll wallet to lock liquidity for recipe execution(s)
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
-        WeirollWallet wallet =
-            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable))));
+        WeirollWallet wallet = WeirollWallet(
+            payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable, order.targetMarketID)))
+        );
 
         if (market.rewardStyle != RewardStyle.Upfront) {
             // If RewardStyle is either Forfeitable or Arrear
@@ -590,8 +599,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         // Create weiroll wallet to lock liquidity for recipe execution(s)
         uint256 unlockTime = block.timestamp + market.lockupTime;
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
-        WeirollWallet wallet =
-            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime, forfeitable))));
+        WeirollWallet wallet = WeirollWallet(
+            payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.lp, address(this), fillAmount, unlockTime, forfeitable, order.targetMarketID)))
+        );
 
         if (market.rewardStyle != RewardStyle.Upfront) {
             // If RewardStyle is either Forfeitable or Arrear
@@ -738,15 +748,23 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice Execute the withdrawal script in the weiroll wallet
-    function executeWithdrawalScript(address weirollWallet) public isWeirollOwner(weirollWallet) nonReentrant { }
+    function executeWithdrawalScript(address weirollWallet) public isWeirollOwner(weirollWallet) weirollWalletIsUnLocked(weirollWallet) nonReentrant {
+        // Instantiate the WeirollWallet from the wallet address
+        WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
+
+        // Get the marketID associated with the weiroll wallet
+        uint256 weirollMarketId = wallet.marketId();
+
+        // Get the market in order to get the withdrawal recipe
+        WeirollMarket storage market = marketIDToWeirollMarket[weirollMarketId];
+
+        //Execute the withdrawal recipe
+        wallet.executeWeiroll(market.withdrawRecipe.weirollCommands, market.withdrawRecipe.weirollState);
+    }
 
     /// @param weirollWallet The wallet to claim for
     /// @param to The address to claim all rewards to
-    function claim(address weirollWallet, address to) public isWeirollOwner(weirollWallet) nonReentrant {
-        if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
-            revert WalletLocked();
-        }
-
+    function claim(address weirollWallet, address to) public isWeirollOwner(weirollWallet) weirollWalletIsUnLocked(weirollWallet) nonReentrant {
         // Get locked reward details to facilitate claim
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
 
