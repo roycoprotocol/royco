@@ -2,11 +2,8 @@
 pragma solidity ^0.8.12;
 
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
-
-import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { LibString } from "lib/solmate/src/utils/LibString.sol";
-
 import { ERC4626i } from "src/ERC4626i.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 
@@ -34,9 +31,6 @@ contract ERC4626iFactory is Owned(msg.sender) {
     address public pointsFactory;
 
     address public protocolFeeRecipient;
-
-    /// @dev MakerDAO Constant for a 1e18 Scalar
-    uint256 constant WAD = 1e18;
 
     /// @dev The protocolFee for all incentivized vaults
     uint256 public protocolFee;
@@ -81,7 +75,7 @@ contract ERC4626iFactory is Owned(msg.sender) {
 
     /// @param vault The ERC4626 Vault to deploy an incentivized vault for
     function createIncentivizedVault(ERC4626 vault, address owner, string memory name, uint256 initialFrontendFee) public returns (ERC4626i incentivizedVault) {
-        incentivizedVault = new ERC4626i(owner, name, getNextSymbol(), vault.decimals(), address(vault), initialFrontendFee, pointsFactory);
+        incentivizedVault = new ERC4626i(owner, name, getNextSymbol(), address(vault), initialFrontendFee, pointsFactory);
 
         incentivizedVaults.push(address(incentivizedVault));
         isVault[address(incentivizedVault)] = true;
