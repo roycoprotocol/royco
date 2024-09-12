@@ -253,7 +253,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     // modifier to check if the weiroll wallet is unlocked
-    modifier weirollWalletIsUnLocked(address weirollWallet) {
+    modifier weirollIsUnlocked(address weirollWallet) {
         if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
             revert WalletLocked();
         }
@@ -752,13 +752,13 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice Execute the withdrawal script in the weiroll wallet
-    function executeWithdrawalScript(address weirollWallet) external isWeirollOwner(weirollWallet) weirollWalletIsUnLocked(weirollWallet) nonReentrant {
+    function executeWithdrawalScript(address weirollWallet) external isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
         _executeWithdrawalScript(weirollWallet);
     }
 
     /// @param weirollWallet The wallet to claim for
     /// @param to The address to claim all rewards to
-    function claim(address weirollWallet, address to) public isWeirollOwner(weirollWallet) weirollWalletIsUnLocked(weirollWallet) nonReentrant {
+    function claim(address weirollWallet, address to) public isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
         // Get locked reward details to facilitate claim
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
 
