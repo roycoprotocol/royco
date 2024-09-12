@@ -53,11 +53,54 @@ contract ERC4626iTest is Test {
         vm.label(REFERRAL_USER, "ReferralUser");
     }
 
+    function testFactoryUpdateProtocolFees() public {
+      vm.startPrank(address(0x8482));
+      vm.expectRevert("UNAUTHORIZED");
+      testFactory.updateProtocolFee(0.01e18);
+      vm.stopPrank();
+
+      vm.startPrank(testFactory.owner());
+      uint256 maxProtocolFee = testFactory.MAX_PROTOCOL_FEE();
+      vm.expectRevert(ERC4626iFactory.ProtocolFeeTooHigh.selector);
+      testFactory.updateProtocolFee(maxProtocolFee + 1);
+
+      testFactory.updateProtocolFee(0.075e18);
+      assertEq(testFactory.protocolFee(), 0.075e18);
+    }
+
+    function testFactoryUpdateReferralFee() public {
+      vm.startPrank(address(0x8482));
+      vm.expectRevert("UNAUTHORIZED");
+      testFactory.updateMinimumReferralFee(0.01e18);
+      vm.stopPrank();
+
+      vm.startPrank(testFactory.owner());
+      uint256 maxMinFee = testFactory.MAX_MIN_REFERRAL_FEE();
+      vm.expectRevert(ERC4626iFactory.ReferralFeeTooHigh.selector);
+      testFactory.updateMinimumReferralFee(maxMinFee + 1);
+
+      testFactory.updateMinimumReferralFee(0.075e18);
+      assertEq(testFactory.minimumFrontendFee(), 0.075e18);
+    }
+
     function testDeployment() public {
         assertEq(address(testIncentivizedVault.VAULT()), address(testVault));
         assertEq(address(testIncentivizedVault.DEPOSIT_ASSET()), address(token));
         assertEq(testIncentivizedVault.owner(), address(this));
         assertEq(testIncentivizedVault.frontendFee(), DEFAULT_FRONTEND_FEE);
+    }
+
+    function testVaultPassThroughFunctions() public {
+        testIncentivizedVault = testFactory.createIncentivizedVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
+
+        assertEq(address(testIncentivizedVault.asset()), address(testVault.asset()));
+        assertEq(testIncentivizedVault.maxDeposit(address(this)), testVault.maxDeposit(address(this)));
+        assertEq(testIncentivizedVault.maxMint(address(this)), testVault.maxMint(address(this)));
+        assertEq(testIncentivizedVault.previewMint(100e18), testVault.previewMint(100e18));
+        assertEq(testIncentivizedVault.previewDeposit(100e18), testVault.previewDeposit(100e18));
+
+        assertEq(testIncentivizedVault.convertToShares(100e18), testVault.convertToShares(100e18));
+        assertEq(testIncentivizedVault.convertToAssets(100e18), testVault.convertToAssets(100e18));
     }
 
     function testAddRewardToken(address newRewardToken) public {
