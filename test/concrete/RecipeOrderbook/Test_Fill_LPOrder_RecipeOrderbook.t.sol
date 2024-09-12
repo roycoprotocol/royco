@@ -30,7 +30,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), orderAmount, LP_ADDRESS);
@@ -94,8 +94,8 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
-        uint256 fillAmount = 100000e18; // Fill amount
+        uint256 orderAmount = 100_000e18; // Order amount requested
+        uint256 fillAmount = 100_000e18; // Fill amount
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), orderAmount, LP_ADDRESS);
 
@@ -158,7 +158,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -217,7 +217,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(mockVault), orderAmount, LP_ADDRESS);
@@ -288,7 +288,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -351,7 +351,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), orderAmount, LP_ADDRESS);
@@ -412,7 +412,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -471,7 +471,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(mockVault), orderAmount, LP_ADDRESS);
@@ -539,7 +539,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -602,7 +602,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), orderAmount, LP_ADDRESS);
@@ -663,7 +663,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -722,7 +722,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(mockVault), orderAmount, LP_ADDRESS);
@@ -790,7 +790,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -852,8 +852,8 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_RevertIf_NotEnoughRemainingQuantity_FillLPOrder() external {
         uint256 marketId = createMarket();
 
-        uint256 orderAmount = 100000e18;
-        uint256 fillAmount = 100001e18; // Fill amount exceeds the order amount
+        uint256 orderAmount = 100_000e18;
+        uint256 fillAmount = 100_001e18; // Fill amount exceeds the order amount
 
         // Create a fillable LP order
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), orderAmount, LP_ADDRESS);
@@ -866,7 +866,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_RevertIf_ZeroQuantityFill_FillLPOrder() external {
         uint256 marketId = createMarket();
 
-        uint256 orderAmount = 100000e18;
+        uint256 orderAmount = 100_000e18;
 
         // Create a fillable LP order
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), orderAmount, LP_ADDRESS);
@@ -879,7 +879,7 @@ contract Test_Fill_LPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_RevertIf_OrderExpired_FillLPOrder() external {
         uint256 marketId = createMarket();
 
-        uint256 orderAmount = 100000e18;
+        uint256 orderAmount = 100_000e18;
 
         // Create a fillable LP order with a short expiry time
         (, RecipeOrderbook.LPOrder memory order) = createLPOrder_ForTokens(marketId, address(0), orderAmount, LP_ADDRESS);

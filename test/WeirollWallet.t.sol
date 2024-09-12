@@ -15,19 +15,32 @@ contract WeirollWalletTest is Test {
     address public owner;
     uint256 public constant AMOUNT = 1 ether;
     uint256 public lockedUntil;
+    uint256 public marketId;
 
-    receive() external payable {}
+    receive() external payable { }
 
     function setUp() public {
         WEIROLL_WALLET_IMPLEMENTATION = address(new WeirollWallet());
         mockOrderbook = new MockOrderbook();
         owner = address(this);
         lockedUntil = block.timestamp + 1 days;
-        wallet = createWallet(owner, address(mockOrderbook), AMOUNT, lockedUntil, true);
+        marketId = 0;
+        wallet = createWallet(owner, address(mockOrderbook), AMOUNT, lockedUntil, true, marketId);
     }
 
-    function createWallet(address _owner, address _orderbook, uint256 _amount, uint256 _lockedUntil, bool _isForfeitable) public returns (WeirollWallet) {
-        return WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(_owner, _orderbook, _amount, _lockedUntil, _isForfeitable))));
+    function createWallet(
+        address _owner,
+        address _orderbook,
+        uint256 _amount,
+        uint256 _lockedUntil,
+        bool _isForfeitable,
+        uint256 _marketId
+    )
+        public
+        returns (WeirollWallet)
+    {
+        return
+            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(_owner, _orderbook, _amount, _lockedUntil, _isForfeitable, _marketId))));
     }
 
     function testWalletInitialization() public view {
@@ -36,6 +49,7 @@ contract WeirollWalletTest is Test {
         assertEq(wallet.amount(), AMOUNT);
         assertEq(wallet.lockedUntil(), lockedUntil);
         assertTrue(wallet.isForfeitable());
+        assertEq(wallet.marketId(), marketId);
         assertFalse(wallet.executed());
         assertFalse(wallet.forfeited());
     }
@@ -54,14 +68,14 @@ contract WeirollWalletTest is Test {
 
     function testNotLockedModifier() public {
         uint256 shortLockTime = block.timestamp + 1 hours;
-        WeirollWallet lockedWallet = createWallet(owner, address(mockOrderbook), AMOUNT, shortLockTime, true);
-        
+        WeirollWallet lockedWallet = createWallet(owner, address(mockOrderbook), AMOUNT, shortLockTime, true, marketId);
+
         vm.expectRevert(WeirollWallet.WalletLocked.selector);
         lockedWallet.manualExecuteWeiroll(new bytes32[](0), new bytes[](0));
 
         // Test that it works after the lock period
         vm.warp(shortLockTime + 1);
-        
+
         // Execute Weiroll to set executed to true
         vm.prank(address(mockOrderbook));
         lockedWallet.executeWeiroll(new bytes32[](0), new bytes[](0));
@@ -75,11 +89,11 @@ contract WeirollWalletTest is Test {
         bytes[] memory state = new bytes[](1);
 
         assertFalse(wallet.executed());
-        
+
         vm.prank(address(mockOrderbook));
         vm.expectRevert("Delegatecall is disabled");
         wallet.executeWeiroll(commands, state);
-        
+
         // The executed flag should remain false
         assertFalse(wallet.executed());
     }
@@ -141,19 +155,19 @@ contract WeirollWalletTest is Test {
         assertTrue(wallet.forfeited());
 
         // Test non-forfeitable wallet
-        WeirollWallet nonForfeitableWallet = createWallet(owner, address(mockOrderbook), AMOUNT, lockedUntil, false);
+        WeirollWallet nonForfeitableWallet = createWallet(owner, address(mockOrderbook), AMOUNT, lockedUntil, false, marketId);
         vm.expectRevert(WeirollWallet.WalletNotForfeitable.selector);
         MockOrderbook(mockOrderbook).forfeitWallet(nonForfeitableWallet);
     }
 
     function testReceiveEther() public {
         uint256 initialBalance = address(wallet).balance;
-        
+
         // Make sure the wallet can receive Ether
         vm.deal(address(this), 1 ether);
-        (bool success,) = payable(address(wallet)).call{value: 1 ether}("");
+        (bool success,) = payable(address(wallet)).call{ value: 1 ether }("");
         assertTrue(success);
-        
+
         // Check if the balance increased
         assertEq(address(wallet).balance, initialBalance + 1 ether);
     }

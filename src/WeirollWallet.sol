@@ -94,7 +94,7 @@ contract WeirollWallet is Clone, VM {
 
     /// @notice Returns the marketId associated with this weiroll wallet
     function marketId() public pure returns (uint256) {
-        return _getArgUint256(112);
+        return _getArgUint256(105);
     }
 
     /*//////////////////////////////////////////////////////////////

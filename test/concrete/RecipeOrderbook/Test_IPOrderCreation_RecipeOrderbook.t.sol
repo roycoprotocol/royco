@@ -28,7 +28,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         mockIncentiveToken.mint(ALICE_ADDRESS, 1000e18);
         mockIncentiveToken.approve(address(orderbook), 1000e18);
 
-        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
         uint256 expiry = block.timestamp + 1 days; // Order expires in 1 day
 
         // Calculate expected fees
@@ -97,7 +97,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256[] memory tokenAmountsOffered = new uint256[](1);
         tokenAmountsOffered[0] = 1000e18;
 
-        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
         uint256 expiry = block.timestamp + 1 days; // Order expires in 1 day
 
         // Calculate expected fees
@@ -149,7 +149,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.MarketDoesNotExist.selector));
         orderbook.createIPOrder(
             0, // Non-existent market ID
-            100000e18, // Quantity
+            100_000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -162,7 +162,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceExpiredOrder.selector));
         orderbook.createIPOrder(
             marketId,
-            100000e18, // Quantity
+            100_000e18, // Quantity
             block.timestamp - 1 seconds, // Expired timestamp
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -192,7 +192,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.ArrayLengthMismatch.selector));
         orderbook.createIPOrder(
             marketId,
-            100000e18, // Quantity
+            100_000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             tokensOffered, // Mismatched arrays
             tokenAmountsOffered
