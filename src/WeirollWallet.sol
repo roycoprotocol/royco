@@ -77,7 +77,7 @@ contract WeirollWallet is Clone, VM {
         return _getArgAddress(20);
     }
 
-    /// @notice The amount of tokens to be LP'ed
+    /// @notice The amount of tokens deposited into this wallet from the orderbook
     function amount() public pure returns (uint256) {
         return _getArgUint256(40);
     }

@@ -74,7 +74,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure that the deposit recipe was executed
         assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
-        // Ensure the LP received the correct incentive amount
+        // Ensure the AP received the correct incentive amount
         assertEq(mockIncentiveToken.balanceOf(AP_ADDRESS), expectedIncentiveAmount);
 
         // Ensure the weiroll wallet got the liquidity
@@ -135,7 +135,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure that the deposit recipe was executed
         assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
-        // Ensure the LP received the correct incentive amount
+        // Ensure the AP received the correct incentive amount
         assertEq(mockIncentiveToken.balanceOf(AP_ADDRESS), expectedIncentiveAmount);
 
         // Ensure the weiroll wallet got the liquidity
@@ -266,7 +266,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure that the deposit recipe was executed
         assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
-        // Ensure the LP received the correct incentive amount
+        // Ensure the AP received the correct incentive amount
         assertEq(mockIncentiveToken.balanceOf(AP_ADDRESS), expectedIncentiveAmount);
 
         // Ensure the weiroll wallet got the liquidity
