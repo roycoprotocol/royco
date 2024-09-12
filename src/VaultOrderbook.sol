@@ -9,21 +9,21 @@ import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/acce
 
 /// @title VaultOrderbook
 /// @author CopyPaste, corddry, ShivaanshK
-/// @notice Orderbook Contract for Incentivizing LP/IPs to participate incentivized ERC4626 markets
+/// @notice Orderbook Contract for Incentivizing AP/IPs to participate incentivized ERC4626 markets
 contract VaultOrderbook is Ownable2Step {
     using SafeTransferLib for ERC20;
 
     /// @custom:field orderID Set to numOrders - 1 on order creation (zero-indexed)
     /// @custom:field targetVault The address of the vault where the input tokens will be deposited
-    /// @custom:field lp The address of the liquidity provider
+    /// @custom:field ap The address of the liquidity provider
     /// @custom:field fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @custom:field expiry The timestamp after which the order is considered expired
-    /// @custom:field tokensRequested The incentive tokens requested by the LP in order to fill the order
+    /// @custom:field tokensRequested The incentive tokens requested by the AP in order to fill the order
     /// @custom:field tokenRatesRequested The desired rewards per input token per second to fill the order
-    struct LPOrder {
+    struct APOrder {
         uint256 orderID;
         address targetVault;
-        address lp;
+        address ap;
         address fundingVault;
         uint256 expiry;
         address[] tokensRequested;
@@ -38,16 +38,16 @@ contract VaultOrderbook is Ownable2Step {
 
     /// @param orderID Set to numOrders - 1 on order creation (zero-indexed)
     /// @param targetVault The address of the vault where the input tokens will be deposited
-    /// @param lp The address of the liquidity provider
+    /// @param ap The address of the liquidity provider
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param expiry The timestamp after which the order is considered expired
-    /// @param tokensRequested The incentive tokens requested by the LP in order to fill the order
+    /// @param tokensRequested The incentive tokens requested by the AP in order to fill the order
     /// @param tokenRatesRequested The desired rewards per input token per second to fill the order
     /// @param quantity The total amount of the base asset to be withdrawn from the funding vault
-    event LPOrderCreated(
+    event APOrderCreated(
         uint256 indexed orderID,
         address indexed targetVault,
-        address indexed lp,
+        address indexed ap,
         address fundingVault,
         uint256 expiry,
         address[] tokensRequested,
@@ -56,10 +56,10 @@ contract VaultOrderbook is Ownable2Step {
     );
 
     /// @notice emitted when an order is cancelled and the remaining quantity is set to 0
-    event LPOrderCancelled(uint256 indexed orderID);
+    event APOrderCancelled(uint256 indexed orderID);
 
-    /// @notice emitted when an LP is allocated to a vault
-    event LPOrderFilled(uint256 indexed orderID, uint256 quantity);
+    /// @notice emitted when an AP is allocated to a vault
+    event APOrderFilled(uint256 indexed orderID, uint256 quantity);
 
     /// @notice emitted when trying to fill an order that has expired
     error OrderExpired();
@@ -71,17 +71,17 @@ contract VaultOrderbook is Ownable2Step {
     error OrderDoesNotExist();
     /// @notice emitted when trying to create an order with an expiry in the past
     error CannotPlaceExpiredOrder();
-    /// @notice emitted when trying to allocate an LP, but the LP's requested tokens are not met
+    /// @notice emitted when trying to allocate an AP, but the AP's requested tokens are not met
     error OrderConditionsNotMet();
     /// @notice emitted when trying to create an order with a quantity of 0
     error CannotPlaceZeroQuantityOrder();
-    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet to place an LP order
+    /// @notice emitted when the AP does not have sufficient assets in the funding vault, or in their wallet to place an AP order
     error NotEnoughBaseAssetToOrder();
-    /// @notice emitted when the LP does not have sufficient assets in the funding vault, or in their wallet to allocate an order
+    /// @notice emitted when the AP does not have sufficient assets in the funding vault, or in their wallet to allocate an order
     error NotEnoughBaseAssetToAllocate();
     /// @notice emitted when the length of the tokens and prices arrays do not match
     error ArrayLengthMismatch();
-    /// @notice emitted when the LP tries to cancel an order that they did not create
+    /// @notice emitted when the AP tries to cancel an order that they did not create
     error NotOrderCreator();
 
     constructor() Ownable(msg.sender) {
@@ -91,12 +91,12 @@ contract VaultOrderbook is Ownable2Step {
 
     /// @dev Setting an expiry of 0 means the order never expires
     /// @param targetVault The address of the vault where the liquidity will be deposited
-    /// @param fundingVault The address of the vault where the liquidity will be withdrawn from, if set to 0, the LP will deposit the base asset directly
+    /// @param fundingVault The address of the vault where the liquidity will be withdrawn from, if set to 0, the AP will deposit the base asset directly
     /// @param quantity The total amount of the base asset to be withdrawn from the funding vault
     /// @param expiry The timestamp after which the order is considered expired
-    /// @param tokensRequested The incentive tokens requested by the LP in order to fill the order
+    /// @param tokensRequested The incentive tokens requested by the AP in order to fill the order
     /// @param tokenRatesRequested The desired rewards per input token per second to fill the order
-    function createLPOrder(
+    function createAPOrder(
         address targetVault,
         address fundingVault,
         uint256 quantity,
@@ -125,7 +125,7 @@ contract VaultOrderbook is Ownable2Step {
             revert MismatchedBaseAsset();
         }
 
-        //Check that the LP has enough base asset in the funding vault for the order
+        //Check that the AP has enough base asset in the funding vault for the order
         if (fundingVault == address(0) && ERC20(ERC4626(targetVault).asset()).balanceOf(msg.sender) < quantity) {
             revert NotEnoughBaseAssetToOrder();
         } else if(fundingVault != address(0) && ERC4626(fundingVault).maxWithdraw(msg.sender) < quantity) {
@@ -133,21 +133,21 @@ contract VaultOrderbook is Ownable2Step {
         }
 
         // Emit the order creation event, used for matching orders
-        emit LPOrderCreated(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity);
+        emit APOrderCreated(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity);
         // Set the quantity of the order
-        LPOrder memory order = LPOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
+        APOrder memory order = APOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
         // Return the new order's ID and increment the order counter
         return (numOrders++);
     }
 
     /// @notice allocate the entirety of a given order
-    function allocateOrder(LPOrder memory order) public {
+    function allocateOrder(APOrder memory order) public {
         allocateOrder(order, orderHashToRemainingQuantity[getOrderHash(order)]);
     }
 
     /// @notice allocate a specific quantity of a given order
-    function allocateOrder(LPOrder memory order, uint256 quantity) public {
+    function allocateOrder(APOrder memory order, uint256 quantity) public {
         // Check for order expiry, 0 expiries live forever
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
@@ -164,10 +164,10 @@ contract VaultOrderbook is Ownable2Step {
             revert NotEnoughRemainingQuantity();
         }
 
-        //Check that the LP has enough base asset in the funding vault for the order
-        if (order.fundingVault == address(0) && ERC20(ERC4626(order.targetVault).asset()).balanceOf(order.lp) < quantity) {
+        //Check that the AP has enough base asset in the funding vault for the order
+        if (order.fundingVault == address(0) && ERC20(ERC4626(order.targetVault).asset()).balanceOf(order.ap) < quantity) {
             revert NotEnoughBaseAssetToAllocate();
-        } else if(order.fundingVault != address(0) && ERC4626(order.fundingVault).maxWithdraw(order.lp) < quantity) {
+        } else if(order.fundingVault != address(0) && ERC4626(order.fundingVault).maxWithdraw(order.ap) < quantity) {
             revert NotEnoughBaseAssetToAllocate();
         }
 
@@ -183,22 +183,22 @@ contract VaultOrderbook is Ownable2Step {
 
         // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (order.fundingVault == address(0)) {
-            // Transfer the base asset from the LP to the orderbook
-            ERC4626(order.targetVault).asset().safeTransferFrom(order.lp, address(this), quantity);
+            // Transfer the base asset from the AP to the orderbook
+            ERC4626(order.targetVault).asset().safeTransferFrom(order.ap, address(this), quantity);
         } else {
             // Withdraw from the funding vault to the orderbook
-            ERC4626(order.fundingVault).withdraw(quantity, address(this), order.lp);
+            ERC4626(order.fundingVault).withdraw(quantity, address(this), order.ap);
         }
         ERC4626(order.targetVault).asset().safeApprove(order.targetVault, quantity);
 
         // Deposit into the target vault
-        ERC4626(order.targetVault).deposit(quantity, order.lp);
+        ERC4626(order.targetVault).deposit(quantity, order.ap);
 
-        emit LPOrderFilled(order.orderID, quantity);
+        emit APOrderFilled(order.orderID, quantity);
     }
 
     /// @notice fully allocate a selection of orders
-    function allocateOrders(LPOrder[] memory orders) public {
+    function allocateOrders(APOrder[] memory orders) public {
         uint256 len = orders.length;
         for (uint256 i = 0; i < len; ++i) {
             allocateOrder(orders[i]);
@@ -206,9 +206,9 @@ contract VaultOrderbook is Ownable2Step {
     }
 
     /// @notice cancel an outstanding order
-    function cancelOrder(LPOrder memory order) public {
-        // Check if the LP is the creator of the order
-        if (order.lp != msg.sender) {
+    function cancelOrder(APOrder memory order) public {
+        // Check if the AP is the creator of the order
+        if (order.ap != msg.sender) {
             revert NotOrderCreator();
         }
         bytes32 orderHash = getOrderHash(order);
@@ -216,12 +216,12 @@ contract VaultOrderbook is Ownable2Step {
         if (orderHashToRemainingQuantity[orderHash] > 0) {
             // Set the remaining quantity of the order to 0, effectively cancelling it
             orderHashToRemainingQuantity[orderHash] = 0;
-            emit LPOrderCancelled(order.orderID);
+            emit APOrderCancelled(order.orderID);
         }
     }
 
     /// @notice calculate the hash of an order
-    function getOrderHash(LPOrder memory order) public pure returns (bytes32) {
+    function getOrderHash(APOrder memory order) public pure returns (bytes32) {
         return keccak256(abi.encode(order));
     }
 }

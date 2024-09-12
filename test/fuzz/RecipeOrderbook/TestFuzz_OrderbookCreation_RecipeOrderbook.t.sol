@@ -44,7 +44,7 @@ contract TestFuzz_OrderbookCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(newOrderbook.minimumFrontendFee(), _minimumFrontendFee);
 
         // Check initial orderbook state
-        assertEq(newOrderbook.numLPOrders(), 0);
+        assertEq(newOrderbook.numAPOrders(), 0);
         assertEq(newOrderbook.numIPOrders(), 0);
         assertEq(newOrderbook.numMarkets(), 0);
     }

@@ -27,7 +27,7 @@ contract Test_ClaimFees_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, ALICE_ADDRESS);
 
-        // Mint liquidity tokens to the LP to fill the order
+        // Mint liquidity tokens to the AP to fill the order
         mockLiquidityToken.mint(BOB_ADDRESS, fillAmount);
         vm.startPrank(BOB_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);

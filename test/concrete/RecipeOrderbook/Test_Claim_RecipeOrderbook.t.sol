@@ -6,7 +6,7 @@ import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrder
 
 contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
     address IP_ADDRESS;
-    address LP_ADDRESS;
+    address AP_ADDRESS;
     address FRONTEND_FEE_RECIPIENT;
 
     function setUp() external {
@@ -15,7 +15,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         setUpRecipeOrderbookTests(protocolFee, minimumFrontendFee);
 
         IP_ADDRESS = ALICE_ADDRESS;
-        LP_ADDRESS = BOB_ADDRESS;
+        AP_ADDRESS = BOB_ADDRESS;
         FRONTEND_FEE_RECIPIENT = CHARLIE_ADDRESS;
     }
 
@@ -29,16 +29,16 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -50,11 +50,11 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
 
         vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(address(orderbook), LP_ADDRESS, amounts[0]);
+        emit ERC20.Transfer(address(orderbook), AP_ADDRESS, amounts[0]);
 
         vm.warp(block.timestamp + 30 days); // make rewards claimable
-        vm.startPrank(LP_ADDRESS);
-        orderbook.claim(weirollWallet, LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
+        orderbook.claim(weirollWallet, AP_ADDRESS);
         vm.stopPrank();
 
         // Check the weiroll wallet was deleted from orderbook state
@@ -71,9 +71,9 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -83,7 +83,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -93,11 +93,11 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
 
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(LP_ADDRESS, amounts[0]);
+        emit Points.Award(AP_ADDRESS, amounts[0]);
 
         vm.warp(block.timestamp + 30 days); // make rewards claimable
-        vm.startPrank(LP_ADDRESS);
-        orderbook.claim(weirollWallet, LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
+        orderbook.claim(weirollWallet, AP_ADDRESS);
         vm.stopPrank();
 
         // Check the weiroll wallet was deleted from orderbook state
@@ -114,9 +114,9 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -126,7 +126,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -146,9 +146,9 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        // Mint liquidity tokens to the LP to fill the order
-        mockLiquidityToken.mint(LP_ADDRESS, fillAmount);
-        vm.startPrank(LP_ADDRESS);
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
+        vm.startPrank(AP_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
         vm.stopPrank();
 
@@ -158,7 +158,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the order
-        vm.startPrank(LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
@@ -166,8 +166,8 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.WalletLocked.selector));
-        vm.startPrank(LP_ADDRESS);
-        orderbook.claim(weirollWallet, LP_ADDRESS);
+        vm.startPrank(AP_ADDRESS);
+        orderbook.claim(weirollWallet, AP_ADDRESS);
         vm.stopPrank();
     }
 }

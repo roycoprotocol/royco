@@ -31,7 +31,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Create a fillable IP order
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
-        // Mint liquidity tokens to the LP to fill the order
+        // Mint liquidity tokens to the AP to fill the order
         mockLiquidityToken.mint(BOB_ADDRESS, fillAmount);
         vm.startPrank(BOB_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
@@ -64,7 +64,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[1].topics[2])));
         assertGt(weirollWallet.code.length, 0); // Ensure weirollWallet is valid
 
-        // Ensure LP received the correct incentive amount
+        // Ensure AP received the correct incentive amount
         assertEq(mockIncentiveToken.balanceOf(BOB_ADDRESS), expectedIncentiveAmount);
 
         // Ensure weiroll wallet got the liquidity
@@ -84,7 +84,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        // Mint liquidity tokens to the LP to fill the order
+        // Mint liquidity tokens to the AP to fill the order
         mockLiquidityToken.mint(BOB_ADDRESS, fillAmount);
         vm.startPrank(BOB_ADDRESS);
         mockLiquidityToken.approve(address(orderbook), fillAmount);
