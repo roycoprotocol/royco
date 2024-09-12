@@ -49,15 +49,15 @@ contract VaultOrderbookTest is Test {
    }
 
    function testCreateLPOrder(uint256 quantity, uint256 rate, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-        //todo - delete once setup is fixed
-        vm.prank(alice);
-        baseToken.burn(alice, 1000 * 1e18);
-
         vm.assume(quantity > 0);
         vm.assume(quantity <= type(uint256).max / quantity);
         vm.assume(timeToExpiry >= block.timestamp);
 
-       baseToken.mint(alice, 2*quantity);
+        //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
+       baseToken.mint(alice, quantity);
 
        vm.startPrank(alice);
        baseToken.approve(address(orderbook), 2*quantity);
@@ -93,16 +93,15 @@ contract VaultOrderbookTest is Test {
 
    function testCannotCreateExpiredOrder(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
         vm.assume(block.timestamp + 1 days <= type(uint256).max - timeToExpiry);
+        vm.assume(quantity > 0);
+        vm.assume(quantity <= type(uint256).max / quantity);
+        vm.assume(timeToExpiry > 1 days);
 
         //todo - delete once setup is fixed
         vm.prank(alice);
         baseToken.burn(alice, 1000 * 1e18);
 
-        vm.assume(quantity > 0);
-        vm.assume(quantity <= type(uint256).max / quantity);
-        vm.assume(timeToExpiry > 1 days);
-
-       baseToken.mint(alice, 2*quantity);
+       baseToken.mint(alice, quantity);
 
        vm.startPrank(alice);
        baseToken.approve(address(orderbook), quantity);
@@ -153,15 +152,15 @@ contract VaultOrderbookTest is Test {
    }
 
    function testMismatchedBaseAsset(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-        //todo - delete once setup is fixed
-        vm.prank(alice);
-        baseToken.burn(alice, 1000 * 1e18);
-
         vm.assume(quantity > 0);
         vm.assume(quantity <= type(uint256).max / quantity);
         vm.assume(timeToExpiry >= block.timestamp);
 
-       baseToken.mint(alice, 2*quantity);
+        //todo - delete once setup is fixed
+        vm.prank(alice);
+        baseToken.burn(alice, 1000 * 1e18);
+
+       baseToken.mint(alice, quantity);
 
        vm.startPrank(alice);
        vm.assume(timeToExpiry > block.timestamp);
@@ -179,74 +178,103 @@ contract VaultOrderbookTest is Test {
        vm.stopPrank();
    }
 
-   function testNotEnoughBaseAssetToOrder() public {
+   function testNotEnoughBaseAssetToOrder(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
+       vm.assume(quantity > 1);
+       vm.assume(quantity <= type(uint256).max / quantity);
+       vm.assume(timeToExpiry >= block.timestamp);
+
+       //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
+       baseToken.mint(alice, quantity);
+
        vm.startPrank(alice);
 
        baseToken.approve(address(orderbook), quantity);
        baseToken.approve(address(fundingVault), quantity);
-       fundingVault.deposit(100 * 1e18, alice);
+       fundingVault.deposit(quantity-1, alice);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = 1e18;
+       tokenRatesRequested[0] = tokenRateRequested;
 
        //Test when funding vault is the user's address, revert occurs
        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToOrder.selector);
-       orderbook.createAPOrder(address(targetVault), address(0), 2000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
        assertEq(orderbook.numOrders(), 0);
 
        //Test that when funding vault is an ERC4626 vault, revert occurs
        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToOrder.selector);
-       orderbook.createAPOrder(address(targetVault), address(fundingVault), 2000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       orderbook.createLPOrder(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
        assertEq(orderbook.numOrders(), 0);
 
        vm.stopPrank();
    }
 
-   function testArrayLengthMismatch() public {
+   function testArrayLengthMismatch(uint256 quantity, uint256 timeToExpiry, uint256 token1RateRequested, uint256 token2RateRequested) public {
+       vm.assume(quantity > 0);
+       vm.assume(quantity <= type(uint256).max / quantity);
+       vm.assume(timeToExpiry >= block.timestamp);
+
+       //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
        vm.startPrank(alice);
-       baseToken.mint(alice, 1000 * 1e18);
-       baseToken.approve(address(orderbook), 100 * 1e18);
+       baseToken.mint(alice, quantity);
+       baseToken.approve(address(orderbook), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](2);
-       tokenRatesRequested[0] = 1e18;
-       tokenRatesRequested[1] = 2e18;
+       tokenRatesRequested[0] = token1RateRequested;
+       tokenRatesRequested[1] = token2RateRequested;
 
        vm.expectRevert(VaultOrderbook.ArrayLengthMismatch.selector);
-       orderbook.createAPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
        assertEq(orderbook.numOrders(), 0);
 
        vm.stopPrank();
    }
 
-   function testCannotAllocateExpiredOrder() public {
+   function testCannotAllocateExpiredOrder(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
+       vm.assume(quantity > 0);
+       vm.assume(quantity <= type(uint256).max / quantity);
+       vm.assume(timeToExpiry >= block.timestamp);
+       vm.assume(block.timestamp + 1 days <= type(uint256).max - timeToExpiry);
+
+       //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
+       baseToken.mint(alice, quantity);
+
        vm.startPrank(alice);
-       baseToken.approve(address(orderbook), 100 * 1e18);
+       baseToken.approve(address(orderbook), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = 1e18;
+       tokenRatesRequested[0] = tokenRateRequested;
 
-       uint256 orderId = orderbook.createAPOrder(address(targetVault), address(0), 100 * 1e18, 5, tokensRequested, tokenRatesRequested);
-       VaultOrderbook.APOrder memory order =
-           VaultOrderbook.APOrder(orderId, address(targetVault), alice, address(0), 5, tokensRequested, tokenRatesRequested);
+       uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order =
+           VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       vm.warp(100 days);
+       vm.warp(timeToExpiry + 1 days);
 
        vm.expectRevert(VaultOrderbook.OrderExpired.selector);
        orderbook.allocateOrder(order);
 
        // Verify allocation did not occur
        bytes32 orderHash = orderbook.getOrderHash(order);
-       assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 100 * 1e18);
-       assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+       assertEq(orderbook.orderHashToRemainingQuantity(orderHash), quantity);
+       assertEq(baseToken.balanceOf(address(alice)), quantity);
        assertEq(targetVault.balanceOf(alice), 0);
 
        //todo - Going to add testcase to allocate an order expiring at the current timestamp to testAllocateOrder (the allocation should not revert)
@@ -254,65 +282,87 @@ contract VaultOrderbookTest is Test {
        vm.stopPrank();
    }
 
-   function testNotEnoughBaseAssetToAllocate() public {
+   function testNotEnoughBaseAssetToAllocate(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
+       vm.assume(quantity > 0);
+       vm.assume(quantity <= type(uint256).max / quantity);
+       vm.assume(timeToExpiry >= block.timestamp);
+       vm.assume(block.timestamp <= timeToExpiry);
+
+       //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
+       baseToken.mint(alice, quantity);
+
        vm.startPrank(alice);
 
-       baseToken.approve(address(orderbook), 1000 * 1e18);
-       baseToken.approve(address(fundingVault), 1000 * 1e18);
+       baseToken.approve(address(orderbook), quantity);
+       baseToken.approve(address(fundingVault), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = 1e18;
+       tokenRatesRequested[0] = tokenRateRequested;
 
-       uint256 order1Id = orderbook.createAPOrder(address(targetVault), address(0), 1000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-       fundingVault.deposit(1000 * 1e18, alice);
-       uint256 order2Id = orderbook.createAPOrder(address(targetVault), address(fundingVault), 1000 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       uint256 order1Id = orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       fundingVault.deposit(quantity, alice);
+       uint256 order2Id = orderbook.createLPOrder(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultOrderbook.APOrder memory order1 =
-           VaultOrderbook.APOrder(order1Id, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-       VaultOrderbook.APOrder memory order2 =
-           VaultOrderbook.APOrder(order2Id, address(targetVault), alice, address(fundingVault), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order1 =
+           VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order2 =
+           VaultOrderbook.LPOrder(order2Id, address(targetVault), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToAllocate.selector);
        orderbook.allocateOrder(order1);
 
-       fundingVault.withdraw(1000 * 1e18, alice, alice);
+       fundingVault.withdraw(quantity, alice, alice);
        vm.expectRevert(VaultOrderbook.NotEnoughBaseAssetToAllocate.selector);
        orderbook.allocateOrder(order2);
 
-       assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+       assertEq(baseToken.balanceOf(address(alice)), quantity);
        assertEq(fundingVault.balanceOf(alice), 0);
        assertEq(targetVault.balanceOf(alice), 0);
-       assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order1)), 1000 * 1e18);
-       assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order2)), 1000 * 1e18);
+       assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order1)), quantity);
+       assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order2)), quantity);
 
        vm.stopPrank();
    }
 
-   function testNotEnoughRemainingQuantity() public {
+   function testNotEnoughRemainingQuantity(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
+       vm.assume(quantity > 0);
+       vm.assume(quantity <= type(uint256).max / quantity/2);
+       vm.assume(timeToExpiry >= block.timestamp);
+       vm.assume(block.timestamp <= timeToExpiry);
+
+       //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
+       baseToken.mint(alice, 2*quantity);
+
        vm.startPrank(alice);
-       baseToken.approve(address(orderbook), 100 * 1e18);
+       baseToken.approve(address(orderbook), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = 1e18;
+       tokenRatesRequested[0] = tokenRateRequested;
 
        uint256 orderId =
-           orderbook.createAPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+           orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultOrderbook.APOrder memory order =
-           VaultOrderbook.APOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order =
+           VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        // New - Testcase added to attempt to allocate a cancelled order
 
        vm.expectRevert(VaultOrderbook.NotEnoughRemainingQuantity.selector);
-       orderbook.allocateOrder(order, 200 * 1e18);
+       orderbook.allocateOrder(order, quantity+1);
 
-       assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+       assertEq(baseToken.balanceOf(address(alice)), 2*quantity);
        assertEq(targetVault.balanceOf(alice), 0);
-       assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order)), 100 * 1e18);
+       assertEq(orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order)), quantity);
 
        vm.stopPrank();
    }
@@ -343,20 +393,30 @@ contract VaultOrderbookTest is Test {
        vm.stopPrank();
    }
 
-   function testCancelOrder() public {
+   function testCancelOrder(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
+       vm.assume(quantity > 0);
+       vm.assume(quantity <= type(uint256).max / quantity/2);
+       vm.assume(timeToExpiry >= block.timestamp);
+       vm.assume(block.timestamp <= timeToExpiry);
+
+       //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
+       baseToken.mint(alice, 2*quantity);
+
        vm.startPrank(alice);
-       baseToken.mint(alice, 1000 * 1e18);
-       baseToken.approve(address(orderbook), 100 * 1e18);
+       baseToken.approve(address(orderbook), 2*quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = 1e18;
+       tokenRatesRequested[0] = tokenRateRequested;
 
-       uint256 orderId = orderbook.createAPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultOrderbook.APOrder memory order =
-           VaultOrderbook.APOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order =
+           VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        orderbook.cancelOrder(order);
 
@@ -369,28 +429,21 @@ contract VaultOrderbookTest is Test {
        orderbook.allocateOrder(order);
 
        // Verify allocation did not occur
-       assertEq(baseToken.balanceOf(address(alice)), 2000 * 1e18);
+       assertEq(baseToken.balanceOf(address(alice)), 2*quantity);
        assertEq(targetVault.balanceOf(alice), 0);
 
        // New - Testcase added to attempt to allocate a cancelled order within a group of multiple valid orders
-       uint256[][] memory moreCampaignIds = new uint256[][](3);
-       moreCampaignIds[0] = new uint256[](1);
-       moreCampaignIds[0][0] = 0;
-       moreCampaignIds[1] = new uint256[](1);
-       moreCampaignIds[1][0] = 1;
-       moreCampaignIds[2] = new uint256[](1);
-       moreCampaignIds[2][0] = 2;
-       VaultOrderbook.APOrder[] memory orders = new VaultOrderbook.APOrder[](3);
+       VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](3);
 
        uint256 order2Id =
-           orderbook.createAPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+           orderbook.createLPOrder(address(targetVault2), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
        uint256 order3Id =
-           orderbook.createAPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+           orderbook.createLPOrder(address(targetVault3), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultOrderbook.APOrder memory order2 =
-           VaultOrderbook.APOrder(order2Id, address(targetVault2), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-       VaultOrderbook.APOrder memory order3 =
-           VaultOrderbook.APOrder(order3Id, address(targetVault3), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order2 =
+           VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order3 =
+           VaultOrderbook.LPOrder(order3Id, address(targetVault3), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        bytes32 order2Hash = orderbook.getOrderHash(order2);
        bytes32 order3Hash = orderbook.getOrderHash(order3);
@@ -402,8 +455,8 @@ contract VaultOrderbookTest is Test {
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault2),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
-           abi.encode(2e18)
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(quantity)),
+           abi.encode(tokenRateRequested)
            );
 
        vm.expectRevert(VaultOrderbook.OrderDoesNotExist.selector);
@@ -415,43 +468,53 @@ contract VaultOrderbookTest is Test {
        assertEq(targetVault3.balanceOf(alice), 0);
 
        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 0);
-       assertEq(orderbook.orderHashToRemainingQuantity(order2Hash), 100 * 1e18);
-       assertEq(orderbook.orderHashToRemainingQuantity(order3Hash), 100 * 1e18);
+       assertEq(orderbook.orderHashToRemainingQuantity(order2Hash), quantity);
+       assertEq(orderbook.orderHashToRemainingQuantity(order3Hash), quantity);
 
-       assertEq(baseToken.balanceOf(address(alice)), 2000 * 1e18);
+       assertEq(baseToken.balanceOf(address(alice)), 2*quantity);
 
        vm.stopPrank();
    }
 
-   function testOrderConditionsNotMet() public {
+   function testOrderConditionsNotMet(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
+       vm.assume(quantity > 0);
+       vm.assume(quantity <= type(uint256).max / quantity/2);
+       vm.assume(timeToExpiry >= block.timestamp);
+       vm.assume(block.timestamp <= timeToExpiry);
+       vm.assume(tokenRateRequested > 1);
+
+       //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
+       baseToken.mint(alice, quantity);
+
        vm.startPrank(alice);
 
-       baseToken.approve(address(orderbook), 1000 * 1e18);
-       baseToken.approve(address(targetVault), 1000 * 1e18);
+       baseToken.approve(address(orderbook), quantity);
+       baseToken.approve(address(targetVault), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = 5e18;
+       tokenRatesRequested[0] = tokenRateRequested;
 
        // Create an order
-       uint256 orderId = orderbook.createAPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultOrderbook.APOrder memory order =
-           VaultOrderbook.APOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order =
+           VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        vm.stopPrank();
 
        // Setup for allocation
        vm.startPrank(bob);
-       uint256[] memory campaignIds = new uint256[](1);
-       campaignIds[0] = 0; // Assuming campaign ID 0 exists
 
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
-           abi.encode(2e18)
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encode(uint256(tokenRateRequested-1))
            );
        // Allocate the order
        vm.expectRevert(VaultOrderbook.OrderConditionsNotMet.selector);
@@ -459,42 +522,52 @@ contract VaultOrderbookTest is Test {
 
        // Verify allocation did not occur
        bytes32 orderHash = orderbook.getOrderHash(order);
-       assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 100 * 1e18);
-       assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18);
+       assertEq(orderbook.orderHashToRemainingQuantity(orderHash), quantity);
+       assertEq(baseToken.balanceOf(address(alice)), quantity);
        assertEq(targetVault.balanceOf(alice), 0);
 
        vm.stopPrank();
    }
 
-   function testAllocateOrder() public {
+   function testAllocateOrder(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
+       vm.assume(quantity > 0);
+       vm.assume(quantity <= type(uint256).max / quantity/2);
+       vm.assume(timeToExpiry >= block.timestamp);
+       vm.assume(block.timestamp <= timeToExpiry);
+       vm.assume(tokenRateRequested > 1);
+
+       //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
+       baseToken.mint(alice, quantity);
+
        vm.startPrank(alice);
 
-       baseToken.approve(address(orderbook), 1000 * 1e18);
-       baseToken.approve(address(targetVault), 1000 * 1e18);
+       baseToken.approve(address(orderbook), quantity);
+       baseToken.approve(address(targetVault), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = 1e18;
+       tokenRatesRequested[0] = tokenRateRequested;
 
        // Create an order
-       uint256 orderId = orderbook.createAPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       uint256 orderId = orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultOrderbook.APOrder memory order =
-           VaultOrderbook.APOrder(orderId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order =
+           VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        vm.stopPrank();
 
        // Setup for allocation
        vm.startPrank(bob);
-       uint256[] memory campaignIds = new uint256[](1);
-       campaignIds[0] = 0; // Assuming campaign ID 0 exists
 
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
-           abi.encode(2e18)
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encode(tokenRateRequested)
            );
        // Allocate the order
        orderbook.allocateOrder(order);
@@ -502,44 +575,52 @@ contract VaultOrderbookTest is Test {
        // Verify allocation
        bytes32 orderHash = orderbook.getOrderHash(order);
        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 0);
-       assertEq(baseToken.balanceOf(address(targetVault)), 100 * 1e18);
-       assertEq(targetVault.balanceOf(alice), 100 * 1e18);
+       assertEq(baseToken.balanceOf(address(targetVault)), quantity);
+       assertEq(targetVault.balanceOf(alice), quantity);
 
        vm.stopPrank();
    }
 
-   function testAllocateOrders() public {
-       vm.startPrank(alice);
-       baseToken.approve(address(orderbook), 300 * 1e18);
-       baseToken.approve(address(fundingVault), 100 * 1e18);
+   function testAllocateOrders(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
+        vm.assume(quantity > 0);
+        vm.assume(quantity <= type(uint256).max / quantity/3);
+        vm.assume(timeToExpiry >= block.timestamp);
+        vm.assume(block.timestamp <= timeToExpiry);
+        vm.assume(tokenRateRequested > 1);
+        baseToken.mint(alice, 3*quantity);
 
-       address[] memory tokensRequested = new address[](1);
+       //todo - delete once setup is fixed
+       vm.prank(alice);
+       baseToken.burn(alice, 1000 * 1e18);
+
+       vm.startPrank(alice);
+        baseToken.approve(address(orderbook), quantity*3);
+        baseToken.approve(address(targetVault), quantity*3);
+
+       address[] memory tokensRequested = new address[](3);
        tokensRequested[0] = address(baseToken);
-       uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = 1e18;
+       tokensRequested[1] = address(baseToken);
+       tokensRequested[2] = address(baseToken);
+        uint256[] memory tokenRatesRequested = new uint256[](3);
+        tokenRatesRequested[0] = tokenRateRequested;
+        tokenRatesRequested[1] = tokenRateRequested;
+        tokenRatesRequested[2] = tokenRateRequested;
 
        uint256 order1Id =
-           orderbook.createAPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+           orderbook.createLPOrder(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
        uint256 order2Id =
-           orderbook.createAPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+           orderbook.createLPOrder(address(targetVault2), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
        uint256 order3Id =
-           orderbook.createAPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+           orderbook.createLPOrder(address(targetVault3), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultOrderbook.APOrder memory order1 =
-           VaultOrderbook.APOrder(order1Id, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-       VaultOrderbook.APOrder memory order2 =
-           VaultOrderbook.APOrder(order2Id, address(targetVault2), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-       VaultOrderbook.APOrder memory order3 =
-           VaultOrderbook.APOrder(order3Id, address(targetVault3), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order1 =
+           VaultOrderbook.LPOrder(order1Id, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order2 =
+           VaultOrderbook.LPOrder(order2Id, address(targetVault2), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultOrderbook.LPOrder memory order3 =
+           VaultOrderbook.LPOrder(order3Id, address(targetVault3), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
       
-       uint256[][] memory moreCampaignIds = new uint256[][](3);
-       moreCampaignIds[0] = new uint256[](1);
-       moreCampaignIds[0][0] = 0;
-       moreCampaignIds[1] = new uint256[](1);
-       moreCampaignIds[1][0] = 1;
-       moreCampaignIds[2] = new uint256[](1);
-       moreCampaignIds[2][0] = 2;
-       VaultOrderbook.APOrder[] memory orders = new VaultOrderbook.APOrder[](3);
+       VaultOrderbook.LPOrder[] memory orders = new VaultOrderbook.LPOrder[](3);
 
        bytes32 order1Hash = orderbook.getOrderHash(order1);
        bytes32 order2Hash = orderbook.getOrderHash(order2);
@@ -552,32 +633,32 @@ contract VaultOrderbookTest is Test {
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
-           abi.encode(2e18)
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encode(tokenRatesRequested[0])
            );
        vm.mockCall(
            address(targetVault2),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
-           abi.encode(2e18)
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encode(tokenRatesRequested[1])
            );
        vm.mockCall(
            address(targetVault3),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)),
-           abi.encode(2e18)
+           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encode(tokenRatesRequested[2])
            );
 
        orderbook.allocateOrders(orders);
 
        //Verify none of the orders allocated
-       assertEq(targetVault.balanceOf(alice), 100*1e18);
-       assertEq(targetVault2.balanceOf(alice), 100*1e18);
-       assertEq(targetVault3.balanceOf(alice), 100*1e18);
+       assertEq(targetVault.balanceOf(alice), quantity);
+       assertEq(targetVault2.balanceOf(alice), quantity);
+       assertEq(targetVault3.balanceOf(alice), quantity);
 
        assertEq(orderbook.orderHashToRemainingQuantity(order1Hash), 0);
        assertEq(orderbook.orderHashToRemainingQuantity(order2Hash), 0);
        assertEq(orderbook.orderHashToRemainingQuantity(order3Hash), 0);
 
-       assertEq(baseToken.balanceOf(address(alice)), 1000 * 1e18 - 300 * 1e18);
+       assertEq(baseToken.balanceOf(address(alice)), 0);
 
        vm.stopPrank();
    }
