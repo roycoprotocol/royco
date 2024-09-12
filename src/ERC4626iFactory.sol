@@ -90,7 +90,7 @@ contract ERC4626iFactory is Owned(msg.sender) {
     }
 
     /// @dev Helper function to get the symbol for a new incentivized vault, ROY-0, ROY-1, etc.
-    function getNextSymbol() private view returns (string memory) {
+    function getNextSymbol() internal view returns (string memory) {
         return string.concat("ROY-", LibString.toString(incentivizedVaults.length));
     }
 }

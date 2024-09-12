@@ -110,11 +110,14 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param initialFrontendFee The initial fee set for the frontend out of WAD 
     /// @param pointsFactory The canonical factory responsible for deploying all points programs
     constructor(address _owner, string memory name, string memory symbol, uint8 decimals, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, 18) Owned(_owner) {
+        
+        ERC4626I_FACTORY = ERC4626iFactory(msg.sender);
+        
         if(initialFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
+
         frontendFee = initialFrontendFee;
         VAULT = IERC4626(vault);
         DEPOSIT_ASSET = ERC20(VAULT.asset());
-        ERC4626I_FACTORY = ERC4626iFactory(msg.sender);
         POINTS_FACTORY = PointsFactory(pointsFactory);
 
         DEPOSIT_ASSET.approve(vault, type(uint256).max);
