@@ -11,7 +11,7 @@ import { Clone } from "lib/clones-with-immutable-args/src/Clone.sol";
 contract WeirollWallet is Clone, VM {
     /// @notice Let the Weiroll Wallet receive ether directly if needed
     receive() external payable { }
-    /// @notice Also allow a fallback with no logic if erroneous data is provided 
+    /// @notice Also allow a fallback with no logic if erroneous data is provided
     fallback() external payable { }
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -90,6 +90,11 @@ contract WeirollWallet is Clone, VM {
     /// @notice Returns whether or not the wallet is forfeitable
     function isForfeitable() public pure returns (bool) {
         return _getArgUint8(104) != 0;
+    }
+
+    /// @notice Returns the marketId associated with this weiroll wallet
+    function marketId() public pure returns (uint256) {
+        return _getArgUint256(105);
     }
 
     /*//////////////////////////////////////////////////////////////

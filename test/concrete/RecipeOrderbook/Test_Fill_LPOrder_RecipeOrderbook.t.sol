@@ -30,7 +30,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
@@ -80,6 +80,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
@@ -94,8 +97,8 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
-        uint256 fillAmount = 100000e18; // Fill amount
+        uint256 orderAmount = 100_000e18; // Order amount requested
+        uint256 fillAmount = 100_000e18; // Fill amount
 
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
@@ -144,6 +147,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
@@ -158,7 +164,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -209,6 +215,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -217,7 +226,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
@@ -271,7 +280,10 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
-        // Ensure the AP received the correct incentive amount
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
+        // Ensure the LP received the correct incentive amount
         assertEq(mockIncentiveToken.balanceOf(AP_ADDRESS), expectedIncentiveAmount);
 
         // Ensure the weiroll wallet got the liquidity
@@ -288,7 +300,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -343,6 +355,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -351,7 +366,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
@@ -397,6 +412,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
+
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
@@ -412,7 +430,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -463,6 +481,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -471,7 +492,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
@@ -525,6 +546,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
@@ -539,7 +563,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -594,6 +618,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -602,7 +629,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
@@ -649,6 +676,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
@@ -663,7 +693,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -714,6 +744,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -722,7 +755,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
@@ -776,6 +809,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
@@ -790,7 +826,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFee = orderbook.minimumFrontendFee();
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
-        uint256 orderAmount = 100000e18; // Order amount requested
+        uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
@@ -845,6 +881,9 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Ensure there is a weirollWallet at the expected address
         assertGt(weirollWallet.code.length, 0);
 
+        // Ensure that the deposit recipe was executed
+        assertEq(WeirollWallet(payable(weirollWallet)).executed(), true);
+
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
     }
@@ -852,8 +891,8 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_RevertIf_NotEnoughRemainingQuantity_FillAPOrder() external {
         uint256 marketId = createMarket();
 
-        uint256 orderAmount = 100000e18;
-        uint256 fillAmount = 100001e18; // Fill amount exceeds the order amount
+        uint256 orderAmount = 100_000e18;
+        uint256 fillAmount = 100_001e18; // Fill amount exceeds the order amount
 
         // Create a fillable AP order
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
@@ -866,7 +905,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_RevertIf_ZeroQuantityFill_FillAPOrder() external {
         uint256 marketId = createMarket();
 
-        uint256 orderAmount = 100000e18;
+        uint256 orderAmount = 100_000e18;
 
         // Create a fillable AP order
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
@@ -879,7 +918,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_RevertIf_OrderExpired_FillAPOrder() external {
         uint256 marketId = createMarket();
 
-        uint256 orderAmount = 100000e18;
+        uint256 orderAmount = 100_000e18;
 
         // Create a fillable AP order with a short expiry time
         (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);

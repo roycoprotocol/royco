@@ -115,12 +115,17 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     /// @notice Holds all WeirollMarket structs
     mapping(uint256 => WeirollMarket) public marketIDToWeirollMarket;
+
     /// @notice Holds all IPOrder structs
     mapping(uint256 => IPOrder) public orderIDToIPOrder;
     /// @notice Tracks the unfilled quantity of each AP order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
+    // Tracks the locked incentives associated with a weiroll wallet
     mapping(address => LockedRewardParams) public weirollWalletToLockedRewardParams;
+
+    // Structure to store each fee claimant's accrued fees for a particular token (claimant => token => feesAccrued)
+    mapping(address => mapping(address => uint256)) public feeClaimantToTokenToAmount;
 
     /// @param _weirollWalletImplementation The address of the WeirollWallet implementation contract
     /// @param _protocolFee The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant
@@ -237,6 +242,22 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     error TotalFeeTooHigh();
     /// @notice emitted when trying to fill an order that doesn't exist anymore/yet
     error CannotFillZeroQuantityOrder();
+
+    // modifier to check if msg.sender is owner of a weirollWallet
+    modifier isWeirollOwner(address weirollWallet) {
+        if (WeirollWallet(payable(weirollWallet)).owner() != msg.sender) {
+            revert NotOwner();
+        }
+        _;
+    }
+
+    // modifier to check if the weiroll wallet is unlocked
+    modifier weirollIsUnlocked(address weirollWallet) {
+        if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
+            revert WalletLocked();
+        }
+        _;
+    }
 
     // Getters to access nested mappings
     function getTokenAmountsOfferedForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
@@ -413,8 +434,6 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         return (numIPOrders++);
     }
 
-    mapping(address => mapping(address => uint256)) public feeClaimantToTokenToAmount;
-
     /// @param recipient The address to send fees to
     /// @param token The token address where fees are accrued in
     /// @param amount The amount of fees to award
@@ -481,8 +500,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
         // Create weiroll wallet to lock assets for recipe execution(s)
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
-        WeirollWallet wallet =
-            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable))));
+        WeirollWallet wallet = WeirollWallet(
+            payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable, order.targetMarketID)))
+        );
 
         if (market.rewardStyle != RewardStyle.Upfront) {
             // If RewardStyle is either Forfeitable or Arrear
@@ -578,8 +598,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         // Create weiroll wallet to lock assets for recipe execution(s)
         uint256 unlockTime = block.timestamp + market.lockupTime;
         bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
-        WeirollWallet wallet =
-            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.ap, address(this), fillAmount, unlockTime, forfeitable))));
+        WeirollWallet wallet = WeirollWallet(
+            payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(order.ap, address(this), fillAmount, unlockTime, forfeitable, order.targetMarketID)))
+        );
 
         if (market.rewardStyle != RewardStyle.Upfront) {
             // If RewardStyle is either Forfeitable or Arrear
@@ -705,11 +726,12 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice For wallets of Forfeitable markets, an AP can call this function to forgo their rewards and unlock their wallet
-    function forfeit(address weirollWallet) public nonReentrant {
-        if (WeirollWallet(payable(weirollWallet)).owner() != msg.sender) {
-            revert NotOwner();
-        }
+    function forfeit(address weirollWallet) public isWeirollOwner(weirollWallet) nonReentrant {
+        // Forfeit the locked rewards for the weirollWallet
         WeirollWallet(payable(weirollWallet)).forfeit();
+
+        // Automatically execute the withdrawal script upon forfeiture
+        _executeWithdrawalScript(weirollWallet);
 
         // Return the locked rewards to the IP
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
@@ -728,16 +750,14 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
 
+    /// @notice Execute the withdrawal script in the weiroll wallet
+    function executeWithdrawalScript(address weirollWallet) external isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
+        _executeWithdrawalScript(weirollWallet);
+    }
+
     /// @param weirollWallet The wallet to claim for
     /// @param to The address to claim all rewards to
-    function claim(address weirollWallet, address to) public nonReentrant {
-        if (WeirollWallet(payable(weirollWallet)).owner() != msg.sender) {
-            revert NotOwner();
-        }
-        if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
-            revert WalletLocked();
-        }
-
+    function claim(address weirollWallet, address to) public isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
         // Get locked reward details to facilitate claim
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
 
@@ -777,5 +797,19 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @notice calculates the hash of an order
     function getOrderHash(APOrder memory order) public pure returns (bytes32) {
         return keccak256(abi.encode(order));
+    }
+
+    function _executeWithdrawalScript(address weirollWallet) internal {
+        // Instantiate the WeirollWallet from the wallet address
+        WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
+
+        // Get the marketID associated with the weiroll wallet
+        uint256 weirollMarketId = wallet.marketId();
+
+        // Get the market in order to get the withdrawal recipe
+        WeirollMarket storage market = marketIDToWeirollMarket[weirollMarketId];
+
+        //Execute the withdrawal recipe
+        wallet.executeWeiroll(market.withdrawRecipe.weirollCommands, market.withdrawRecipe.weirollState);
     }
 }
