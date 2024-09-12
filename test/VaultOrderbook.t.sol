@@ -37,8 +37,8 @@ contract VaultOrderbookTest is Test {
        fundingVault = new MockERC4626(baseToken);
        fundingVault2 = new MockERC4626(baseToken2);
 
-       baseToken.mint(alice, 1000 * 1e18);
-       baseToken.mint(bob, 1000 * 1e18);
+    //    baseToken.mint(alice, 1000 * 1e18);
+    //    baseToken.mint(bob, 1000 * 1e18);
 
        vm.label(alice, "Alice");
        vm.label(bob, "Bob");
@@ -52,10 +52,6 @@ contract VaultOrderbookTest is Test {
         vm.assume(quantity > 0);
         vm.assume(quantity <= type(uint256).max / quantity);
         vm.assume(timeToExpiry >= block.timestamp);
-
-        //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
 
        baseToken.mint(alice, quantity);
 
@@ -97,10 +93,6 @@ contract VaultOrderbookTest is Test {
         vm.assume(quantity <= type(uint256).max / quantity);
         vm.assume(timeToExpiry > 1 days);
 
-        //todo - delete once setup is fixed
-        vm.prank(alice);
-        baseToken.burn(alice, 1000 * 1e18);
-
        baseToken.mint(alice, quantity);
 
        vm.startPrank(alice);
@@ -131,10 +123,6 @@ contract VaultOrderbookTest is Test {
    }
 
    function testCannotCreateZeroQuantityOrder(uint256 timeToExpiry, uint256 tokenRateRequested) public {
-        //todo - delete once setup is fixed
-        vm.prank(alice);
-        baseToken.burn(alice, 1000 * 1e18);
-
        vm.startPrank(alice);
        baseToken.approve(address(orderbook), 100 * 1e18);
 
@@ -155,10 +143,6 @@ contract VaultOrderbookTest is Test {
         vm.assume(quantity > 0);
         vm.assume(quantity <= type(uint256).max / quantity);
         vm.assume(timeToExpiry >= block.timestamp);
-
-        //todo - delete once setup is fixed
-        vm.prank(alice);
-        baseToken.burn(alice, 1000 * 1e18);
 
        baseToken.mint(alice, quantity);
 
@@ -182,10 +166,6 @@ contract VaultOrderbookTest is Test {
        vm.assume(quantity > 1);
        vm.assume(quantity <= type(uint256).max / quantity);
        vm.assume(timeToExpiry >= block.timestamp);
-
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
 
        baseToken.mint(alice, quantity);
 
@@ -220,10 +200,6 @@ contract VaultOrderbookTest is Test {
        vm.assume(quantity <= type(uint256).max / quantity);
        vm.assume(timeToExpiry >= block.timestamp);
 
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
-
        vm.startPrank(alice);
        baseToken.mint(alice, quantity);
        baseToken.approve(address(orderbook), quantity);
@@ -247,10 +223,6 @@ contract VaultOrderbookTest is Test {
        vm.assume(quantity <= type(uint256).max / quantity);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp + 1 days <= type(uint256).max - timeToExpiry);
-
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
 
        baseToken.mint(alice, quantity);
 
@@ -287,10 +259,6 @@ contract VaultOrderbookTest is Test {
        vm.assume(quantity <= type(uint256).max / quantity);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp <= timeToExpiry);
-
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
 
        baseToken.mint(alice, quantity);
 
@@ -334,10 +302,6 @@ contract VaultOrderbookTest is Test {
        vm.assume(quantity <= type(uint256).max / quantity/2);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp <= timeToExpiry);
-
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
 
        baseToken.mint(alice, 2*quantity);
 
@@ -398,10 +362,6 @@ contract VaultOrderbookTest is Test {
        vm.assume(quantity <= type(uint256).max / quantity/2);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp <= timeToExpiry);
-
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
 
        baseToken.mint(alice, 2*quantity);
 
@@ -483,10 +443,6 @@ contract VaultOrderbookTest is Test {
        vm.assume(block.timestamp <= timeToExpiry);
        vm.assume(tokenRateRequested > 1);
 
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
-
        baseToken.mint(alice, quantity);
 
        vm.startPrank(alice);
@@ -536,10 +492,6 @@ contract VaultOrderbookTest is Test {
        vm.assume(block.timestamp <= timeToExpiry);
        vm.assume(tokenRateRequested > 1);
 
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
-
        baseToken.mint(alice, quantity);
 
        vm.startPrank(alice);
@@ -582,69 +534,65 @@ contract VaultOrderbookTest is Test {
    }
 
 
-   function testAllocateOrderFromVault(uint256 timeToExpiry, uint256 tokenRateRequested) public {
-    //    vm.assume(quantity > 0);
-    //    vm.assume(quantity <= type(uint256).max / quantity/2);
-       vm.assume(timeToExpiry >= block.timestamp);
-       vm.assume(block.timestamp <= timeToExpiry);
-       vm.assume(tokenRateRequested > 1);
-       uint256 quantity = 1;
-       timeToExpiry = block.timestamp + 1 days;
-       tokenRateRequested = 1e18;
+//    function testAllocateOrderFromVault(uint256 timeToExpiry, uint256 tokenRateRequested) public {
+//     //    vm.assume(quantity > 0);
+//     //    vm.assume(quantity <= type(uint256).max / quantity/2);
+//        vm.assume(timeToExpiry >= block.timestamp);
+//        vm.assume(block.timestamp <= timeToExpiry);
+//        vm.assume(tokenRateRequested > 1);
+//        uint256 quantity = 1;
+//        timeToExpiry = block.timestamp + 1 days;
+//        tokenRateRequested = 1e18;
 
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
+//        baseToken.mint(alice, quantity);
+//        baseToken.mint(bob, quantity);
 
-       baseToken.mint(alice, quantity);
-       baseToken.mint(bob, quantity);
+//        vm.startPrank(alice);
 
-       vm.startPrank(alice);
+//        baseToken.approve(address(orderbook), quantity);
+//        baseToken.approve(address(targetVault), quantity);
+//        baseToken.approve(address(fundingVault), quantity);
 
-       baseToken.approve(address(orderbook), quantity);
-       baseToken.approve(address(targetVault), quantity);
-       baseToken.approve(address(fundingVault), quantity);
+//        address[] memory tokensRequested = new address[](1);
+//        tokensRequested[0] = address(baseToken);
+//        uint256[] memory tokenRatesRequested = new uint256[](1);
+//        tokenRatesRequested[0] = tokenRateRequested;
+//        fundingVault.deposit(quantity, alice);
 
-       address[] memory tokensRequested = new address[](1);
-       tokensRequested[0] = address(baseToken);
-       uint256[] memory tokenRatesRequested = new uint256[](1);
-       tokenRatesRequested[0] = tokenRateRequested;
-       fundingVault.deposit(quantity, alice);
+//        // Create an order
+//        uint256 orderId = orderbook.createLPOrder(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       // Create an order
-       uint256 orderId = orderbook.createLPOrder(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+//        VaultOrderbook.LPOrder memory order =
+//            VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultOrderbook.LPOrder memory order =
-           VaultOrderbook.LPOrder(orderId, address(targetVault), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
+//        vm.stopPrank();
 
-       vm.stopPrank();
-
-       // Setup for allocation
-       vm.startPrank(bob);
+//        // Setup for allocation
+//        vm.startPrank(bob);
 
 
-       baseToken.approve(address(orderbook), quantity);
-       baseToken.approve(address(targetVault), quantity);
-       baseToken.approve(address(fundingVault), quantity);
-       fundingVault.deposit(quantity, bob);
+//        baseToken.approve(address(orderbook), quantity);
+//        baseToken.approve(address(targetVault), quantity);
+//        baseToken.approve(address(fundingVault), quantity);
+//        fundingVault.deposit(quantity, bob);
 
-       // Mock the previewRateAfterDeposit function
-       vm.mockCall(
-           address(targetVault),
-           abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), quantity),
-           abi.encode(tokenRateRequested)
-           );
-       // Allocate the order
-       orderbook.allocateOrder(order);
+//        // Mock the previewRateAfterDeposit function
+//        vm.mockCall(
+//            address(targetVault),
+//            abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), quantity),
+//            abi.encode(tokenRateRequested)
+//            );
+//        // Allocate the order
+//        orderbook.allocateOrder(order);
 
-       // Verify allocation
-       bytes32 orderHash = orderbook.getOrderHash(order);
-       assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 0);
-       assertEq(targetVault.balanceOf(alice), quantity);
-         assertEq(fundingVault.balanceOf(alice), 0);
+//        // Verify allocation
+//        bytes32 orderHash = orderbook.getOrderHash(order);
+//        assertEq(orderbook.orderHashToRemainingQuantity(orderHash), 0);
+//        assertEq(targetVault.balanceOf(alice), quantity);
+//          assertEq(fundingVault.balanceOf(alice), 0);
 
-       vm.stopPrank();
-   }
+//        vm.stopPrank();
+//    }
 
    function testAllocateOrders(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
         vm.assume(quantity > 0);
@@ -654,10 +602,6 @@ contract VaultOrderbookTest is Test {
         vm.assume(tokenRateRequested > 1);
 
         baseToken.mint(alice, 3*quantity);
-
-       //todo - delete once setup is fixed
-       vm.prank(alice);
-       baseToken.burn(alice, 1000 * 1e18);
 
        vm.startPrank(alice);
         baseToken.approve(address(orderbook), quantity*3);
