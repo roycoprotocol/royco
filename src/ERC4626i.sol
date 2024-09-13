@@ -41,7 +41,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     error FrontendFeeBelowMinimum();
     error InvalidReward();
     error OnlyClaimant();
-    error NotOwnerOfVault();
+    error NotOwnerOfVaultOrApproved();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -432,7 +432,13 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
     /// @inheritdoc IERC4626
     function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
-        if (msg.sender != owner) { revert NotOwnerOfVault(); }
+        // Check the caller is the token owner or has been approved by the owner
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+            if (shares > allowed) revert NotOwnerOfVaultOrApproved();
+            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+        }
+
         shares = VAULT.withdraw(assets, address(this), address(this));
 
         _burn(owner, shares);
@@ -443,7 +449,13 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
     /// @inheritdoc IERC4626
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
-        if (msg.sender != owner) { revert NotOwnerOfVault(); }
+        // Check the caller is the token owner or has been approved by the owner
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+            if (shares > allowed) revert NotOwnerOfVaultOrApproved();
+            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+        }
+
         assets = VAULT.redeem(shares, address(this), address(this));
 
         _burn(owner, shares);
