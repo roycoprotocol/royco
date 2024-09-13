@@ -41,6 +41,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     error FrontendFeeBelowMinimum();
     error InvalidReward();
     error OnlyClaimant();
+    error NotOwnerOfVault();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -431,6 +432,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
     /// @inheritdoc IERC4626
     function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
+        if (msg.sender != owner) { revert NotOwnerOfVault(); }
         shares = VAULT.withdraw(assets, address(this), address(this));
 
         _burn(owner, shares);
@@ -441,6 +443,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
     /// @inheritdoc IERC4626
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
+        if (msg.sender != owner) { revert NotOwnerOfVault(); }
         assets = VAULT.redeem(shares, address(this), address(this));
 
         _burn(owner, shares);
