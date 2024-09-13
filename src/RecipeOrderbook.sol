@@ -197,13 +197,17 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     /// @param IPOrderID The ID of the IP order that was filled
     /// @param ap The address of the action provider that filled the order
-    /// @param quantity The amount of input tokens that were deposited
-    event IPOrderFilled(uint256 indexed marketID, uint256 indexed IPOrderID, address indexed ap, uint256 fillAmount, uint256 quantity, address weirollWallet);
+    /// @param remainingQuantity The amount of input tokens the order can still be filled with
+    event IPOrderFilled(
+        uint256 indexed marketID, uint256 indexed IPOrderID, address indexed ap, uint256 fillAmount, uint256 remainingQuantity, address weirollWallet
+    );
 
     /// @param APOrderID The ID of the AP order that was filled
     /// @param ip The address of the incentive provider that filled the order
-    /// @param quantity The amount of input tokens that were deposited
-    event APOrderFilled(uint256 indexed marketID, uint256 indexed APOrderID, address indexed ip, uint256 fillAmount, uint256 quantity, address weirollWallet);
+    /// @param remainingQuantity The amount of input tokens the order can still be filled with
+    event APOrderFilled(
+        uint256 indexed marketID, uint256 indexed APOrderID, address indexed ip, uint256 fillAmount, uint256 remainingQuantity, address weirollWallet
+    );
 
     /// @param IPOrderID The ID of the IP order that was cancelled
     event IPOrderCancelled(uint256 indexed IPOrderID);
@@ -565,7 +569,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
 
-        emit IPOrderFilled(order.targetMarketID, orderID, order.ip, fillAmount, order.quantity, address(wallet));
+        emit IPOrderFilled(order.targetMarketID, orderID, order.ip, fillAmount, order.remainingQuantity, address(wallet));
     }
 
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
@@ -668,7 +672,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
 
-        emit APOrderFilled(order.targetMarketID, order.orderID, order.ap, fillAmount, order.quantity, address(wallet));
+        emit APOrderFilled(order.targetMarketID, order.orderID, order.ap, fillAmount, orderHashToRemainingQuantity[orderHash], address(wallet));
     }
 
     /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
