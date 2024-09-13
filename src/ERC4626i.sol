@@ -71,7 +71,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     }
 
     /// @dev The max amount of reward campaigns a user can be involved in 
-    uint256 public constant MAX_REWARDS = 5;
+    uint256 public constant MAX_REWARDS = 20;
     /// @dev The minimum duration a reward campaign must last
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
 
