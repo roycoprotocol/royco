@@ -628,6 +628,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
                 // If incentives will be paid out later, only handle the token case. Points will be awarded on claim.
                 if (!PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
+                    // SafeTransferFrom does not check if a token address has any code, so we need to check it manually to prevent token deployment frontrunning
+                    if (token.code.length == 0) revert;
                     // If not a points program, transfer amount requested (based on fill percentage) to the orderbook in addition to protocol and frontend fees.
                     ERC20(order.tokensRequested[i]).safeTransferFrom(msg.sender, address(this), params.amounts[i] + protocolFeeAmount + frontendFeeAmount);
                 }
