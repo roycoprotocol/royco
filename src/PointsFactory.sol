@@ -29,7 +29,8 @@ contract PointsFactory {
         external
         returns (Points points)
     {
-        points = new Points(_name, _symbol, _decimals, _owner, _orderbook);
+        bytes32 salt = keccak256(abi.encodePacked(_name, _symbol, _decimals, _owner, _orderbook));
+        points = new Points{salt: salt}(_name, _symbol, _decimals, _owner, _orderbook);
         isPointsProgram[address(points)] = true;
 
         emit NewPointsProgram(points, _name, _symbol, address(_orderbook));
