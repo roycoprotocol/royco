@@ -15,6 +15,8 @@ contract Points is Ownable {
     /// @param _name The name of the points program
     /// @param _symbol The symbol for the points program
     /// @param _decimals The amount of decimals per 1 point
+    /// @param _owner The owner of the points program
+    /// @param _orderbook The RecipeOrderbook for IP Orders
     constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner, RecipeOrderbook _orderbook) {
         _initializeOwner(_owner);
 
