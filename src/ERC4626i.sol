@@ -29,7 +29,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     event RewardsPerTokenUpdated(uint256 accumulated);
     event UserRewardsUpdated(address user, uint256 userRewards, uint256 paidRewardPerToken);
     event Claimed(address reward, address user, address receiver, uint256 claimed);
-    event FeesClaimed(address claimant);
+    event FeesClaimed(address claimant, address reward);
     event RewardsTokenAdded(address rewardsToken);
 
     error MaxRewardsReached();
@@ -142,14 +142,23 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     }
 
     /// @param to The address to send all fees owed to msg.sender to
-    function claimFees(address to) public {
-        emit FeesClaimed(msg.sender);
+    function claimFees(address to) external {
         for (uint256 i = 0; i < rewards.length; i++) {
             address reward = rewards[i];
-            uint256 owed = rewardToClaimantToFees[reward][msg.sender];
-            rewardToClaimantToFees[reward][msg.sender] = 0;
-            pushReward(reward, to, owed);
+            claimFees(to, reward);
         }
+    }
+
+    /// @param to The address to send all fees owed to msg.sender to
+    /// @param reward The reward token / points program to claim fees from
+    function claimFees(address to, address reward) public {
+        if (!isReward[reward]) revert InvalidReward();
+
+        uint256 owed = rewardToClaimantToFees[reward][msg.sender];
+        rewardToClaimantToFees[reward][msg.sender] = 0;
+        pushReward(reward, to, owed);
+        
+        emit FeesClaimed(msg.sender, reward);
     }
 
     /// @param reward The reward token / points program 
@@ -370,11 +379,19 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     }
 
     /// @notice Claim all rewards for the caller
-    function claim(address to) public virtual {
+    /// @param to The address to send the rewards to
+    function claim(address to) public {
         for (uint256 i = 0; i < rewards.length; i++) {
             address reward = rewards[i];
             _claim(reward, msg.sender, to, currentUserRewards(reward, msg.sender));
         }
+    }
+
+    /// @param to The address to send the rewards to
+    /// @param reward The reward token / points program to claim rewards from
+    function claim(address to, address reward) public {
+        if (!isReward[reward]) revert InvalidReward();
+        _claim(reward, msg.sender, to, currentUserRewards(reward, msg.sender));
     }
 
     /// @notice Calculate and return current rewards per token.
