@@ -14,7 +14,7 @@ contract Points is Ownable {
 
     /// @param _name The name of the points program
     /// @param _symbol The symbol for the points program
-    /// @param _decimals The amount of decimals per 1 point
+    /// @param _decimals The amount of decimals to use for accounting with points
     /// @param _owner The owner of the points program
     /// @param _orderbook The RecipeOrderbook for IP Orders
     constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner, RecipeOrderbook _orderbook) {
@@ -32,7 +32,7 @@ contract Points is Ownable {
     //////////////////////////////////////////////////////////////*/
     event Award(address indexed to, uint256 indexed amount);
     event AllowedVaultAdded(address indexed vault);
-
+    event VaultRemoved(address indexed vault);
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -56,10 +56,17 @@ contract Points is Ownable {
     /*//////////////////////////////////////////////////////////////
                               POINTS AUTH
     //////////////////////////////////////////////////////////////*/
+    error VaultIsDuplicate();
 
+    /// @param vault The address to add to the allowed vaults for the points program
     function addAllowedVault(address vault) external onlyOwner {
+        if (isAllowedVault[vault]) {
+            revert VaultIsDuplicate();
+        }
+
         allowedVaults.push(vault);
         isAllowedVault[vault] = true;
+
         emit AllowedVaultAdded(vault);
     }
 
