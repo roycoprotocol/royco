@@ -460,12 +460,11 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - expectedShares;
         }
 
-        shares = VAULT.withdraw(assets, address(this), address(this));
+        shares = VAULT.withdraw(assets, receiver, address(this));
 
         if (shares != expectedShares) revert InvalidWithdrawal();
 
         _burn(owner, shares);
-        DEPOSIT_ASSET.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
@@ -479,7 +478,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
 
-        assets = VAULT.redeem(shares, address(this), address(this));
+        assets = VAULT.redeem(shares, receiver, address(this));
 
         _burn(owner, shares);
         DEPOSIT_ASSET.safeTransfer(receiver, assets);
