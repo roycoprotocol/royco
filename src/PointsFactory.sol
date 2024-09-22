@@ -16,7 +16,8 @@ contract PointsFactory {
 
     /// @param _name The name for the new points program
     /// @param _symbol The symbol for the new points program
-    /// @param _decimals The amount of decimals for 1 Point
+    /// @param _decimals The amount of decimals per point
+    /// @param _owner The owner of the new points program
     /// @param _orderbook The RecipeOrderbook for Weiroll Rewards Programs
     function createPointsProgram(
         string memory _name,
