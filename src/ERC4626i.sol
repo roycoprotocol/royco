@@ -415,7 +415,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
     /// @inheritdoc IERC4626
     function deposit(uint256 assets, address receiver) public returns (uint256 shares) {
-        DEPOSIT_ASSET.transferFrom(msg.sender, address(this), assets);
+        DEPOSIT_ASSET.safeTransferFrom(msg.sender, address(this), assets);
 
         shares = VAULT.deposit(assets, address(this));
         _mint(receiver, shares);
@@ -425,7 +425,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
     /// @inheritdoc IERC4626
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
-        DEPOSIT_ASSET.transferFrom(msg.sender, address(this), VAULT.convertToAssets(shares));
+        DEPOSIT_ASSET.safeTransferFrom(msg.sender, address(this), VAULT.convertToAssets(shares));
 
         assets = VAULT.mint(shares, address(this));
         _mint(receiver, shares);
@@ -448,7 +448,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         if (shares != expectedShares) revert InvalidWithdrawal();
 
         _burn(owner, shares);
-        DEPOSIT_ASSET.transfer(receiver, assets);
+        DEPOSIT_ASSET.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
@@ -465,7 +465,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
         assets = VAULT.redeem(shares, address(this), address(this));
 
         _burn(owner, shares);
-        DEPOSIT_ASSET.transfer(receiver, assets);
+        DEPOSIT_ASSET.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
