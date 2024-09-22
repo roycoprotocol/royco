@@ -205,12 +205,15 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
         // Calculate the new rate
         uint256 rewardsAfterFee = rewardsAdded - frontendFeeTaken - protocolFeeTaken;
-        uint256 remainingRewards = rewardsInterval.end < block.timestamp ? 0 : rewardsInterval.rate * (rewardsInterval.end - block.timestamp.toUint32());
-        uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - block.timestamp);
+
+        uint256 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp : uint256(rewardsInterval.start);
+
+        uint256 remainingRewards = rewardsInterval.end < newStart ? 0 : rewardsInterval.rate * (rewardsInterval.end - newStart.toUint32());
+        uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - newStart);
 
         if (rate < rewardsInterval.rate) revert RateCannotDecrease();
 
-        rewardsInterval.start = block.timestamp.toUint32();
+        rewardsInterval.start = newStart.toUint32();
         rewardsInterval.end = newEnd.toUint32();
         rewardsInterval.rate = rate.toUint96();
 
