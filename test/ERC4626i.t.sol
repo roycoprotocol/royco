@@ -83,7 +83,7 @@ contract ERC4626iTest is Test {
       assertEq(testFactory.minimumFrontendFee(), 0.075e18);
     }
 
-    function testDeployment() public {
+    function testDeployment() view public {
         assertEq(address(testIncentivizedVault.VAULT()), address(testVault));
         assertEq(address(testIncentivizedVault.DEPOSIT_ASSET()), address(token));
         assertEq(testIncentivizedVault.owner(), address(this));
@@ -235,7 +235,7 @@ contract ERC4626iTest is Test {
         token.approve(address(testIncentivizedVault), depositAmount);
         testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
 
-        uint256 sharesBurned = testIncentivizedVault.withdraw(withdrawAmount, REGULAR_USER, REGULAR_USER);
+        testIncentivizedVault.withdraw(withdrawAmount, REGULAR_USER, REGULAR_USER);
         vm.stopPrank();
 
         assertEq(token.balanceOf(REGULAR_USER), withdrawAmount);
@@ -304,7 +304,7 @@ contract ERC4626iTest is Test {
         vm.warp(timeElapsed);
 
         uint256 expectedRewards = (rewardAmount / duration) * (shares / testIncentivizedVault.totalSupply()) * timeElapsed;
-        (, , uint256 rate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
+        testIncentivizedVault.rewardToInterval(address(rewardToken1));
         
         testIncentivizedVault.claim(REGULAR_USER);
         vm.stopPrank();

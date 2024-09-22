@@ -44,11 +44,11 @@ contract VaultOrderbookTest is Test {
        vm.label(bob, "Bob");
    }
 
-   function testConstructor() public {
+   function testConstructor() view public {
        assertEq(orderbook.numOrders(), 0);
    }
 
-   function testCreateAPOrder(uint256 quantity, uint256 rate, uint256 timeToExpiry, uint256 tokenRateRequested) public {
+   function testCreateAPOrder(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
         vm.assume(quantity > 0);
         vm.assume(quantity <= type(uint256).max / quantity);
         vm.assume(timeToExpiry >= block.timestamp);

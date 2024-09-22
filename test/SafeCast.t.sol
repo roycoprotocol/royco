@@ -71,37 +71,37 @@ contract SafeCastTest is Test {
         }
     }
 
-    function testFuzzToUint128(uint256 value) public {
+    function testFuzzToUint128(uint256 value) pure public {
         vm.assume(value <= type(uint128).max);
         assertEq(value.toUint128(), uint128(value));
     }
 
-    function testFuzzToUint96(uint256 value) public {
+    function testFuzzToUint96(uint256 value) pure public {
         vm.assume(value <= type(uint96).max);
         assertEq(value.toUint96(), uint96(value));
     }
 
-    function testFuzzToUint64(uint256 value) public {
+    function testFuzzToUint64(uint256 value) pure public {
         vm.assume(value <= type(uint64).max);
         assertEq(value.toUint64(), uint64(value));
     }
 
-    function testFuzzToUint32(uint256 value) public {
+    function testFuzzToUint32(uint256 value) pure public {
         vm.assume(value <= type(uint32).max);
         assertEq(value.toUint32(), uint32(value));
     }
 
-    function testFuzzToUint160(uint256 value) public {
+    function testFuzzToUint160(uint256 value) pure public {
         vm.assume(value <= type(uint160).max);
         assertEq(value.toUint160(), uint160(value));
     }
 
-    function testFuzzToInt128(int256 value) public {
+    function testFuzzToInt128(int256 value) pure public {
         vm.assume(value >= type(int128).min && value <= type(int128).max);
         assertEq(value.toInt128(), int128(value));
     }
 
-    function testFuzzToInt256(uint256 value) public {
+    function testFuzzToInt256(uint256 value) pure public {
         vm.assume(value < 2 ** 255);
         assertEq(value.toInt256(), int256(value));
     }

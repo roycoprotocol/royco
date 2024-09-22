@@ -41,6 +41,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     error FrontendFeeBelowMinimum();
     error InvalidReward();
     error OnlyClaimant();
+    error InvalidWithdrawal();
     error NotOwnerOfVaultOrApproved();
 
     /*//////////////////////////////////////////////////////////////
@@ -432,14 +433,17 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
     /// @inheritdoc IERC4626
     function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
+        uint256 expectedShares = VAULT.previewWithdraw(assets);
         // Check the caller is the token owner or has been approved by the owner
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
-            if (shares > allowed) revert NotOwnerOfVaultOrApproved();
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (expectedShares > allowed) revert NotOwnerOfVaultOrApproved();
+            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - expectedShares;
         }
 
         shares = VAULT.withdraw(assets, address(this), address(this));
+
+        if (shares != expectedShares) revert InvalidWithdrawal();
 
         _burn(owner, shares);
         DEPOSIT_ASSET.transfer(receiver, assets);
