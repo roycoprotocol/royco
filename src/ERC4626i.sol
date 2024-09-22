@@ -38,6 +38,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     error IntervalInProgress();
     error NoIntervalInProgress();
     error RateCannotDecrease();
+    error DuplicateRewardToken();
     error FrontendFeeBelowMinimum();
     error InvalidReward();
     error OnlyClaimant();
@@ -128,6 +129,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param rewardsToken The new reward token / points program to be used as incentives
     function addRewardsToken(address rewardsToken) public onlyOwner {
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
+        if (isReward[rewardsToken]) revert DuplicateRewardToken();
         rewards.push(rewardsToken);
         isReward[rewardsToken] = true;
         emit RewardsTokenAdded(rewardsToken);

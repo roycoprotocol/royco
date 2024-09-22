@@ -107,6 +107,10 @@ contract ERC4626iTest is Test {
         vm.assume(newRewardToken != address(0));
         testIncentivizedVault.addRewardsToken(newRewardToken);
         assertEq(testIncentivizedVault.rewards(0), newRewardToken);
+
+        // Test we cannot add the second reward token twice
+        vm.expectRevert(ERC4626i.DuplicateRewardToken.selector);
+        testIncentivizedVault.addRewardsToken(newRewardToken);
     }
 
     function testAddRewardTokenUnauthorized(address unauthorized) public {
