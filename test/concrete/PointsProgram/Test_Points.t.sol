@@ -67,24 +67,6 @@ contract Test_Points is RoycoTestBase {
         pointsProgram.addAllowedIP(ipAddress);
     }
 
-    function test_RemoveAllowedIP() external prankModifier(programOwner) {
-        // Add CHARLIE_ADDRESS first as an allowed IP
-        pointsProgram.addAllowedIP(ipAddress);
-        assertTrue(pointsProgram.allowedIPs(ipAddress));
-
-        // Remove CHARLIE_ADDRESS from allowed IPs
-        pointsProgram.removeAllowedIP(ipAddress);
-
-        // Verify that CHARLIE_ADDRESS is removed from allowed IPs
-        assertFalse(pointsProgram.allowedIPs(ipAddress));
-    }
-
-    function test_RevertIf_NonOwnerRemovesAllowedIP() external prankModifier(BOB_ADDRESS) {
-        // Expect revert when a non-owner tries to remove an allowed IP
-        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
-        pointsProgram.removeAllowedIP(ipAddress);
-    }
-
     function test_AwardPoints() external prankModifier(address(vault)) {
         // Check if the event was emitted (Points awarded)
         vm.expectEmit(true, true, false, true, address(pointsProgram));

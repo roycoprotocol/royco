@@ -58,21 +58,6 @@ contract TestFuzz_Points is RoycoTestBase {
         pointsProgram.addAllowedIP(_ip);
     }
 
-    function testFuzz_RemoveAllowedIP(address _ip) external prankModifier(owner) {
-        pointsProgram.addAllowedIP(_ip);
-        assertTrue(pointsProgram.allowedIPs(_ip));
-
-        pointsProgram.removeAllowedIP(_ip);
-        assertFalse(pointsProgram.allowedIPs(_ip));
-    }
-
-    function testFuzz_RevertIf_NonOwnerRemovesAllowedIP(address _ip, address _nonOwner) external prankModifier(_nonOwner) {
-        vm.assume(_nonOwner != owner);
-
-        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
-        pointsProgram.removeAllowedIP(_ip);
-    }
-
     function testFuzz_AwardPoints_AllowedIP(address _to, uint256 _amount, address _ip) external prankModifier(address(orderbook)) {
         pointsProgram.addAllowedIP(_ip);
 

@@ -75,11 +75,6 @@ contract Points is Ownable {
         allowedIPs[ip] = true;
     }
 
-    /// @param ip The incentive provider address to disallow to mint points on RecipeOrderbook
-    function removeAllowedIP(address ip) external onlyOwner {
-        allowedIPs[ip] = false;
-    }
-
     error OnlyAllowedVaults();
     error OnlyRecipeOrderbook();
     error NotAllowedIP();
