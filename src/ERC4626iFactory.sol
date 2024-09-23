@@ -16,7 +16,10 @@ contract ERC4626iFactory is Ownable {
     //////////////////////////////////////////////////////////////*/
     constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) {
         _initializeOwner(msg.sender);
-        
+       
+        if (_protocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeTooHigh();
+        if (_minimumFrontendFee > MAX_MIN_REFERRAL_FEE) revert ReferralFeeTooHigh();
+
         protocolFeeRecipient = _protocolFeeRecipient;
         protocolFee = _protocolFee;
         minimumFrontendFee = _minimumFrontendFee;
