@@ -43,6 +43,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     error InvalidReward();
     error OnlyClaimant();
     error InvalidWithdrawal();
+    error InvalidIntervalDuration();
     error NotOwnerOfVaultOrApproved();
 
     /*//////////////////////////////////////////////////////////////
@@ -208,6 +209,8 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
         uint256 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp : uint256(rewardsInterval.start);
 
+        if ((newEnd - newStart) < MIN_CAMPAIGN_DURATION) revert InvalidIntervalDuration();
+
         uint256 remainingRewards = rewardsInterval.end < newStart ? 0 : rewardsInterval.rate * (rewardsInterval.end - newStart.toUint32());
         uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - newStart);
 
@@ -231,6 +234,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) external onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         if(start >= end) revert InvalidInterval();
+        if ((end - start) < MIN_CAMPAIGN_DURATION) revert InvalidIntervalDuration();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         RewardsPerToken storage rewardsPerToken = rewardToRPT[reward];
