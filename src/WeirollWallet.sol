@@ -38,7 +38,7 @@ contract WeirollWallet is Clone, VM {
         _;
     }
 
-    /// @notice The wallet cannot be locked
+    /// @notice The wallet can be locked
     modifier notLocked() {
         if (!forfeited && lockedUntil() > block.timestamp) {
             revert WalletLocked();
