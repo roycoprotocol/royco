@@ -51,6 +51,7 @@ contract ERC4626iFactory is Ownable {
 
     event ProtocolFeeUpdated(uint256 newProtocolFee);
     event ReferralFeeUpdated(uint256 newReferralFee);
+    event ProtocolFeeRecipientUpdated(address newRecipient);
     event VaultCreated(ERC4626 indexed baseTokenAddress, ERC4626i indexed incentivzedVaultAddress);
     /*//////////////////////////////////////////////////////////////
                              OWNER CONTROLS
@@ -68,6 +69,12 @@ contract ERC4626iFactory is Ownable {
         if (newMinimumReferralFee > MAX_MIN_REFERRAL_FEE) revert ReferralFeeTooHigh();
         minimumFrontendFee = newMinimumReferralFee;
         emit ReferralFeeUpdated(newMinimumReferralFee);
+    }
+
+    /// @param newRecipient The new protocol fee recipient to set for all incentivized vaults
+    function updateProtocolFeeRecipient(address newRecipient) external onlyOwner {
+        protocolFeeRecipient = newRecipient;
+        emit ProtocolFeeRecipientUpdated(newRecipient);
     }
 
     /*//////////////////////////////////////////////////////////////
