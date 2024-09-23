@@ -217,16 +217,12 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     error NotEnoughRemainingQuantity();
     /// @notice emitted when the base asset of the target vault and the funding vault do not match
     error MismatchedBaseAsset();
-    /// @notice emitted when the AP does not have sufficient assets in the funding vault, or in their wallet
-    error NotEnoughBaseAsset();
     /// @notice emitted if a market with the given ID does not exist
     error MarketDoesNotExist();
     /// @notice emitted when trying to place an order with an expiry in the past
     error CannotPlaceExpiredOrder();
     /// @notice emitted when trying to place an order with a quantity of 0
     error CannotPlaceZeroQuantityOrder();
-    /// @notice emitted when trying to fill an order with a token that has not been approved
-    error InsufficientApproval();
     /// @notice emitted when token and amount arrays are not the same length
     error ArrayLengthMismatch();
     /// @notice emitted when the frontend fee is below the minimum
