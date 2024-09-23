@@ -85,10 +85,7 @@ contract VaultOrderbook is Ownable2Step {
     /// @notice emitted when the AP tries to cancel an order that they did not create
     error NotOrderCreator();
 
-    constructor() Ownable(msg.sender) {
-        // Redundant
-        numOrders = 0;
-    }
+    constructor() Ownable(msg.sender) { }
 
     /// @dev Setting an expiry of 0 means the order never expires
     /// @param targetVault The address of the vault where the liquidity will be deposited
