@@ -46,7 +46,6 @@ contract ERC4626iFactory is Owned(msg.sender) {
     //////////////////////////////////////////////////////////////*/
     error ProtocolFeeTooHigh();
     error ReferralFeeTooHigh();
-    error VaultNotDeployed();
 
     event ProtocolFeeUpdated(uint256 newProtocolFee);
     event ReferralFeeUpdated(uint256 newReferralFee);
