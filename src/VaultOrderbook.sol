@@ -169,13 +169,6 @@ contract VaultOrderbook is Ownable2Step {
             revert NotEnoughBaseAssetToAllocate();
         }
 
-        for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
-            if (order.tokenRatesRequested[i] > ERC4626i(order.targetVault).previewRateAfterDeposit(order.tokensRequested[i], quantity)) {
-                revert OrderConditionsNotMet();
-            }
-        }
-        // If transaction has not reverted yet, the order is within its conditions
-
         // Reduce the remaining quantity of the order
         orderHashToRemainingQuantity[orderHash] -= quantity;
 
@@ -187,6 +180,13 @@ contract VaultOrderbook is Ownable2Step {
             // Withdraw from the funding vault to the orderbook
             ERC4626(order.fundingVault).withdraw(quantity, address(this), order.ap);
         }
+
+        for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
+            if (order.tokenRatesRequested[i] > ERC4626i(order.targetVault).previewRateAfterDeposit(order.tokensRequested[i], quantity)) {
+                revert OrderConditionsNotMet();
+            }
+        }
+
         ERC4626(order.targetVault).asset().safeApprove(order.targetVault, quantity);
 
         // Deposit into the target vault
