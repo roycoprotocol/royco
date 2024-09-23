@@ -795,7 +795,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         protocolFee = _protocolFee;
     }
 
-    /// @notice sets the minimum frontend fee that a market can set and is paid to w
+    /// @notice sets the minimum frontend fee that a market can set and is paid to whoever fills the order
     function setMinimumFrontendFee(uint256 _minimumFrontendFee) public onlyOwner {
         minimumFrontendFee = _minimumFrontendFee;
     }

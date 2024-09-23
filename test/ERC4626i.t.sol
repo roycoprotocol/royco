@@ -11,6 +11,7 @@ import { ERC4626i } from "src/ERC4626i.sol";
 import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+import { Ownable } from "lib/solady/src/auth/Ownable.sol";
 
 import { PointsFactory } from "src/PointsFactory.sol";
 
@@ -55,7 +56,7 @@ contract ERC4626iTest is Test {
 
     function testFactoryUpdateProtocolFees() public {
       vm.startPrank(address(0x8482));
-      vm.expectRevert("UNAUTHORIZED");
+      vm.expectRevert(Ownable.Unauthorized.selector);
       testFactory.updateProtocolFee(0.01e18);
       vm.stopPrank();
 
@@ -70,7 +71,7 @@ contract ERC4626iTest is Test {
 
     function testFactoryUpdateReferralFee() public {
       vm.startPrank(address(0x8482));
-      vm.expectRevert("UNAUTHORIZED");
+      vm.expectRevert(Ownable.Unauthorized.selector);
       testFactory.updateMinimumReferralFee(0.01e18);
       vm.stopPrank();
 
