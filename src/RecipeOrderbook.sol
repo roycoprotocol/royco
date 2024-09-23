@@ -145,11 +145,6 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         protocolFee = _protocolFee;
         protocolFeeClaimant = _owner;
         minimumFrontendFee = _minimumFrontendFee;
-
-        // Redundant
-        numAPOrders = 0;
-        numIPOrders = 0;
-        numMarkets = 0;
     }
 
     /// @custom:field marketID The ID of the newly created market
