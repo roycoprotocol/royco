@@ -212,11 +212,13 @@ contract VaultOrderbook is Ownable2Step {
         }
         bytes32 orderHash = getOrderHash(order);
 
-        if (orderHashToRemainingQuantity[orderHash] > 0) {
-            // Set the remaining quantity of the order to 0, effectively cancelling it
-            orderHashToRemainingQuantity[orderHash] = 0;
-            emit APOrderCancelled(order.orderID);
+        if (orderHashToRemainingQuantity[orderHash] == 0) {
+            revert OrderDoesNotExist();
         }
+
+        // Set the remaining quantity of the order to 0, effectively cancelling it
+        orderHashToRemainingQuantity[orderHash] = 0;
+        emit APOrderCancelled(order.orderID);
     }
 
     /// @notice calculate the hash of an order
