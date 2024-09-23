@@ -28,7 +28,7 @@ contract ERC4626iFactory is Owned(msg.sender) {
     uint256 public constant MAX_PROTOCOL_FEE = 30e18;
     uint256 public constant MAX_MIN_REFERRAL_FEE = 30e18;
 
-    address public pointsFactory;
+    address public immutable pointsFactory;
 
     address public protocolFeeRecipient;
 
