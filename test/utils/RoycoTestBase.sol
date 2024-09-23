@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../../../src/WeirollWallet.sol";
 import "../../../src/RecipeOrderbook.sol";
 import "../../../src/PointsFactory.sol";
-import "../../../src/ERC4626iFactory.sol";
+import {ERC4626iFactory} from "../../../src/ERC4626iFactory.sol";
 
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";

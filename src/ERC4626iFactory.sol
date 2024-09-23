@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.12;
 
-import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { Ownable } from "lib/solady/src/auth/Ownable.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { LibString } from "lib/solmate/src/utils/LibString.sol";
 import { ERC4626i } from "src/ERC4626i.sol";
@@ -10,11 +10,13 @@ import { PointsFactory } from "src/PointsFactory.sol";
 /// @title ERC4626iFactory
 /// @author CopyPaste, corddry
 /// @dev A factory for deploying incentivized vaults, and managing protocol or other fees
-contract ERC4626iFactory is Owned(msg.sender) {
+contract ERC4626iFactory is Ownable {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
     constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) {
+        _initializeOwner(msg.sender);
+        
         protocolFeeRecipient = _protocolFeeRecipient;
         protocolFee = _protocolFee;
         minimumFrontendFee = _minimumFrontendFee;
