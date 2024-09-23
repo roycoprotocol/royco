@@ -74,7 +74,8 @@ contract ERC4626iFactory is Owned(msg.sender) {
 
     /// @param vault The ERC4626 Vault to deploy an incentivized vault for
     function createIncentivizedVault(ERC4626 vault, address owner, string memory name, uint256 initialFrontendFee) public returns (ERC4626i incentivizedVault) {
-        incentivizedVault = new ERC4626i(owner, name, getNextSymbol(), address(vault), initialFrontendFee, pointsFactory);
+        bytes32 salt = keccak256(abi.encodePacked(address(vault), owner, name, initialFrontendFee));
+        incentivizedVault = new ERC4626i{salt: salt}(owner, name, getNextSymbol(), address(vault), initialFrontendFee, pointsFactory);
 
         incentivizedVaults.push(address(incentivizedVault));
         isVault[address(incentivizedVault)] = true;
