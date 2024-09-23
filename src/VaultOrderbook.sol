@@ -187,6 +187,7 @@ contract VaultOrderbook is Ownable2Step {
             }
         }
 
+        ERC4626(order.targetVault).asset().safeApprove(order.targetVault, 0);
         ERC4626(order.targetVault).asset().safeApprove(order.targetVault, quantity);
 
         // Deposit into the target vault
