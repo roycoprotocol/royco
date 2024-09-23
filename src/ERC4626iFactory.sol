@@ -30,8 +30,8 @@ contract ERC4626iFactory is Ownable {
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    uint256 public constant MAX_PROTOCOL_FEE = 30e18;
-    uint256 public constant MAX_MIN_REFERRAL_FEE = 30e18;
+    uint256 public constant MAX_PROTOCOL_FEE = 0.3e18;
+    uint256 public constant MAX_MIN_REFERRAL_FEE = 0.3e18;
 
     address public immutable pointsFactory;
 
