@@ -16,12 +16,12 @@ contract Points is Ownable2Step {
     /// @param _symbol The symbol for the points program
     /// @param _decimals The amount of decimals to use for accounting with points
     /// @param _owner The owner of the points program
-    /// @param _pointsFactory The PointsFactory used to create this points program
-    constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner, PointsFactory _pointsFactory) Ownable(_owner) {
+    constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner) Ownable(_owner) {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-        pointsFactory = _pointsFactory;
+        // Enforces that the Points Program deployer is a factory
+        pointsFactory = PointsFactory(msg.sender);
     }
 
     /*//////////////////////////////////////////////////////////////
