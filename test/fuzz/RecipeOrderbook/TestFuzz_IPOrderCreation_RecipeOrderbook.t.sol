@@ -32,13 +32,13 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             vm.etch(tokenAddress, address(mockToken).code);
 
             tokensOffered[i] = tokenAddress;
-            tokenAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100000e18 + 1e18;
+            tokenAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100_000e18 + 1e18;
 
             MockERC20(tokensOffered[i]).mint(_creator, tokenAmountsOffered[i]);
             MockERC20(tokensOffered[i]).approve(address(orderbook), tokenAmountsOffered[i]);
         }
 
-        _quantity = _quantity % 100000e18 + 1e6; // Bound quantity
+        _quantity = _quantity % 100_000e18 + 1e6; // Bound quantity
         _expiry = _expiry % 100_000 days + block.timestamp; // Bound expiry time
 
         // Calculate expected fees
@@ -113,6 +113,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     )
         external
     {
+        vm.assume(_pointsOwner != address(0));
         _programCount = _programCount % 5 + 1; // Limit program count between 1 and 5
         uint256 marketId = createMarket();
 
@@ -125,7 +126,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             string memory symbol = string(abi.encodePacked("PTS_", i));
 
             // Create a new Points program
-            Points points = pointsFactory.createPointsProgram(name, symbol, 18, _pointsOwner, orderbook);
+            Points points = pointsFactory.createPointsProgram(name, symbol, 18, _pointsOwner);
 
             // Allow ALICE to mint points in the Points program
             vm.startPrank(_pointsOwner);
@@ -137,7 +138,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             tokenAmountsOffered[i] = _quantity % 1000e18 + 1e6;
         }
 
-        _quantity = _quantity % 100000e18 + 1e6; // Bound quantity
+        _quantity = _quantity % 100_000e18 + 1e6; // Bound quantity
         _expiry = _expiry % 100_000 days + block.timestamp; // Bound expiry time
 
         // Calculate expected fees for each points program
@@ -204,6 +205,8 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     )
         external
     {
+        vm.assume(_pointsOwner != address(0));
+
         _tokenCount = _tokenCount % 3 + 1; // Limit token count between 1 and 3
         _programCount = _programCount % 3 + 1; // Limit program count between 1 and 3
         uint256 totalCount = _tokenCount + _programCount; // Total offered assets
@@ -223,7 +226,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             vm.etch(tokenAddress, address(mockToken).code);
 
             tokensOffered[i] = tokenAddress;
-            tokenAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100000e18 + 1e18;
+            tokenAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100_000e18 + 1e18;
 
             // Mint and approve tokens for the creator
             MockERC20(tokensOffered[i]).mint(_creator, tokenAmountsOffered[i]);
@@ -238,7 +241,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             string memory symbol = string(abi.encodePacked("PTS_", i));
 
             // Create a new Points program
-            Points points = pointsFactory.createPointsProgram(name, symbol, 18, _pointsOwner, orderbook);
+            Points points = pointsFactory.createPointsProgram(name, symbol, 18, _pointsOwner);
 
             // Allow the creator to mint points in the Points program
             vm.startPrank(_pointsOwner);
@@ -250,7 +253,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             tokenAmountsOffered[_tokenCount + i] = _quantity % 1000e18 + 1e18;
         }
 
-        _quantity = _quantity % 100000e18 + 1e6; // Bound quantity
+        _quantity = _quantity % 100_000e18 + 1e6; // Bound quantity
         _expiry = _expiry % 100_000 days + block.timestamp; // Bound expiry time
 
         // Calculate expected fees for both ERC20 tokens and Points programs
@@ -336,7 +339,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.MarketDoesNotExist.selector));
         orderbook.createIPOrder(
             _marketId, // Non-existent market ID
-            100000e18, // Quantity
+            100_000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -368,7 +371,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceExpiredOrder.selector));
         orderbook.createIPOrder(
             marketId,
-            100000e18, // Quantity
+            100_000e18, // Quantity
             _expiry, // Expired timestamp
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -387,7 +390,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.TokenDoesNotExist.selector));
         orderbook.createIPOrder(
             marketId,
-            100000e18, // Quantity
+            100_000e18, // Quantity
             1 days, // Expired timestamp
             new address[](1), // Empty tokens offered array
             new uint256[](1) // Empty token amounts array
@@ -405,7 +408,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.ArrayLengthMismatch.selector));
         orderbook.createIPOrder(
             marketId,
-            100000e18, // Quantity
+            100_000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             tokensOffered, // Mismatched arrays
             tokenAmountsOffered

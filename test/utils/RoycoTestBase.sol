@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../../../src/WeirollWallet.sol";
 import "../../../src/RecipeOrderbook.sol";
 import "../../../src/PointsFactory.sol";
-import {ERC4626iFactory} from "../../../src/ERC4626iFactory.sol";
+import { ERC4626iFactory } from "../../../src/ERC4626iFactory.sol";
 
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
@@ -19,6 +19,9 @@ contract RoycoTestBase is Test {
     Vm.Wallet internal OWNER;
     address internal OWNER_ADDRESS;
 
+    Vm.Wallet internal POINTS_FACTORY_OWNER;
+    address internal POINTS_FACTORY_OWNER_ADDRESS;
+
     Vm.Wallet internal ALICE;
     Vm.Wallet internal BOB;
     Vm.Wallet internal CHARLIE;
@@ -31,7 +34,7 @@ contract RoycoTestBase is Test {
 
     uint256 internal constant ERC4626I_FACTORY_PROTOCOL_FEE = 0.01e18;
     uint256 internal constant ERC4626I_FACTORY_MIN_FRONTEND_FEE = 0.02e18;
-    
+
     // -----------------------------------------
     // Royco Contracts
     // -----------------------------------------
@@ -70,6 +73,7 @@ contract RoycoTestBase is Test {
     function setupWallets() internal {
         // Init wallets with 1000 ETH each
         OWNER = initWallet("OWNER", 1000 ether);
+        POINTS_FACTORY_OWNER = initWallet("POINTS_FACTORY_OWNER", 1000 ether);
         ALICE = initWallet("ALICE", 1000 ether);
         BOB = initWallet("BOB", 1000 ether);
         CHARLIE = initWallet("CHARLIE", 1000 ether);
@@ -77,6 +81,7 @@ contract RoycoTestBase is Test {
 
         // Set addresses
         OWNER_ADDRESS = OWNER.addr;
+        POINTS_FACTORY_OWNER_ADDRESS = POINTS_FACTORY_OWNER.addr;
         ALICE_ADDRESS = ALICE.addr;
         BOB_ADDRESS = BOB.addr;
         CHARLIE_ADDRESS = CHARLIE.addr;
@@ -88,7 +93,7 @@ contract RoycoTestBase is Test {
         mockLiquidityToken = new MockERC20("Mock Liquidity Token", "MLT");
         mockIncentiveToken = new MockERC20("Mock Incentive Token", "MIT");
         mockVault = new MockERC4626(mockLiquidityToken);
-        pointsFactory = new PointsFactory();
+        pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER_ADDRESS);
         erc4626iFactory = new ERC4626iFactory(OWNER_ADDRESS, ERC4626I_FACTORY_PROTOCOL_FEE, ERC4626I_FACTORY_MIN_FRONTEND_FEE, address(pointsFactory));
     }
 }

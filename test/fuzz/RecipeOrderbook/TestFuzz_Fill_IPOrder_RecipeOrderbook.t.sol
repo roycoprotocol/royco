@@ -12,13 +12,16 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
     using FixedPointMathLib for uint256;
 
-    address IP_ADDRESS = ALICE_ADDRESS;
-    address FRONTEND_FEE_RECIPIENT = CHARLIE_ADDRESS;
+    address IP_ADDRESS;
+    address FRONTEND_FEE_RECIPIENT;
 
     function setUp() external {
         uint256 protocolFee = 0.01e18; // 1% protocol fee
         uint256 minimumFrontendFee = 0.001e18; // 0.1% minimum frontend fee
         setUpRecipeOrderbookTests(protocolFee, minimumFrontendFee);
+
+        IP_ADDRESS = ALICE_ADDRESS;
+        FRONTEND_FEE_RECIPIENT = CHARLIE_ADDRESS;
     }
 
     function testFuzz_DirectFill_Upfront_IPOrder_ForTokens(uint256 orderAmount, uint256 fillAmount) external {

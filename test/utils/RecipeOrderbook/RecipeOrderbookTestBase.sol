@@ -31,6 +31,10 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
             OWNER_ADDRESS, // fee claimant
             address(pointsFactory)
         );
+
+        vm.startPrank(POINTS_FACTORY_OWNER_ADDRESS);
+        pointsFactory.addRecipeOrderbook(address(orderbook));
+        vm.stopPrank();
     }
 
     function createMarket() public returns (uint256 marketId) {
@@ -124,7 +128,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
 
         vm.startPrank(_ipAddress);
         // Create a new Points program
-        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress, orderbook);
+        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress);
 
         // Allow _ipAddress to mint points in the Points program
         points.addAllowedIP(_ipAddress);
@@ -163,7 +167,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         string memory symbol = "PTS";
 
         // Create a new Points program
-        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress, orderbook);
+        points = PointsFactory(orderbook.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress);
 
         // Allow _ipAddress to mint points in the Points program
         points.addAllowedIP(_ipAddress);
