@@ -20,7 +20,7 @@ contract VaultOrderbook is Ownable2Step {
     /// @custom:field expiry The timestamp after which the order is considered expired
     /// @custom:field tokensRequested The incentive tokens requested by the AP in order to fill the order
     /// @custom:field tokenRatesRequested The desired rewards per input token per second to fill the order, measured in
-            /// wei of rewards token per wei of deposited assets per second, scaled up by 1e18 to avoid precision loss
+    /// wei of rewards token per wei of deposited assets per second, scaled up by 1e18 to avoid precision loss
     struct APOrder {
         uint256 orderID;
         address targetVault;
@@ -84,6 +84,8 @@ contract VaultOrderbook is Ownable2Step {
     error ArrayLengthMismatch();
     /// @notice emitted when the AP tries to cancel an order that they did not create
     error NotOrderCreator();
+    /// @notice emitted when the withdraw from funding vault fails on allocate
+    error FundingVaultWithdrawFailed();
 
     constructor() Ownable(msg.sender) { }
 
@@ -177,8 +179,19 @@ contract VaultOrderbook is Ownable2Step {
             // Transfer the base asset from the AP to the orderbook
             ERC4626(order.targetVault).asset().safeTransferFrom(order.ap, address(this), quantity);
         } else {
+            // Get pre-withdraw token balance of orderbook
+            uint256 preWithdrawTokenBalance = ERC4626(order.targetVault).asset().balanceOf(address(this));
+
             // Withdraw from the funding vault to the orderbook
             ERC4626(order.fundingVault).withdraw(quantity, address(this), order.ap);
+
+            // Get post-withdraw token balance of orderbook
+            uint256 postWithdrawTokenBalance = ERC4626(order.targetVault).asset().balanceOf(address(this));
+
+            // Check that quantity withdrawn from the funding vault is at least the quantity to allocate
+            if ((postWithdrawTokenBalance - preWithdrawTokenBalance) < quantity) {
+                revert FundingVaultWithdrawFailed();
+            }
         }
 
         for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
@@ -217,7 +230,8 @@ contract VaultOrderbook is Ownable2Step {
         }
 
         // Set the remaining quantity of the order to 0, effectively cancelling it
-        orderHashToRemainingQuantity[orderHash] = 0;
+        delete orderHashToRemainingQuantity[orderHash];
+        
         emit APOrderCancelled(order.orderID);
     }
 

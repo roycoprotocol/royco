@@ -239,6 +239,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     error TotalFeeTooHigh();
     /// @notice emitted when trying to fill an order that doesn't exist anymore/yet
     error CannotFillZeroQuantityOrder();
+    /// @notice emitted when funding the weiroll wallet with the market's input token failed
+    error WeirollWalletFundingFailed();
 
     // modifier to check if msg.sender is owner of a weirollWallet
     modifier isWeirollOwner(address weirollWallet) {
@@ -557,6 +559,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         } else {
             // Withdraw the tokens from the funding vault into the wallet
             ERC4626(fundingVault).withdraw(fillAmount, address(wallet), msg.sender);
+            // Ensure that the Weiroll wallet received at least fillAmount of the inputToken from the AP provided vault
+            if (ERC20(market.inputToken).balanceOf(address(wallet)) < fillAmount) {
+                revert WeirollWalletFundingFailed();
+            }
         }
 
         // Execute deposit recipe
@@ -662,6 +668,10 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         } else {
             // Withdraw the tokens from the funding vault into the wallet
             ERC4626(order.fundingVault).withdraw(fillAmount, address(wallet), order.ap);
+            // Ensure that the Weiroll wallet received at least fillAmount of the inputToken from the AP provided vault
+            if (ERC20(market.inputToken).balanceOf(address(wallet)) < fillAmount) {
+                revert WeirollWalletFundingFailed();
+            }
         }
 
         // Execute deposit recipe
@@ -820,5 +830,4 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         //Execute the withdrawal recipe
         wallet.executeWeiroll(market.withdrawRecipe.weirollCommands, market.withdrawRecipe.weirollState);
     }
-
 }
