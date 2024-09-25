@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { SafeCast } from "src/libraries/SafeCast.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
-import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -15,7 +15,7 @@ import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
-contract ERC4626i is Owned, ERC20, IERC4626 {
+contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     using SafeTransferLib for ERC20;
 
     using SafeCast for uint256;
@@ -113,7 +113,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param vault The underlying vault being incentivized 
     /// @param initialFrontendFee The initial fee set for the frontend out of WAD 
     /// @param pointsFactory The canonical factory responsible for deploying all points programs
-    constructor(address _owner, string memory name, string memory symbol, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, ERC20(vault).decimals()) Owned(_owner) {
+    constructor(address _owner, string memory name, string memory symbol, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, ERC20(vault).decimals()) Ownable(_owner) {
         
         ERC4626I_FACTORY = ERC4626iFactory(msg.sender);
         

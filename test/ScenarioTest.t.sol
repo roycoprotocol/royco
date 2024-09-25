@@ -26,8 +26,9 @@ contract ScenarioTest is Test {
   RecipeOrderbook public recipeOrderbook;
   
   WeirollWallet public weirollImplementation = new WeirollWallet();
-  PointsFactory public pointsFactory = new PointsFactory();
+  PointsFactory public pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER);
 
+  address public constant POINTS_FACTORY_OWNER = address(0xbeef);
   address public USER01 = address(0x01);
   address public USER02 = address(0x02);
 

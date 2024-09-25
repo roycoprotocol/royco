@@ -796,6 +796,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         return keccak256(abi.encode(order));
     }
 
+    /// @notice executes the withdrawal script for the provided weiroll wallet
     function _executeWithdrawalScript(address weirollWallet) internal {
         // Instantiate the WeirollWallet from the wallet address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
@@ -809,4 +810,5 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         //Execute the withdrawal recipe
         wallet.executeWeiroll(market.withdrawRecipe.weirollCommands, market.withdrawRecipe.weirollState);
     }
+
 }
