@@ -155,20 +155,16 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
     }
 
-    function test_RevertIf_cancelIPOrder_OrderExpired() external {
+    function test_RevertIf_cancelIPOrder_OrderWithIndefiniteExpiry() external {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
 
-        // Create the IP order
-        uint256 orderId = createIPOrder_WithTokens(marketId, quantity, IP_ADDRESS);
-
-        (,, uint256 expiry,,) = orderbook.orderIDToIPOrder(orderId);
-
-        vm.warp(expiry + 1 seconds);
+        // Create the IP order with indefinite expiry
+        uint256 orderId = createIPOrder_WithTokens(marketId, quantity, 0, IP_ADDRESS);
 
         vm.startPrank(IP_ADDRESS);
-        vm.expectRevert(RecipeOrderbook.OrderExpired.selector);
+        vm.expectRevert(RecipeOrderbook.OrderCannotExpire.selector);
         orderbook.cancelIPOrder(orderId);
         vm.stopPrank();
     }

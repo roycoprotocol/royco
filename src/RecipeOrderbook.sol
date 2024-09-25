@@ -213,6 +213,8 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     /// @notice emitted when trying to fill an order that has expired
     error OrderExpired();
+    /// @notice emitted when trying to cancel an order that has an indefinite expiry
+    error OrderCannotExpire();
     /// @notice emitted when trying to fill an order with more input tokens than the remaining order quantity
     error NotEnoughRemainingQuantity();
     /// @notice emitted when the base asset of the target vault and the funding vault do not match
@@ -670,15 +672,18 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
 
     /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
     function cancelAPOrder(APOrder calldata order) public {
+        // Check that the cancelling party is the order's owner
         if (order.ap != msg.sender) revert NotOwner();
 
-        // Check that the order isn't already filled, expired, or cancelled
-        if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
+        // Check that the order doesn't have an indefinite expiry (cannot be cancelled)
+        if (order.expiry == 0) revert OrderCannotExpire();
+
+        // Check that the order isn't already filled, hasn't been cancelled already, or never existed
         bytes32 orderHash = getOrderHash(order);
         if (orderHashToRemainingQuantity[orderHash] == 0) revert NotEnoughRemainingQuantity();
 
         // Zero out the remaining quantity
-        orderHashToRemainingQuantity[orderHash] = 0;
+        delete orderHashToRemainingQuantity[orderHash];
 
         emit APOrderCancelled(order.orderID);
     }
@@ -686,12 +691,17 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @notice Cancel an IP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
     function cancelIPOrder(uint256 orderID) public {
         IPOrder storage order = orderIDToIPOrder[orderID];
+
+        // Check that the cancelling party is the order's owner
         if (order.ip != msg.sender) revert NotOwner();
 
-        // Check that the order isn't already filled, expired, or cancelled
-        if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
+        // Check that the order doesn't have an indefinite expiry (cannot be cancelled)
+        if (order.expiry == 0) revert OrderCannotExpire();
+
+        // Check that the order isn't already filled, hasn't been cancelled already, or never existed
         if (order.remainingQuantity == 0) revert NotEnoughRemainingQuantity();
 
+        // Check the percentage of the order not filled to calculate incentives to return
         uint256 percentNotFilled = order.remainingQuantity.divWadDown(order.quantity);
 
         // Transfer the remaining incentives back to the IP
@@ -716,7 +726,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
             delete order.tokenToFrontendFeeAmount[token];
         }
 
-        // Delete order from mapping since its not needed anymore
+        // Delete unneeded order from mapping
         delete orderIDToIPOrder[orderID];
 
         emit IPOrderCancelled(orderID);
@@ -738,7 +748,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 ERC20(params.tokens[i]).safeTransfer(params.ip, amount);
             }
 
-            /// Delete cancelled fields of dynamic arrays and mappings
+            /// Delete fields of dynamic arrays and mappings
             delete params.tokens[i];
             delete params.amounts[i];
         }
@@ -766,7 +776,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
                 ERC20(params.tokens[i]).safeTransfer(to, params.amounts[i]);
             }
 
-            /// Delete cancelled fields of dynamic arrays and mappings
+            /// Delete fields of dynamic arrays and mappings
             delete params.tokens[i];
             delete params.amounts[i];
         }

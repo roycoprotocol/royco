@@ -83,6 +83,33 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         );
     }
 
+    function createIPOrder_WithTokens(
+        uint256 _targetMarketID,
+        uint256 _quantity,
+        uint256 _expiry,
+        address _ipAddress
+    )
+        public
+        prankModifier(_ipAddress)
+        returns (uint256 orderId)
+    {
+        address[] memory tokensOffered = new address[](1);
+        tokensOffered[0] = address(mockIncentiveToken);
+        uint256[] memory tokenAmountsOffered = new uint256[](1);
+        tokenAmountsOffered[0] = 1000e18;
+
+        mockIncentiveToken.mint(_ipAddress, 1000e18);
+        mockIncentiveToken.approve(address(orderbook), 1000e18);
+
+        orderId = orderbook.createIPOrder(
+            _targetMarketID, // Referencing the created market
+            _quantity, // Total input token amount
+            _expiry, // Expiry time
+            tokensOffered, // Incentive tokens offered
+            tokenAmountsOffered // Incentive amounts offered
+        );
+    }
+
     function createAPOrder_ForTokens(
         uint256 _targetMarketID,
         address _fundingVault,
@@ -108,6 +135,34 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         );
 
         order = RecipeOrderbook.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+    }
+
+    function createAPOrder_ForTokens(
+        uint256 _targetMarketID,
+        address _fundingVault,
+        uint256 _quantity,
+        uint256 _expiry,
+        address _apAddress
+    )
+        public
+        prankModifier(_apAddress)
+        returns (uint256 orderId, RecipeOrderbook.APOrder memory order)
+    {
+        address[] memory tokensRequested = new address[](1);
+        tokensRequested[0] = address(mockIncentiveToken);
+        uint256[] memory tokenAmountsRequested = new uint256[](1);
+        tokenAmountsRequested[0] = 1000e18;
+
+        orderId = orderbook.createAPOrder(
+            _targetMarketID, // Referencing the created market
+            _fundingVault, // Address of funding vault
+            _quantity, // Total input token amount
+            _expiry, // Expiry time
+            tokensRequested, // Incentive tokens requested
+            tokenAmountsRequested // Incentive amounts requested
+        );
+
+        order = RecipeOrderbook.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
     }
 
     function createAPOrder_ForPoints(

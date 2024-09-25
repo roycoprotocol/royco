@@ -75,16 +75,17 @@ contract Test_Cancel_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
     }
 
-    function test_RevertIf_cancelAPOrder_OrderExpired() external {
+    function test_RevertIf_cancelAPOrder_WithIndefiniteExpiry() external {
         uint256 marketId = createMarket();
         uint256 quantity = 100000e18;
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
+        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, 0, AP_ADDRESS);
 
+        // not needed but just to test that expiry doesn't apply if set to 0
         vm.warp(order.expiry + 1 seconds);
 
         vm.startPrank(AP_ADDRESS);
-        vm.expectRevert(RecipeOrderbook.OrderExpired.selector);
+        vm.expectRevert(RecipeOrderbook.OrderCannotExpire.selector);
         orderbook.cancelAPOrder(order);
         vm.stopPrank();
     }
