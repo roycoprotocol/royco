@@ -6,11 +6,12 @@ import { ERC4626 } from "../lib/solmate/src/tokens/ERC4626.sol";
 import { ERC4626i } from "src/ERC4626i.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { ReentrancyGuardTransient } from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @title VaultOrderbook
 /// @author CopyPaste, corddry, ShivaanshK
 /// @notice Orderbook Contract for Incentivizing AP/IPs to participate incentivized ERC4626 markets
-contract VaultOrderbook is Ownable2Step {
+contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     using SafeTransferLib for ERC20;
 
     /// @custom:field orderID Set to numOrders - 1 on order creation (zero-indexed)
@@ -147,7 +148,7 @@ contract VaultOrderbook is Ownable2Step {
     }
 
     /// @notice allocate a specific quantity of a given order
-    function allocateOrder(APOrder memory order, uint256 quantity) public {
+    function allocateOrder(APOrder memory order, uint256 quantity) public nonReentrant {
         // Check for order expiry, 0 expiries live forever
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
@@ -231,7 +232,7 @@ contract VaultOrderbook is Ownable2Step {
 
         // Set the remaining quantity of the order to 0, effectively cancelling it
         delete orderHashToRemainingQuantity[orderHash];
-        
+
         emit APOrderCancelled(order.orderID);
     }
 

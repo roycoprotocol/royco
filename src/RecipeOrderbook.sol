@@ -9,7 +9,7 @@ import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Points } from "src/Points.sol";
-import { ReentrancyGuard } from "lib/solmate/src/utils/ReentrancyGuard.sol";
+import { ReentrancyGuardTransient } from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 
 enum RewardStyle {
@@ -21,7 +21,7 @@ enum RewardStyle {
 /// @title RecipeOrderbook
 /// @author CopyPaste, corddry, ShivaanshK
 /// @notice Orderbook Contract for Incentivizing AP/IPs to participate in "recipes" which perform arbitrary actions
-contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
+contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -377,6 +377,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
         uint256[] memory tokenAmounts
     )
         public
+        nonReentrant
         returns (uint256 marketID)
     {
         // Check that the target market exists
@@ -462,7 +463,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public {
+    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public nonReentrant {
         // Retreive the IPOrder and WeirollMarket structs
         IPOrder storage order = orderIDToIPOrder[orderID];
         WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
@@ -572,7 +573,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
-    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public {
+    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public nonReentrant {
         if (order.expiry != 0 && block.timestamp > order.expiry) revert OrderExpired();
 
         bytes32 orderHash = getOrderHash(order);
@@ -699,7 +700,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuard {
     }
 
     /// @notice Cancel an IP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
-    function cancelIPOrder(uint256 orderID) public {
+    function cancelIPOrder(uint256 orderID) public nonReentrant {
         IPOrder storage order = orderIDToIPOrder[orderID];
 
         // Check that the cancelling party is the order's owner
