@@ -113,7 +113,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
     /// @param vault The underlying vault being incentivized 
     /// @param initialFrontendFee The initial fee set for the frontend out of WAD 
     /// @param pointsFactory The canonical factory responsible for deploying all points programs
-    constructor(address _owner, string memory name, string memory symbol, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, 18) Owned(_owner) {
+    constructor(address _owner, string memory name, string memory symbol, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, ERC20(vault).decimals()) Owned(_owner) {
         
         ERC4626I_FACTORY = ERC4626iFactory(msg.sender);
         
@@ -449,7 +449,7 @@ contract ERC4626i is Owned, ERC20, IERC4626 {
 
     /// @inheritdoc IERC4626
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
-        DEPOSIT_ASSET.safeTransferFrom(msg.sender, address(this), VAULT.convertToAssets(shares));
+        DEPOSIT_ASSET.safeTransferFrom(msg.sender, address(this), VAULT.previewMint(shares));
 
         assets = VAULT.mint(shares, address(this));
         _mint(receiver, shares);

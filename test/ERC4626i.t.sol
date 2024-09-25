@@ -202,6 +202,10 @@ contract ERC4626iTest is Test {
 
         vm.warp(start + (initialDuration / 2));  // Warp to middle of interval
 
+        if (newEnd - block.timestamp < testIncentivizedVault.MIN_CAMPAIGN_DURATION()) {
+            return;
+        }
+
         testIncentivizedVault.extendRewardsInterval(address(rewardToken1), additionalRewards, newEnd, address(this));
         
         frontendFee = additionalRewards.mulWadDown(testIncentivizedVault.frontendFee());
