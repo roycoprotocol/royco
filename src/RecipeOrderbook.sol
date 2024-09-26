@@ -452,7 +452,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
     /// @param to The address to send fees claimed to
     function claimFees(address token, address to) public {
         uint256 amount = feeClaimantToTokenToAmount[msg.sender][token];
-        feeClaimantToTokenToAmount[msg.sender][token] = 0;
+        delete feeClaimantToTokenToAmount[msg.sender][token];
         ERC20(token).safeTransfer(to, amount);
         emit FeesClaimed(msg.sender, amount);
     }

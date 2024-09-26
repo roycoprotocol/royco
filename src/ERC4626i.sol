@@ -11,7 +11,6 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IERC4626 } from "src/interfaces/IERC4626.sol";
 import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
 
-
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
@@ -50,13 +49,13 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    /// @custom:field start The start time of the rewards schedule 
+    /// @custom:field start The start time of the rewards schedule
     /// @custom:field end   The end time of the rewards schedule
     /// @custom:field rate  The reward rate split among all token holders a second in Wei
     struct RewardsInterval {
         uint32 start;
-        uint32 end; 
-        uint96 rate; 
+        uint32 end;
+        uint96 rate;
     }
 
     /// @custom:field accumulated The accumulated rewards per token for the intervaled, scaled up by WAD
@@ -66,23 +65,23 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         uint32 lastUpdated;
     }
 
-    /// @custom:field accumulated Rewards accumulated for the user until the checkpoint 
+    /// @custom:field accumulated Rewards accumulated for the user until the checkpoint
     /// @custom:field checkpoint  RewardsPerToken the last time the user rewards were updated
     struct UserRewards {
-        uint128 accumulated; 
+        uint128 accumulated;
         uint128 checkpoint;
     }
 
-    /// @dev The max amount of reward campaigns a user can be involved in 
+    /// @dev The max amount of reward campaigns a user can be involved in
     uint256 public constant MAX_REWARDS = 20;
     /// @dev The minimum duration a reward campaign must last
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
 
-    /// @dev The address of the underlying vault being incentivized 
+    /// @dev The address of the underlying vault being incentivized
     IERC4626 public immutable VAULT;
-    /// @dev The underlying asset being deposited into the vault 
+    /// @dev The underlying asset being deposited into the vault
     ERC20 public immutable DEPOSIT_ASSET;
-    /// @dev The address of the canonical points program factory 
+    /// @dev The address of the canonical points program factory
     PointsFactory public immutable POINTS_FACTORY;
     /// @dev The address of the canonical ERC4626i factory
     ERC4626iFactory public immutable ERC4626I_FACTORY;
@@ -99,7 +98,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     /// @dev maps a reward (either token or points) to the accumulator to track reward distribution
     mapping(address => RewardsPerToken) public rewardToRPT;
     /// @dev Maps a reward (either token or points) to a user, and that users accumulated rewards
-    mapping(address => mapping(address => UserRewards)) public rewardToUserToAR; 
+    mapping(address => mapping(address => UserRewards)) public rewardToUserToAR;
     /// @dev Maps a reward (either token or points) to a claimant, to accrued fees
     mapping(address => mapping(address => uint256)) public rewardToClaimantToFees;
 
@@ -108,16 +107,25 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     /// @param _owner The owner of the incentivized vault
-    /// @param name The name of the incentivized vault token 
-    /// @param symbol The symbol to use for the incentivized vault token 
-    /// @param vault The underlying vault being incentivized 
-    /// @param initialFrontendFee The initial fee set for the frontend out of WAD 
+    /// @param name The name of the incentivized vault token
+    /// @param symbol The symbol to use for the incentivized vault token
+    /// @param vault The underlying vault being incentivized
+    /// @param initialFrontendFee The initial fee set for the frontend out of WAD
     /// @param pointsFactory The canonical factory responsible for deploying all points programs
-    constructor(address _owner, string memory name, string memory symbol, address vault, uint256 initialFrontendFee, address pointsFactory) ERC20(name, symbol, ERC20(vault).decimals()) Ownable(_owner) {
-        
+    constructor(
+        address _owner,
+        string memory name,
+        string memory symbol,
+        address vault,
+        uint256 initialFrontendFee,
+        address pointsFactory
+    )
+        ERC20(name, symbol, ERC20(vault).decimals())
+        Ownable(_owner)
+    {
         ERC4626I_FACTORY = ERC4626iFactory(msg.sender);
-        
-        if(initialFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
+
+        if (initialFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
 
         frontendFee = initialFrontendFee;
         VAULT = IERC4626(vault);
@@ -156,14 +164,13 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         if (!isReward[reward]) revert InvalidReward();
 
         uint256 owed = rewardToClaimantToFees[reward][msg.sender];
-        rewardToClaimantToFees[reward][msg.sender] = 0;
+        delete rewardToClaimantToFees[reward][msg.sender];
         pushReward(reward, to, owed);
-        
         emit FeesClaimed(msg.sender, reward);
     }
 
-    /// @param reward The reward token / points program 
-    /// @param from The address to pull rewards from 
+    /// @param reward The reward token / points program
+    /// @param from The address to pull rewards from
     /// @param amount The amount of rewards to deduct from the user
     function pullReward(address reward, address from, uint256 amount) internal {
         if (POINTS_FACTORY.isPointsProgram(reward)) {
@@ -173,10 +180,14 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         }
     }
 
-    /// @param reward The reward token / points program 
-    /// @param to The address to send rewards to 
+    /// @param reward The reward token / points program
+    /// @param to The address to send rewards to
     /// @param amount The amount of rewards to deduct from the user
     function pushReward(address reward, address to, uint256 amount) internal {
+        // If owed is 0, there is nothing to claim. Check allows any loop calling pushReward to continue without reversion.
+        if (amount == 0) {
+            return;
+        }
         if (POINTS_FACTORY.isPointsProgram(reward)) {
             Points(reward).award(to, amount);
         } else {
@@ -184,16 +195,16 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         }
     }
 
-    /// @notice Extend the rewards interval for a given rewards campaign by adding more rewards 
-    /// @param reward The reward token / points campaign to extend rewards for 
-    /// @param rewardsAdded The amount of rewards to add to the campaign 
-    /// @param newEnd The end date of the rewards campaign 
+    /// @notice Extend the rewards interval for a given rewards campaign by adding more rewards
+    /// @param reward The reward token / points campaign to extend rewards for
+    /// @param rewardsAdded The amount of rewards to add to the campaign
+    /// @param newEnd The end date of the rewards campaign
     /// @param frontendFeeRecipient The address to reward for directing IP flow
     function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) public onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
-        if(newEnd <= rewardsInterval.end) revert InvalidInterval();
-        if(block.timestamp >= rewardsInterval.end) revert NoIntervalInProgress();
+        if (newEnd <= rewardsInterval.end) revert InvalidInterval();
+        if (block.timestamp >= rewardsInterval.end) revert NoIntervalInProgress();
         _updateRewardsPerToken(reward);
 
         // Calculate fees
@@ -226,14 +237,14 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     }
 
     /// @dev Set a rewards schedule
-    /// @param reward The reward token or points program to set the interval for 
-    /// @param start The start timestamp of the interval 
-    /// @param end The end timestamp of the interval 
+    /// @param reward The reward token or points program to set the interval for
+    /// @param start The start timestamp of the interval
+    /// @param end The end timestamp of the interval
     /// @param totalRewards The amount of rewards to distribute over the interval
     /// @param frontendFeeRecipient The address to reward the frontendFee
     function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) external onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
-        if(start >= end) revert InvalidInterval();
+        if (start >= end) revert InvalidInterval();
         if ((end - start) < MIN_CAMPAIGN_DURATION) revert InvalidIntervalDuration();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
@@ -300,7 +311,8 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
 
         uint256 elapsedWAD = elapsed * 1e18;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply_))).toUint128(); // The rewards per token are scaled up for precision
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply_))).toUint128(); // The
+            // rewards per token are scaled up for precision
 
         return rewardsPerTokenOut;
     }
@@ -542,5 +554,4 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     function previewRedeem(uint256 shares) external view returns (uint256 assets) {
         assets = VAULT.previewRedeem(shares);
     }
-
 }
