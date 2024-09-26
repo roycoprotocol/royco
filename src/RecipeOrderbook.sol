@@ -744,12 +744,15 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice For wallets of Forfeitable markets, an AP can call this function to forgo their rewards and unlock their wallet
-    function forfeit(address weirollWallet) public isWeirollOwner(weirollWallet) nonReentrant {
+    function forfeit(address weirollWallet, bool executeWithdrawal) public isWeirollOwner(weirollWallet) nonReentrant {
         // Forfeit the locked rewards for the weirollWallet
         WeirollWallet(payable(weirollWallet)).forfeit();
 
-        // Automatically execute the withdrawal script upon forfeiture
-        _executeWithdrawalScript(weirollWallet);
+        // Setting this option to false allows the AP to be able to forfeit in the case that the withdrawal script is reverting
+        if (executeWithdrawal) {
+            // Execute the withdrawal script if flag set to true
+            _executeWithdrawalScript(weirollWallet);
+        }
 
         // Return the locked rewards to the IP
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
@@ -764,7 +767,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
             delete params.amounts[i];
         }
 
-        // zero out the mapping
+        // Zero out the mapping
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
 
@@ -792,7 +795,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
             delete params.amounts[i];
         }
 
-        // zero out the mapping
+        // Zero out the mapping
         delete weirollWalletToLockedRewardParams[weirollWallet];
     }
 
@@ -828,7 +831,7 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
         // Get the market in order to get the withdrawal recipe
         WeirollMarket storage market = marketIDToWeirollMarket[weirollMarketId];
 
-        //Execute the withdrawal recipe
+        // Execute the withdrawal recipe
         wallet.executeWeiroll(market.withdrawRecipe.weirollCommands, market.withdrawRecipe.weirollState);
     }
 }
