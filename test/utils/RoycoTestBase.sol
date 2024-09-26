@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../../src/WeirollWallet.sol";
-import "../../../src/RecipeOrderbook.sol";
-import "../../../src/PointsFactory.sol";
-import "../../../src/ERC4626iFactory.sol";
+import "../../src/WeirollWallet.sol";
+import "../../src/RecipeOrderbook.sol";
+import "../../src/PointsFactory.sol";
+import "../../src/ERC4626iFactory.sol";
 
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
@@ -31,7 +31,7 @@ contract RoycoTestBase is Test {
 
     uint256 internal constant ERC4626I_FACTORY_PROTOCOL_FEE = 0.01e18;
     uint256 internal constant ERC4626I_FACTORY_MIN_FRONTEND_FEE = 0.02e18;
-    
+
     // -----------------------------------------
     // Royco Contracts
     // -----------------------------------------
