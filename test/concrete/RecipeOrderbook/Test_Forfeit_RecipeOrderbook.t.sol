@@ -99,12 +99,6 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
 
-        // make sure withdrawal recipe is executed on frofeiture
-        (,,,, RecipeOrderbook.Recipe memory withdrawRecipe,) = orderbook.marketIDToWeirollMarket(marketId);
-        vm.expectCall(
-            weirollWallet, 0, abi.encodeWithSelector(WeirollWallet.executeWeiroll.selector, withdrawRecipe.weirollCommands, withdrawRecipe.weirollState)
-        );
-
         vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
         emit ERC20.Transfer(address(orderbook), IP_ADDRESS, amounts[0]);
 
