@@ -77,6 +77,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
         address[] tokens;
         uint256[] amounts;
         address ip;
+        address frontendFeeRecipient;
+        bool wasIPOrder;
+        uint256 orderID; // For IP order identification
     }
 
     /// @custom:field inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
@@ -511,6 +514,9 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
             params.tokens = order.tokensOffered;
             params.amounts = new uint256[](order.tokensOffered.length);
             params.ip = order.ip;
+            params.frontendFeeRecipient = frontendFeeRecipient;
+            params.wasIPOrder = true;
+            params.orderID = orderID;
 
             for (uint256 i = 0; i < order.tokensOffered.length; ++i) {
                 address token = order.tokensOffered[i];
@@ -518,14 +524,6 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
                 // Calculate incentives to give based on percentage of fill
                 uint256 incentiveAmount = order.tokenAmountsOffered[token].mulWadDown(fillPercentage);
                 params.amounts[i] = incentiveAmount;
-
-                // Calculate fees to take based on percentage of fill
-                uint256 protocolFeeAmount = order.tokenToProtocolFeeAmount[token].mulWadDown(fillPercentage);
-                uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
-
-                // Take fees
-                accountFee(protocolFeeClaimant, order.tokensOffered[i], protocolFeeAmount, order.ip);
-                accountFee(frontendFeeRecipient, order.tokensOffered[i], frontendFeeAmount, order.ip);
             }
 
             // Set params for future payout
@@ -733,35 +731,79 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
             /// Delete cancelled fields of dynamic arrays and mappings
             delete order.tokensOffered[i];
             delete order.tokenAmountsOffered[token];
-            delete order.tokenToProtocolFeeAmount[token];
-            delete order.tokenToFrontendFeeAmount[token];
+
+            // Need these to take the fees on forfeited incentives
+            // delete order.tokenToProtocolFeeAmount[token];
+            // delete order.tokenToFrontendFeeAmount[token];
         }
 
         // Delete unneeded order from mapping
-        delete orderIDToIPOrder[orderID];
+        // Need quantity to take the fees on forfeited incentives
+        // Need expiry to check order expiry status on forfeit
+        delete orderIDToIPOrder[orderID].targetMarketID;
+        delete orderIDToIPOrder[orderID].ip;
+        delete orderIDToIPOrder[orderID].remainingQuantity;
 
         emit IPOrderCancelled(orderID);
     }
 
     /// @notice For wallets of Forfeitable markets, an AP can call this function to forgo their rewards and unlock their wallet
     function forfeit(address weirollWallet, bool executeWithdrawal) public isWeirollOwner(weirollWallet) nonReentrant {
-        // Forfeit the locked rewards for the weirollWallet
-        WeirollWallet(payable(weirollWallet)).forfeit();
+        // Instantiate a weiroll wallet for the specified address
+        WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
 
-        // Setting this option to false allows the AP to be able to forfeit in the case that the withdrawal script is reverting
+        // Forfeit wallet
+        wallet.forfeit();
+
+        // Setting this option to false allows the AP to be able to forfeit even when the withdrawal script is reverting
         if (executeWithdrawal) {
             // Execute the withdrawal script if flag set to true
             _executeWithdrawalScript(weirollWallet);
         }
 
-        // Return the locked rewards to the IP
+        // Get locked reward params
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
-        for (uint256 i = 0; i < params.tokens.length; ++i) {
-            if (!PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
-                uint256 amount = params.amounts[i];
-                ERC20(params.tokens[i]).safeTransfer(params.ip, amount);
-            }
+        uint256 filledAmount = wallet.amount();
 
+        if (params.wasIPOrder) {
+            // If IPOrder, we need to take the fee
+            IPOrder storage order = orderIDToIPOrder[params.orderID];
+            // If IP address is 0, order has been cancelled
+            if (order.ip == address(0) || order.expiry <= block.timestamp) {
+                // Cancelled or expired order - return incentives that were originally held for the AP to the IP and take the fees
+                uint256 fillPercentage = filledAmount.divWadDown(order.quantity);
+                for (uint256 i = 0; i < params.tokens.length; ++i) {
+                    address token = params.tokens[i];
+
+                    if (!PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
+                        uint256 amount = params.amounts[i];
+                        ERC20(token).safeTransfer(params.ip, amount);
+                    }
+
+                    // Calculate fees to take based on percentage of fill
+                    uint256 protocolFeeAmount = order.tokenToProtocolFeeAmount[token].mulWadDown(fillPercentage);
+                    uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
+
+                    // Take fees
+                    accountFee(protocolFeeClaimant, token, protocolFeeAmount, params.ip);
+                    accountFee(params.frontendFeeRecipient, token, frontendFeeAmount, params.ip);
+
+                    // Can't delete since there might be more forfeitable wallets still locked and need to take fees on claim
+                    // delete order.tokenToProtocolFeeAmount[token];
+                    // delete order.tokenToFrontendFeeAmount[token];
+                }
+
+                // Can't delete since there might be more forfeitable wallets still locked
+                // delete orderIDToIPOrder[params.orderID];
+            } else {
+                // If not cancelled, add the filledAmount back to remaining quantity
+                // Correct incentive amounts are still in this contract
+                order.remainingQuantity += filledAmount;
+            }
+        }
+
+        // Delete the locked reward params since wallet was forfeited
+        for (uint256 i = 0; i < params.tokens.length; ++i) {
             /// Delete fields of dynamic arrays and mappings
             delete params.tokens[i];
             delete params.amounts[i];
@@ -782,13 +824,27 @@ contract RecipeOrderbook is Ownable2Step, ReentrancyGuardTransient {
         // Get locked reward details to facilitate claim
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
 
+        IPOrder storage order = orderIDToIPOrder[params.orderID];
+
+        uint256 fillAmount = WeirollWallet(payable(weirollWallet)).amount();
+        uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
+
         for (uint256 i = 0; i < params.tokens.length; ++i) {
+            address token = params.tokens[i];
+
             // Reward incentives to AP upon wallet unlock
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(params.tokens[i])) {
-                Points(params.tokens[i]).award(to, params.amounts[i], params.ip);
+                Points(token).award(to, params.amounts[i], params.ip);
             } else {
-                ERC20(params.tokens[i]).safeTransfer(to, params.amounts[i]);
+                ERC20(token).safeTransfer(to, params.amounts[i]);
             }
+            // Calculate fees to take based on percentage of fill
+            uint256 protocolFeeAmount = order.tokenToProtocolFeeAmount[token].mulWadDown(fillPercentage);
+            uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
+
+            // Take fees
+            accountFee(protocolFeeClaimant, token, protocolFeeAmount, params.ip);
+            accountFee(params.frontendFeeRecipient, token, frontendFeeAmount, params.ip);
 
             /// Delete fields of dynamic arrays and mappings
             delete params.tokens[i];

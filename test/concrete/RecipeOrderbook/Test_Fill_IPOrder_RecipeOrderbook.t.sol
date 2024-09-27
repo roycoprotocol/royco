@@ -400,10 +400,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
         // Check the frontend fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
 
         // Check the protocol fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_DirectFill_Forfeitable_IPOrder_ForPoints() external {
@@ -425,11 +425,11 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
 
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
+        // vm.expectEmit(true, true, false, true, address(points));
+        // emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
+        // vm.expectEmit(true, true, false, true, address(points));
+        // emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
@@ -448,7 +448,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -461,6 +461,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
+
+        // Check the frontend fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_VaultFill_Forfeitable_IPOrder_ForTokens() external {
@@ -526,10 +532,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
         // Check the frontend fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
 
         // Check the protocol fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_VaultFill_Forfeitable_IPOrder_ForPoints() external {
@@ -556,11 +562,11 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
 
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
+        // vm.expectEmit(true, true, false, true, address(points));
+        // emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
+        // vm.expectEmit(true, true, false, true, address(points));
+        // emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
@@ -585,7 +591,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[4].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -598,6 +604,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
+
+        // Check the frontend fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_DirectFill_Arrear_IPOrder_ForTokens() external {
@@ -651,10 +663,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
         // Check the frontend fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
 
         // Check the protocol fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_DirectFill_Arrear_IPOrder_ForPoints() external {
@@ -676,11 +688,11 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
 
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
+        // vm.expectEmit(true, true, false, true, address(points));
+        // emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
+        // vm.expectEmit(true, true, false, true, address(points));
+        // emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
@@ -698,8 +710,8 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
-        // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        // Extract the Weiroll wallet address (the 'to' address from the Transfer event - first event in logs)
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -712,6 +724,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
+
+        // Check the frontend fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_VaultFill_Arrear_IPOrder_ForTokens() external {
@@ -777,10 +795,10 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
         // Check the frontend fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
 
         // Check the protocol fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_VaultFill_Arrear_IPOrder_ForPoints() external {
@@ -807,11 +825,11 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
             calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
 
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
+        // vm.expectEmit(true, true, false, true, address(points));
+        // emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
 
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
+        // vm.expectEmit(true, true, false, true, address(points));
+        // emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
@@ -836,7 +854,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[4].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -849,6 +867,12 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
+
+                // Check the frontend fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
+
+        // Check the protocol fee recipient received the correct fee
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_RevertIf_OrderExpired() external {

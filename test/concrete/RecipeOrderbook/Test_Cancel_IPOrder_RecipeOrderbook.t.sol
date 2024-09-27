@@ -52,8 +52,8 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(_targetMarketID, 0);
         assertEq(_ip, address(0));
-        assertEq(_expiry, 0);
-        assertEq(_quantity, 0);
+        assertGt(_expiry, 0);
+        assertEq(_quantity, quantity);
         assertEq(_remainingQuantity, 0);
 
         // Check that refund was made
@@ -107,8 +107,8 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(_targetMarketID, 0);
         assertEq(_ip, address(0));
-        assertEq(_expiry, 0);
-        assertEq(_quantity, 0);
+        assertGt(_expiry, 0);
+        assertEq(_quantity, quantity);
         assertEq(_remainingQuantity, 0);
 
         // Check that refund was made
@@ -136,8 +136,8 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(_targetMarketID, 0);
         assertEq(_ip, address(0));
-        assertEq(_expiry, 0);
-        assertEq(_quantity, 0);
+        assertGt(_expiry, 0);
+        assertEq(_quantity, quantity);
         assertEq(_remainingQuantity, 0);
     }
 

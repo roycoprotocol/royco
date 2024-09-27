@@ -60,7 +60,10 @@ contract WeirollWallet is Clone, VM {
 
     /// @notice Forfeit all rewards to get control of the wallet back
     function forfeit() public onlyOrderbook {
-        if (!isForfeitable()) {
+        if (!isForfeitable() || block.timestamp >= lockedUntil()) {
+            // Can't forfeit if:
+            // 1. Wallet not created through a forfeitable market
+            // 2. Lock time has passed and claim window has started
             revert WalletNotForfeitable();
         }
 

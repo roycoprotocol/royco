@@ -87,8 +87,8 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        // Extract the Weiroll wallet address (the 'to' address from the Transfer event - first event in logs)
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
 
@@ -131,7 +131,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.NotOwner.selector));
         vm.startPrank(IP_ADDRESS);
@@ -162,8 +162,8 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        // Extract the Weiroll wallet address (the 'to' address from the Transfer event - first event in logs)
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.WalletLocked.selector));
         vm.startPrank(AP_ADDRESS);

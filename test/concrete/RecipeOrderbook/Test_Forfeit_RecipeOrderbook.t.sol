@@ -55,9 +55,6 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
             weirollWallet, 0, abi.encodeWithSelector(WeirollWallet.executeWeiroll.selector, withdrawRecipe.weirollCommands, withdrawRecipe.weirollState)
         );
 
-        vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(address(orderbook), IP_ADDRESS, amounts[0]);
-
         vm.startPrank(AP_ADDRESS);
         orderbook.forfeit(weirollWallet, true);
         vm.stopPrank();
@@ -99,9 +96,6 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
 
-        vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
-        emit ERC20.Transfer(address(orderbook), IP_ADDRESS, amounts[0]);
-
         vm.startPrank(AP_ADDRESS);
         orderbook.forfeit(weirollWallet, false);
         vm.stopPrank();
@@ -127,7 +121,10 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         // Create a fillable IP order
-        (uint256 orderId,) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
+        (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
+
+        (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
+            calculateIPOrderExpectedIncentiveAndFrontendFee(orderId, orderAmount, fillAmount, address(points));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -136,8 +133,11 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
+        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
+
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         (,,,, RecipeOrderbook.Recipe memory withdrawRecipe,) = orderbook.marketIDToWeirollMarket(marketId);
         vm.expectCall(
@@ -147,6 +147,9 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.startPrank(AP_ADDRESS);
         orderbook.forfeit(weirollWallet, true);
         vm.stopPrank();
+
+        (,,,, uint256 newResultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(newResultingRemainingQuantity, resultingQuantity);
 
         // Check the weiroll wallet was deleted from orderbook state
         (address[] memory resultingTokens, uint256[] memory resultingAmounts, address resultingIp) = orderbook.getLockedRewardParams(weirollWallet);
@@ -169,7 +172,7 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         // Create a fillable IP order
-        (uint256 orderId,) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
+        (uint256 orderId, Points points) = createIPOrder_WithPoints(marketId, orderAmount, IP_ADDRESS);
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -178,12 +181,18 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
+        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
+
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         vm.startPrank(AP_ADDRESS);
         orderbook.forfeit(weirollWallet, false);
         vm.stopPrank();
+
+        (,,,, uint256 newResultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(newResultingRemainingQuantity, resultingQuantity);
 
         // Check the weiroll wallet was deleted from orderbook state
         (address[] memory resultingTokens, uint256[] memory resultingAmounts, address resultingIp) = orderbook.getLockedRewardParams(weirollWallet);
@@ -216,7 +225,7 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.NotOwner.selector));
         vm.startPrank(IP_ADDRESS);
