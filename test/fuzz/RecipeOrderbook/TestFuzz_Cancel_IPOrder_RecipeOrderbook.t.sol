@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
-import "../../../src/ERC4626i.sol";
+import "src/base/RecipeOrderbookBase.sol";
+import "src/ERC4626i.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
@@ -62,7 +62,7 @@ contract TestFuzz_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC20.Transfer(address(orderbook), IP_ADDRESS, incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored);
 
         vm.expectEmit(true, false, false, true, address(orderbook));
-        emit RecipeOrderbook.IPOrderCancelled(orderId);
+        emit RecipeOrderbookBase.IPOfferCancelled(orderId);
 
         vm.startPrank(IP_ADDRESS);
         orderbook.cancelIPOrder(orderId);
@@ -91,7 +91,7 @@ contract TestFuzz_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderId = createIPOrder_WithTokens(marketId, quantity, IP_ADDRESS);
 
         vm.startPrank(_nonOwner);
-        vm.expectRevert(RecipeOrderbook.NotOwner.selector);
+        vm.expectRevert(RecipeOrderbookBase.NotOwner.selector);
         orderbook.cancelIPOrder(orderId);
         vm.stopPrank();
     }
@@ -107,7 +107,7 @@ contract TestFuzz_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.warp(_blockTimestamp);
 
         vm.startPrank(IP_ADDRESS);
-        vm.expectRevert(RecipeOrderbook.OrderCannotExpire.selector);
+        vm.expectRevert(RecipeOrderbookBase.OrderCannotExpire.selector);
         orderbook.cancelIPOrder(orderId);
         vm.stopPrank();
     }

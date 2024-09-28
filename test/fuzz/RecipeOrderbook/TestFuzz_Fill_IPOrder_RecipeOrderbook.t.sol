@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
-import "../../../src/ERC4626i.sol";
+import "src/base/RecipeOrderbookBase.sol";
+import "src/ERC4626i.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
@@ -51,7 +51,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC20.Transfer(BOB_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
-        emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.IPOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -114,7 +114,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC20.Transfer(BOB_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
-        emit RecipeOrderbook.IPOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.IPOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -149,7 +149,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.warp(block.timestamp + timeDelta);
 
         // Expect revert due to order expiration
-        vm.expectRevert(RecipeOrderbook.OrderExpired.selector);
+        vm.expectRevert(RecipeOrderbookBase.OrderExpired.selector);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
     }
 
@@ -164,7 +164,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
         // Expect revert due to insufficient remaining quantity
-        vm.expectRevert(RecipeOrderbook.NotEnoughRemainingQuantity.selector);
+        vm.expectRevert(RecipeOrderbookBase.NotEnoughRemainingQuantity.selector);
         orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
     }
 
@@ -182,7 +182,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         address incorrectVault = address(new MockERC4626(mockIncentiveToken)); // Mismatched asset
 
         // Expect revert due to mismatched base asset
-        vm.expectRevert(RecipeOrderbook.MismatchedBaseAsset.selector);
+        vm.expectRevert(RecipeOrderbookBase.MismatchedBaseAsset.selector);
         orderbook.fillIPOrder(orderId, fillAmount, incorrectVault, FRONTEND_FEE_RECIPIENT);
     }
 
@@ -196,7 +196,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderId = createIPOrder_WithTokens(marketId, orderAmount, IP_ADDRESS);
 
         // Expect revert due to zero quantity fill
-        vm.expectRevert(RecipeOrderbook.CannotPlaceZeroQuantityOrder.selector);
+        vm.expectRevert(RecipeOrderbookBase.CannotPlaceZeroQuantityOrder.selector);
         orderbook.fillIPOrder(orderId, 0, address(0), FRONTEND_FEE_RECIPIENT);
     }
 }

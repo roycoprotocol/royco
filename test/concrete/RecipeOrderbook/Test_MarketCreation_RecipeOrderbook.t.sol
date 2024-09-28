@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
+import "src/base/RecipeOrderbookBase.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 
 contract Test_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
@@ -23,7 +23,7 @@ contract Test_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Check for MarketCreated event
         vm.expectEmit(true, true, false, true, address(orderbook));
-        emit RecipeOrderbook.MarketCreated(expectedMarketId, inputTokenAddress, lockupTime, frontendFee, rewardStyle);
+        emit RecipeOrderbookBase.MarketCreated(expectedMarketId, inputTokenAddress, lockupTime, frontendFee, rewardStyle);
 
         // Create market
         uint256 marketId = orderbook.createMarket(
@@ -43,8 +43,8 @@ contract Test_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             ERC20 resultingInputToken,
             uint256 resultingLockupTime,
             uint256 resultingFrontendFee,
-            RecipeOrderbook.Recipe memory depositRecipe,
-            RecipeOrderbook.Recipe memory withdrawRecipe,
+            RecipeOrderbookBase.Recipe memory depositRecipe,
+            RecipeOrderbookBase.Recipe memory withdrawRecipe,
             RewardStyle resultingRewardStyle
         ) = orderbook.marketIDToWeirollMarket(marketId);
         assertEq(address(resultingInputToken), inputTokenAddress);
@@ -58,7 +58,7 @@ contract Test_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function test_RevertIf_CreateMarketWithLowFrontendFee() external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.FrontendFeeTooLow.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.FrontendFeeTooLow.selector));
         orderbook.createMarket(
             address(mockLiquidityToken),
             1 days, // Weiroll wallet lockup time
@@ -70,7 +70,7 @@ contract Test_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function test_RevertIf_CreateMarketWithInvalidFrontendFee() external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.FrontendFeeTooLow.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.FrontendFeeTooLow.selector));
         orderbook.createMarket(
             address(mockLiquidityToken),
             1 days, // Weiroll wallet lockup time
@@ -82,7 +82,7 @@ contract Test_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function test_RevertIf_CreateMarketWithInvalidTotalFee() external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.TotalFeeTooHigh.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.TotalFeeTooHigh.selector));
         orderbook.createMarket(
             address(mockLiquidityToken),
             1 days, // Weiroll wallet lockup time

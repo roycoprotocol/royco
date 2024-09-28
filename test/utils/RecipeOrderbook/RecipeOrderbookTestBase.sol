@@ -47,7 +47,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         marketId = orderbook.createMarket(address(mockLiquidityToken), lockupTime, frontendFee, NULL_RECIPE, NULL_RECIPE, rewardStyle);
     }
 
-    function createMarket(RecipeOrderbook.Recipe memory _depositRecipe, RecipeOrderbook.Recipe memory _withdrawRecipe) public returns (uint256 marketId) {
+    function createMarket(RecipeOrderbookBase.Recipe memory _depositRecipe, RecipeOrderbookBase.Recipe memory _withdrawRecipe) public returns (uint256 marketId) {
         // Generate random market parameters within valid constraints
         uint256 lockupTime = 1 hours + (uint256(keccak256(abi.encodePacked(block.timestamp))) % 29 days); // Lockup time between 1 hour and 30 days
         uint256 frontendFee = (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 1e17) + initialMinimumFrontendFee;
@@ -118,7 +118,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
     )
         public
         prankModifier(_apAddress)
-        returns (uint256 orderId, RecipeOrderbook.APOrder memory order)
+        returns (uint256 orderId, RecipeOrderbookBase.APOrder memory order)
     {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
@@ -134,7 +134,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        order = RecipeOrderbook.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        order = RecipeOrderbookBase.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
     }
 
     function createAPOrder_ForTokens(
@@ -146,7 +146,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
     )
         public
         prankModifier(_apAddress)
-        returns (uint256 orderId, RecipeOrderbook.APOrder memory order)
+        returns (uint256 orderId, RecipeOrderbookBase.APOrder memory order)
     {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
@@ -162,7 +162,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        order = RecipeOrderbook.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
+        order = RecipeOrderbookBase.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
     }
 
     function createAPOrder_ForPoints(
@@ -173,7 +173,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         address _ipAddress
     )
         public
-        returns (uint256 orderId, RecipeOrderbook.APOrder memory order, Points points)
+        returns (uint256 orderId, RecipeOrderbookBase.APOrder memory order, Points points)
     {
         address[] memory tokensRequested = new address[](1);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
@@ -203,7 +203,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
         vm.stopPrank();
-        order = RecipeOrderbook.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        order = RecipeOrderbookBase.APOrder(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
     }
 
     function createIPOrder_WithPoints(

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
-import "../../../src/ERC4626i.sol";
+import "src/base/RecipeOrderbookBase.sol";
+import "src/ERC4626i.sol";
 
 import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
@@ -37,16 +37,17 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFeeAmount = tokenAmountsOffered[0].mulWadDown(frontendFee);
         uint256 incentiveAmount = tokenAmountsOffered[0] - protocolFeeAmount - frontendFeeAmount;
 
-        // Expect the IPOrderCreated event to be emitted
-        vm.expectEmit(true, true, true, true, address(orderbook));
-        emit RecipeOrderbook.IPOrderCreated(
+        // Expect the IPOfferCreated event to be emitted
+        vm.expectEmit(false, false, false, false, address(orderbook));
+        emit RecipeOrderbookBase.IPOfferCreated(
             0, // Expected order ID (starts at 0)
             marketId, // Market ID
-            ALICE_ADDRESS, // IP address
-            expiry, // Expiry time
+            quantity, // Total quantity
             tokensOffered, // Tokens offered
             tokenAmountsOffered, // Amounts offered
-            quantity // Total quantity
+            new uint256[](0),
+            new uint256[](0),
+            expiry // Expiry time
         );
 
         // MockERC20 should track calls to `transferFrom`
@@ -106,16 +107,16 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 frontendFeeAmount = tokenAmountsOffered[0].mulWadDown(frontendFee);
         uint256 incentiveAmount = tokenAmountsOffered[0] - protocolFeeAmount - frontendFeeAmount;
 
-        // Expect the IPOrderCreated event to be emitted
-        vm.expectEmit(true, true, true, true, address(orderbook));
-        emit RecipeOrderbook.IPOrderCreated(
+        vm.expectEmit(false, false, false, false, address(orderbook));
+        emit RecipeOrderbookBase.IPOfferCreated(
             0, // Expected order ID (starts at 0)
             marketId, // Market ID
-            ALICE_ADDRESS, // IP address
-            expiry, // Expiry time
+            quantity, // Total quantity
             tokensOffered, // Tokens offered
             tokenAmountsOffered, // Amounts offered
-            quantity // Total quantity
+            new uint256[](0),
+            new uint256[](0),
+            expiry // Expiry time
         );
 
         vm.startPrank(ALICE_ADDRESS);
@@ -146,7 +147,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function test_RevertIf_CreateIPOrderWithNonExistentMarket() external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.MarketDoesNotExist.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.MarketDoesNotExist.selector));
         orderbook.createIPOrder(
             0, // Non-existent market ID
             100_000e18, // Quantity
@@ -159,7 +160,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_RevertIf_CreateIPOrderWithExpiredOrder() external {
         vm.warp(1_231_006_505); // set block timestamp
         uint256 marketId = createMarket();
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceExpiredOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.CannotPlaceExpiredOrder.selector));
         orderbook.createIPOrder(
             marketId,
             100_000e18, // Quantity
@@ -171,7 +172,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function test_RevertIf_CreateIPOrderWithZeroQuantity() external {
         uint256 marketId = createMarket();
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceZeroQuantityOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.CannotPlaceZeroQuantityOrder.selector));
         orderbook.createIPOrder(
             marketId,
             0, // Zero quantity
@@ -189,7 +190,7 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256[] memory tokenAmountsOffered = new uint256[](2);
         tokenAmountsOffered[0] = 1000e18;
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.ArrayLengthMismatch.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.ArrayLengthMismatch.selector));
         orderbook.createIPOrder(
             marketId,
             100_000e18, // Quantity

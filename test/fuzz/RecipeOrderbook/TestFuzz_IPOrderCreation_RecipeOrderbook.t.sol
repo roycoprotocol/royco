@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
-import "../../../src/ERC4626i.sol";
+import "src/base/RecipeOrderbookBase.sol";
+import "src/ERC4626i.sol";
 
 import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
@@ -52,16 +52,16 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             incentiveAmount[i] = tokenAmountsOffered[i] - protocolFeeAmount[i] - frontendFeeAmount[i];
         }
 
-        // Expect the IPOrderCreated event to be emitted
-        vm.expectEmit(true, true, true, true, address(orderbook));
-        emit RecipeOrderbook.IPOrderCreated(
+        vm.expectEmit(true, true, true, false, address(orderbook));
+        emit RecipeOrderbookBase.IPOfferCreated(
             0, // Expected order ID (starts at 0)
             marketId, // Market ID
-            _creator, // IP address
-            _expiry, // Expiry time
+            _quantity, // Total quantity
             tokensOffered, // Tokens offered
             tokenAmountsOffered, // Amounts offered
-            _quantity // Total quantity
+            new uint256[](0),
+            new uint256[](0),
+            _expiry // Expiry time
         );
 
         // MockERC20 should track calls to `transferFrom`
@@ -153,16 +153,16 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             incentiveAmount[i] = tokenAmountsOffered[i] - protocolFeeAmount[i] - frontendFeeAmount[i];
         }
 
-        // Expect the IPOrderCreated event to be emitted
-        vm.expectEmit(true, true, true, true, address(orderbook));
-        emit RecipeOrderbook.IPOrderCreated(
+        vm.expectEmit(true, true, true, false, address(orderbook));
+        emit RecipeOrderbookBase.IPOfferCreated(
             0, // Expected order ID (starts at 0)
             marketId, // Market ID
-            _creator, // IP address
-            _expiry, // Expiry time
+            _quantity, // Total quantity
             tokensOffered, // Tokens offered
             tokenAmountsOffered, // Amounts offered
-            _quantity // Total quantity
+            new uint256[](0),
+            new uint256[](0),
+            _expiry // Expiry time
         );
 
         vm.startPrank(_creator);
@@ -268,16 +268,16 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             incentiveAmount[i] = tokenAmountsOffered[i] - protocolFeeAmount[i] - frontendFeeAmount[i];
         }
 
-        // Expect the IPOrderCreated event to be emitted
-        vm.expectEmit(true, true, true, true, address(orderbook));
-        emit RecipeOrderbook.IPOrderCreated(
+        vm.expectEmit(true, true, true, false, address(orderbook));
+        emit RecipeOrderbookBase.IPOfferCreated(
             0, // Expected order ID (starts at 0)
             marketId, // Market ID
-            _creator, // IP address
-            _expiry, // Expiry time
+            _quantity, // Total quantity
             tokensOffered, // Tokens offered
             tokenAmountsOffered, // Amounts offered
-            _quantity // Total quantity
+            new uint256[](0),
+            new uint256[](0),
+            _expiry // Expiry time
         );
 
         // MockERC20 should track calls to `transferFrom` for ERC20 tokens
@@ -336,7 +336,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function testFuzz_RevertIf_CreateIPOrderWithNonExistentMarket(uint256 _marketId) external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.MarketDoesNotExist.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.MarketDoesNotExist.selector));
         orderbook.createIPOrder(
             _marketId, // Non-existent market ID
             100_000e18, // Quantity
@@ -351,7 +351,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         uint256 marketId = createMarket();
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceZeroQuantityOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.CannotPlaceZeroQuantityOrder.selector));
         orderbook.createIPOrder(
             marketId,
             _quantity, // Zero quantity
@@ -368,7 +368,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         uint256 marketId = createMarket();
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceExpiredOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.CannotPlaceExpiredOrder.selector));
         orderbook.createIPOrder(
             marketId,
             100_000e18, // Quantity
@@ -387,7 +387,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256[] memory tokenAmountsOffered = new uint256[](2);
         tokenAmountsOffered[0] = 1000e18;
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.TokenDoesNotExist.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.TokenDoesNotExist.selector));
         orderbook.createIPOrder(
             marketId,
             100_000e18, // Quantity
@@ -405,7 +405,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         address[] memory tokensOffered = new address[](_tokensOfferedLen);
         uint256[] memory tokenAmountsOffered = new uint256[](_tokenAmountsOfferedLen);
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.ArrayLengthMismatch.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.ArrayLengthMismatch.selector));
         orderbook.createIPOrder(
             marketId,
             100_000e18, // Quantity

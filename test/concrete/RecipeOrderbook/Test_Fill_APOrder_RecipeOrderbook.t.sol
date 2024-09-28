@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
-import "../../../src/ERC4626i.sol";
+import "src/base/RecipeOrderbookBase.sol";
+import {ERC4626} from "src/RecipeOrderbook.sol";
+import "src/ERC4626i.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
@@ -33,7 +34,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -61,7 +62,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for order fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -100,7 +101,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 100_000e18; // Fill amount
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -128,7 +129,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for order fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -168,7 +169,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
-        (, RecipeOrderbook.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(0), orderAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(0), orderAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -198,7 +199,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -229,7 +230,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -264,7 +265,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for order fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -304,7 +305,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
-        (, RecipeOrderbook.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(mockVault), orderAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(mockVault), orderAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -337,7 +338,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -369,7 +370,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -394,7 +395,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for order fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -420,10 +421,10 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
         // Check the frontend fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
 
         // Check the protocol fee claimant received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_DirectFill_Forfeitable_APOrder_ForPoints() external {
@@ -434,7 +435,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
-        (, RecipeOrderbook.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(0), orderAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(0), orderAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -450,18 +451,11 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.startPrank(IP_ADDRESS);
         mockIncentiveToken.approve(address(orderbook), fillAmount);
 
-        // Expect events for awards and transfer
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
-
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
-
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -473,7 +467,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, orderAmount - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -495,7 +489,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -527,7 +521,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for order fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -553,10 +547,10 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
         // Check the frontend fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
 
         // Check the protocol fee claimant received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_VaultFill_Forfeitable_IPOrder_ForPoints() external {
@@ -567,7 +561,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
-        (, RecipeOrderbook.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(mockVault), orderAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(mockVault), orderAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -583,13 +577,6 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.stopPrank();
 
-        // Expect events for awards and transfer
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
-
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
-
         vm.expectEmit(true, false, true, false, address(mockVault));
         emit ERC4626.Withdraw(address(orderbook), address(0), AP_ADDRESS, fillAmount, 0);
 
@@ -597,7 +584,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -610,7 +597,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, orderAmount - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[3].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[1].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -632,7 +619,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -657,7 +644,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for order fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -683,10 +670,10 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
         // Check the frontend fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
 
         // Check the protocol fee claimant received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_DirectFill_Arrear_APOrder_ForPoints() external {
@@ -697,7 +684,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
-        (, RecipeOrderbook.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(0), orderAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(0), orderAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -713,18 +700,11 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.startPrank(IP_ADDRESS);
         mockIncentiveToken.approve(address(orderbook), fillAmount);
 
-        // Expect events for awards and transfer
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
-
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
-
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -736,7 +716,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, orderAmount - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[2].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -758,7 +738,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18; // Order amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -790,7 +770,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect events for order fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -816,10 +796,10 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
         // Check the frontend fee recipient received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), expectedFrontendFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
 
         // Check the protocol fee claimant received the correct fee
-        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), expectedProtocolFeeAmount);
+        assertEq(orderbook.feeClaimantToTokenToAmount(OWNER_ADDRESS, address(mockIncentiveToken)), 0);
     }
 
     function test_VaultFill_Arrear_IPOrder_ForPoints() external {
@@ -830,7 +810,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP order
-        (, RecipeOrderbook.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(mockVault), orderAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(mockVault), orderAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOrderExpectedIncentiveAndFrontendFee(orderbook.protocolFee(), frontendFee, orderAmount, fillAmount, 1000e18);
@@ -846,12 +826,6 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.stopPrank();
 
-        // Expect events for awards and transfer
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
-
-        vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
 
         vm.expectEmit(true, false, true, false, address(mockVault));
         emit ERC4626.Withdraw(address(orderbook), address(0), AP_ADDRESS, fillAmount, 0);
@@ -860,7 +834,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
-        emit RecipeOrderbook.APOrderFilled(0, 0, address(0), 0, 0, address(0));
+        emit RecipeOrderbookBase.APOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -873,7 +847,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingRemainingQuantity, orderAmount - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
-        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[3].topics[2])));
+        address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[1].topics[2])));
 
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
         assertEq(amounts[0], expectedIncentiveAmount);
@@ -895,10 +869,10 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 fillAmount = 100_001e18; // Fill amount exceeds the order amount
 
         // Create a fillable AP order
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
         // Attempt to fill more than available, expecting a revert
-        vm.expectRevert(RecipeOrderbook.NotEnoughRemainingQuantity.selector);
+        vm.expectRevert(RecipeOrderbookBase.NotEnoughRemainingQuantity.selector);
         orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
     }
 
@@ -908,10 +882,10 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18;
 
         // Create a fillable AP order
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
         // Attempt to fill with zero quantity, expecting a revert
-        vm.expectRevert(RecipeOrderbook.CannotFillZeroQuantityOrder.selector);
+        vm.expectRevert(RecipeOrderbookBase.CannotFillZeroQuantityOrder.selector);
         orderbook.fillAPOrder(order, 0, FRONTEND_FEE_RECIPIENT);
     }
 
@@ -921,13 +895,13 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 orderAmount = 100_000e18;
 
         // Create a fillable AP order with a short expiry time
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
         // Simulate the passage of time beyond the expiry
         vm.warp(block.timestamp + 31 days);
 
         // Attempt to fill an expired order, expecting a revert
-        vm.expectRevert(RecipeOrderbook.OrderExpired.selector);
+        vm.expectRevert(RecipeOrderbookBase.OrderExpired.selector);
         orderbook.fillAPOrder(order, orderAmount, FRONTEND_FEE_RECIPIENT);
     }
 }

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
+import "src/base/RecipeOrderbookBase.sol";
+import {Points} from "src/Points.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 
 contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
@@ -133,7 +134,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.NotOwner.selector));
         vm.startPrank(IP_ADDRESS);
         orderbook.claim(weirollWallet, IP_ADDRESS);
         vm.stopPrank();
@@ -165,7 +166,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - first event in logs)
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.WalletLocked.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.WalletLocked.selector));
         vm.startPrank(AP_ADDRESS);
         orderbook.claim(weirollWallet, AP_ADDRESS);
         vm.stopPrank();

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
+import "src/base/RecipeOrderbookBase.sol";
 import { MockERC4626 } from "../../mocks/MockERC4626.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 
@@ -20,20 +20,19 @@ contract Test_APOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256[] memory tokenAmountsRequested = new uint256[](1);
         tokenAmountsRequested[0] = 1000e18;
 
-        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
         uint256 expiry = block.timestamp + 1 days; // Order expires in 1 day
 
-        // Expect the APOrderCreated event to be emitted
-        vm.expectEmit(true, true, true, true, address(orderbook));
-        emit RecipeOrderbook.APOrderCreated(
+        // Expect the APOfferCreated event to be emitted
+        vm.expectEmit(true, true, true, false, address(orderbook));
+        emit RecipeOrderbookBase.APOfferCreated(
             0, // Expected order ID (starts at 0)
             marketId, // Market ID
-            ALICE_ADDRESS, // AP address
             address(0), // No funding vault
             quantity,
-            expiry, // Expiry time
             tokensRequested, // Tokens requested
-            tokenAmountsRequested // Amounts requested
+            tokenAmountsRequested, // Amounts requested,
+            expiry // Expiry time
         );
 
         // Create the AP order
@@ -51,18 +50,19 @@ contract Test_APOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(orderbook.numIPOrders(), 0); // IP orders should remain 0
 
         // Check hash is added correctly and quantity can be retrieved from mapping
-        bytes32 orderHash =
-            orderbook.getOrderHash(RecipeOrderbook.APOrder(0, marketId, ALICE_ADDRESS, address(0), quantity, expiry, tokensRequested, tokenAmountsRequested));
+        bytes32 orderHash = orderbook.getOrderHash(
+            RecipeOrderbookBase.APOrder(0, marketId, ALICE_ADDRESS, address(0), quantity, expiry, tokensRequested, tokenAmountsRequested)
+        );
 
         assertEq(orderbook.orderHashToRemainingQuantity(orderHash), quantity); // Ensure the correct quantity is stored
     }
 
     function test_RevertIf_CreateAPOrderWithNonExistentMarket() external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.MarketDoesNotExist.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.MarketDoesNotExist.selector));
         orderbook.createAPOrder(
             0, // Non-existent market ID
             address(0),
-            100000e18,
+            100_000e18,
             block.timestamp + 1 days,
             new address[](1),
             new uint256[](1)
@@ -72,11 +72,11 @@ contract Test_APOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     function test_RevertIf_CreateAPOrderWithExpiredOrder() external {
         vm.warp(1_231_006_505); // set block timestamp
         uint256 marketId = createMarket();
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceExpiredOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.CannotPlaceExpiredOrder.selector));
         orderbook.createAPOrder(
             marketId,
             address(0),
-            100000e18,
+            100_000e18,
             block.timestamp - 1 seconds, // Expired timestamp
             new address[](1),
             new uint256[](1)
@@ -85,7 +85,7 @@ contract Test_APOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function test_RevertIf_CreateAPOrderWithZeroQuantity() external {
         uint256 marketId = createMarket();
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.CannotPlaceZeroQuantityOrder.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.CannotPlaceZeroQuantityOrder.selector));
         orderbook.createAPOrder(
             marketId,
             address(0),
@@ -102,8 +102,8 @@ contract Test_APOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         address[] memory tokensRequested = new address[](1);
         uint256[] memory tokenAmountsRequested = new uint256[](2);
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.ArrayLengthMismatch.selector));
-        orderbook.createAPOrder(marketId, address(0), 100000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.ArrayLengthMismatch.selector));
+        orderbook.createAPOrder(marketId, address(0), 100_000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
     }
 
     function test_RevertIf_CreateAPOrderWithMismatchedBaseAsset() external {
@@ -116,11 +116,11 @@ contract Test_APOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
 
         MockERC4626 incentiveVault = new MockERC4626(mockIncentiveToken);
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.MismatchedBaseAsset.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.MismatchedBaseAsset.selector));
         orderbook.createAPOrder(
             marketId,
             address(incentiveVault), // Funding vault with mismatched base asset
-            100000e18,
+            100_000e18,
             block.timestamp + 1 days,
             tokensRequested,
             tokenAmountsRequested

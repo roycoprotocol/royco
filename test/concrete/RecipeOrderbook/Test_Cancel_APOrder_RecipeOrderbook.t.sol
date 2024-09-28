@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
-import "../../../src/ERC4626i.sol";
+import "src/base/RecipeOrderbookBase.sol";
+import "src/ERC4626i.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 
-contract Test_Cancel_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
+contract Test_Cancel_APOrder_RecipeOrderbookBaseBase is RecipeOrderbookTestBase {
     address AP_ADDRESS;
     address IP_ADDRESS;
 
@@ -26,13 +26,13 @@ contract Test_Cancel_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the AP order
-        (uint256 orderId, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
+        (uint256 orderId, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
 
         uint256 initialQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
         assertEq(initialQuantity, quantity);
 
         vm.expectEmit(true, false, false, true, address(orderbook));
-        emit RecipeOrderbook.APOrderCancelled(orderId);
+        emit RecipeOrderbookBase.APOfferCancelled(orderId);
 
         vm.startPrank(AP_ADDRESS);
         orderbook.cancelAPOrder(order);
@@ -47,13 +47,13 @@ contract Test_Cancel_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the AP order
-        (uint256 orderId, RecipeOrderbook.APOrder memory order,) = createAPOrder_ForPoints(marketId, address(0), quantity, AP_ADDRESS, IP_ADDRESS);
+        (uint256 orderId, RecipeOrderbookBase.APOrder memory order,) = createAPOrder_ForPoints(marketId, address(0), quantity, AP_ADDRESS, IP_ADDRESS);
 
         uint256 initialQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
         assertEq(initialQuantity, quantity);
 
         vm.expectEmit(true, false, false, true, address(orderbook));
-        emit RecipeOrderbook.APOrderCancelled(orderId);
+        emit RecipeOrderbookBase.APOfferCancelled(orderId);
 
         vm.startPrank(AP_ADDRESS);
         orderbook.cancelAPOrder(order);
@@ -67,10 +67,10 @@ contract Test_Cancel_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = createMarket();
         uint256 quantity = 100000e18;
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
 
         vm.startPrank(IP_ADDRESS);
-        vm.expectRevert(RecipeOrderbook.NotOwner.selector);
+        vm.expectRevert(RecipeOrderbookBase.NotOwner.selector);
         orderbook.cancelAPOrder(order);
         vm.stopPrank();
     }
@@ -79,13 +79,13 @@ contract Test_Cancel_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = createMarket();
         uint256 quantity = 100000e18;
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, 0, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, 0, AP_ADDRESS);
 
         // not needed but just to test that expiry doesn't apply if set to 0
         vm.warp(order.expiry + 1 seconds);
 
         vm.startPrank(AP_ADDRESS);
-        vm.expectRevert(RecipeOrderbook.OrderCannotExpire.selector);
+        vm.expectRevert(RecipeOrderbookBase.OrderCannotExpire.selector);
         orderbook.cancelAPOrder(order);
         vm.stopPrank();
     }
@@ -94,7 +94,7 @@ contract Test_Cancel_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = createMarket();
         uint256 quantity = 100000e18;
 
-        (, RecipeOrderbook.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
+        (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
 
         mockLiquidityToken.mint(AP_ADDRESS, quantity);
         vm.startPrank(AP_ADDRESS);
@@ -114,7 +114,7 @@ contract Test_Cancel_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(resultingQuantity, 0);
 
         vm.startPrank(AP_ADDRESS);
-        vm.expectRevert(RecipeOrderbook.NotEnoughRemainingQuantity.selector);
+        vm.expectRevert(RecipeOrderbookBase.NotEnoughRemainingQuantity.selector);
         orderbook.cancelAPOrder(order);
         vm.stopPrank();
     }

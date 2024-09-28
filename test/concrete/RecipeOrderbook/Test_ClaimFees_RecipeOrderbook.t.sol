@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
-import "../../../src/ERC4626i.sol";
+import "src/base/RecipeOrderbookBase.sol";
+import "src/ERC4626i.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
@@ -48,7 +48,7 @@ contract Test_ClaimFees_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC20.Transfer(address(orderbook), OWNER_ADDRESS, expectedProtocolFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(orderbook));
-        emit RecipeOrderbook.FeesClaimed(OWNER_ADDRESS, expectedProtocolFeeAmount);
+        emit RecipeOrderbookBase.FeesClaimed(OWNER_ADDRESS, address(mockIncentiveToken), expectedProtocolFeeAmount);
 
         // Protocol fee claim
         orderbook.claimFees(address(mockIncentiveToken), OWNER_ADDRESS);
@@ -64,7 +64,7 @@ contract Test_ClaimFees_RecipeOrderbook is RecipeOrderbookTestBase {
         emit ERC20.Transfer(address(orderbook), CHARLIE_ADDRESS, expectedFrontendFeeAmount);
 
         vm.expectEmit(true, true, false, true, address(orderbook));
-        emit RecipeOrderbook.FeesClaimed(CHARLIE_ADDRESS, expectedFrontendFeeAmount);
+        emit RecipeOrderbookBase.FeesClaimed(CHARLIE_ADDRESS, address(mockIncentiveToken), expectedFrontendFeeAmount);
 
         // Frontend fee claim
         orderbook.claimFees(address(mockIncentiveToken), CHARLIE_ADDRESS);

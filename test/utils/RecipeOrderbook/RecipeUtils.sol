@@ -5,10 +5,10 @@ import "../../..//src/RecipeOrderbook.sol";
 
 contract RecipeUtils {
     // Recipe with no commands and state
-    RecipeOrderbook.Recipe NULL_RECIPE = RecipeOrderbook.Recipe(new bytes32[](0), new bytes[](0));
+    RecipeOrderbook.Recipe NULL_RECIPE = RecipeOrderbookBase.Recipe(new bytes32[](0), new bytes[](0));
 
     // Helper function to generate a random Recipe
-    function generateRandomRecipe(uint256 commandCount, uint256 stateCount) public view returns (RecipeOrderbook.Recipe memory) {
+    function generateRandomRecipe(uint256 commandCount, uint256 stateCount) public view returns (RecipeOrderbookBase.Recipe memory) {
         bytes32[] memory commands = new bytes32[](commandCount);
         bytes[] memory state = new bytes[](stateCount);
 
@@ -20,7 +20,7 @@ contract RecipeUtils {
             state[i] = generateRandomState();
         }
 
-        return RecipeOrderbook.Recipe(commands, state);
+        return RecipeOrderbookBase.Recipe(commands, state);
     }
 
     // Generate a random command (bytes32) for the weiroll VM

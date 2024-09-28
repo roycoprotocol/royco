@@ -16,7 +16,7 @@ import { PointsFactory } from "src/PointsFactory.sol";
 import { Points } from "src/Points.sol";
 
 import { VaultOrderbook } from "src/VaultOrderbook.sol";
-import { RecipeOrderbook, RewardStyle } from "src/RecipeOrderbook.sol";
+import "src/RecipeOrderbook.sol";
 
 import { Test, console } from "forge-std/Test.sol";
 
@@ -46,7 +46,7 @@ contract ScenarioTest is Test {
   uint256 initialProtocolFee = 0.05e18;
   uint256 initialMinimumFrontendFee = 0.025e18;
 
-  RecipeOrderbook.Recipe NULL_RECIPE = RecipeOrderbook.Recipe(new bytes32[](0), new bytes[](0));
+  RecipeOrderbook.Recipe NULL_RECIPE = RecipeOrderbookBase.Recipe(new bytes32[](0), new bytes[](0));
 
   function setUp() public {
     baseToken = new MockERC20("Base Token", "BT");

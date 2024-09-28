@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
+import "src/base/RecipeOrderbookBase.sol";
 
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 
@@ -39,15 +39,15 @@ contract TestFuzz_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         RewardStyle rewardStyle = RewardStyle(_rewardStyle);
 
         // Generate random recipes for deposit and withdrawal
-        RecipeOrderbook.Recipe memory depositRecipe = generateRandomRecipe(_depositRecipeCommandCount, _depositRecipeStateCount);
-        RecipeOrderbook.Recipe memory withdrawRecipe = generateRandomRecipe(_withdrawalRecipeCommandCount, _withdrawalRecipeStateCount);
+        RecipeOrderbookBase.Recipe memory depositRecipe = generateRandomRecipe(_depositRecipeCommandCount, _depositRecipeStateCount);
+        RecipeOrderbookBase.Recipe memory withdrawRecipe = generateRandomRecipe(_withdrawalRecipeCommandCount, _withdrawalRecipeStateCount);
 
         // Get the expected market ID
         uint256 expectedMarketId = orderbook.numMarkets();
 
         // Check for MarketCreated event
         vm.expectEmit(true, true, false, true, address(orderbook));
-        emit RecipeOrderbook.MarketCreated(expectedMarketId, _inputTokenAddress, _lockupTime, _frontendFee, rewardStyle);
+        emit RecipeOrderbookBase.MarketCreated(expectedMarketId, _inputTokenAddress, _lockupTime, _frontendFee, rewardStyle);
 
         // Call createMarket with the fuzzed inputs
         uint256 marketId = orderbook.createMarket(_inputTokenAddress, _lockupTime, _frontendFee, depositRecipe, withdrawRecipe, rewardStyle);
@@ -61,8 +61,8 @@ contract TestFuzz_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
             ERC20 resultingInputToken,
             uint256 resultingLockupTime,
             uint256 resultingFrontendFee,
-            RecipeOrderbook.Recipe memory resultingDepositRecipe,
-            RecipeOrderbook.Recipe memory resultingWithdrawRecipe,
+            RecipeOrderbookBase.Recipe memory resultingDepositRecipe,
+            RecipeOrderbookBase.Recipe memory resultingWithdrawRecipe,
             RewardStyle resultingRewardStyle
         ) = orderbook.marketIDToWeirollMarket(marketId);
 
@@ -84,7 +84,7 @@ contract TestFuzz_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         // Protocol fee doesn't matter for this test, so set to 1%
         setUpRecipeOrderbookTests(0.01e18, _initialMinimumFrontendFee);
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.FrontendFeeTooLow.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.FrontendFeeTooLow.selector));
         orderbook.createMarket(
             address(mockLiquidityToken),
             1 days, // Weiroll wallet lockup time
@@ -99,7 +99,7 @@ contract TestFuzz_MarketCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         _frontendFee = _frontendFee % (type(uint256).max - orderbook.protocolFee()); // Bound the fee to prevent overflow and not catch the expected reversion
         vm.assume((orderbook.protocolFee() + _frontendFee) > 1e18); // Ensures total fee > 100% so we expect a reversion
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.TotalFeeTooHigh.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.TotalFeeTooHigh.selector));
         orderbook.createMarket(
             address(mockLiquidityToken),
             1 days, // Weiroll wallet lockup time

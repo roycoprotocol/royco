@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../../src/RecipeOrderbook.sol";
+import "src/base/RecipeOrderbookBase.sol";
+import {Points} from "src/RecipeOrderbook.sol";
 import { RecipeOrderbookTestBase } from "../../utils/RecipeOrderbook/RecipeOrderbookTestBase.sol";
 
 contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
@@ -50,7 +51,7 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         (, uint256[] memory amounts,) = orderbook.getLockedRewardParams(weirollWallet);
 
         // make sure withdrawal recipe is executed on frofeiture
-        (,,,, RecipeOrderbook.Recipe memory withdrawRecipe,) = orderbook.marketIDToWeirollMarket(marketId);
+        (,,,, RecipeOrderbookBase.Recipe memory withdrawRecipe,) = orderbook.marketIDToWeirollMarket(marketId);
         vm.expectCall(
             weirollWallet, 0, abi.encodeWithSelector(WeirollWallet.executeWeiroll.selector, withdrawRecipe.weirollCommands, withdrawRecipe.weirollState)
         );
@@ -139,7 +140,7 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
-        (,,,, RecipeOrderbook.Recipe memory withdrawRecipe,) = orderbook.marketIDToWeirollMarket(marketId);
+        (,,,, RecipeOrderbookBase.Recipe memory withdrawRecipe,) = orderbook.marketIDToWeirollMarket(marketId);
         vm.expectCall(
             weirollWallet, 0, abi.encodeWithSelector(WeirollWallet.executeWeiroll.selector, withdrawRecipe.weirollCommands, withdrawRecipe.weirollState)
         );
@@ -227,7 +228,7 @@ contract Test_Forfeit_RecipeOrderbook is RecipeOrderbookTestBase {
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbook.NotOwner.selector));
+        vm.expectRevert(abi.encodeWithSelector(RecipeOrderbookBase.NotOwner.selector));
         vm.startPrank(IP_ADDRESS);
         orderbook.forfeit(weirollWallet, true);
         vm.stopPrank();
