@@ -205,11 +205,13 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     event WeirollWalletForfeited(address indexed weirollWallet);
 
     /// @param weirollWallet The address of the weiroll wallet that claimed incentives
-    event WeirollWalletClaimedAllIncentives(address indexed weirollWallet);
+    /// @param recipient The address of the incentives recipient
+    event WeirollWalletClaimedAllIncentives(address indexed weirollWallet, address recipient);
 
     /// @param weirollWallet The address of the weiroll wallet that claimed incentives
-    /// @param token The token claimed by the AP
-    event WeirollWalletClaimedIncentive(address indexed weirollWallet, address indexed token);
+    /// @param recipient The address of the incentive recipient
+    /// @param incentiveToken The token claimed by the AP
+    event WeirollWalletClaimedIncentive(address indexed weirollWallet, address recipient, address incentiveToken);
 
     /// @param weirollWallet The address of the weiroll wallet that executed the withdrawal recipe
     event WeirollWalletExecutedWithdrawal(address indexed weirollWallet);

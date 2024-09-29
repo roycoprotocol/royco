@@ -557,7 +557,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         // Get locked reward params
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
         uint256 filledAmount = wallet.amount();
-        
+
         // Check if IP offer
         // If not, the forfeited amount won't be replenished to the offer
         if (params.wasIPOrder) {
@@ -571,6 +571,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                     address token = params.tokens[i];
 
                     if (!PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
+                        // Refund token incentives to IP. Points don't need to be refunded.
                         uint256 amount = params.amounts[i];
                         ERC20(token).safeTransfer(params.ip, amount);
                     }
@@ -651,7 +652,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         // Zero out the mapping
         delete weirollWalletToLockedRewardParams[weirollWallet];
 
-        emit WeirollWalletClaimedAllIncentives(weirollWallet);
+        emit WeirollWalletClaimedAllIncentives(weirollWallet, to);
     }
 
     /// @param weirollWallet The wallet to claim for
@@ -707,7 +708,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
             delete weirollWalletToLockedRewardParams[weirollWallet];
         }
 
-        emit WeirollWalletClaimedIncentive(weirollWallet, incentiveToken);
+        emit WeirollWalletClaimedIncentive(weirollWallet, to, incentiveToken);
     }
 
     /// @param fundingVault The ERC4626 vault to fund the weiroll wallet with - if address(0) fund directly via AP
