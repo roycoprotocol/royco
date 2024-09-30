@@ -272,7 +272,6 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         if (fillAmount == type(uint256).max) {
             fillAmount = order.remainingQuantity;
         }
-
         // Check that the order's base asset matches the market's base asset
         if (fundingVault != address(0) && market.inputToken != ERC4626(fundingVault).asset()) {
             revert MismatchedBaseAsset();
@@ -323,8 +322,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
 
             if (market.rewardStyle == RewardStyle.Upfront) {
                 // Take fees immediately in an Upfront market
-                accountFee(protocolFeeClaimant, order.tokensOffered[i], protocolFeesPaid[i], order.ip);
-                accountFee(frontendFeeRecipient, order.tokensOffered[i], frontendFeesPaid[i], order.ip);
+                accountFee(protocolFeeClaimant, token, protocolFeesPaid[i], order.ip);
+                accountFee(frontendFeeRecipient, token, frontendFeesPaid[i], order.ip);
 
                 // Give incentives to AP immediately in an Upfront market
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
