@@ -564,7 +564,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
             // Retrieve IP offer if it was one
             IPOrder storage order = orderIDToIPOrder[params.orderID];
             // If IP address is 0, order has been cancelled
-            if (order.ip == address(0) || order.expiry <= block.timestamp) {
+            if (order.ip == address(0) || (order.expiry != 0 && order.expiry < block.timestamp)) {
                 // Cancelled or expired order - return incentives that were originally held for the AP to the IP and take the fees
                 uint256 fillPercentage = filledAmount.divWadDown(order.quantity);
                 for (uint256 i = 0; i < params.tokens.length; ++i) {
