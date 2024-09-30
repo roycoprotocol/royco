@@ -332,14 +332,14 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     /// @param quantity The total amount of input tokens to be deposited
     /// @param expiry The timestamp after which the order is considered expired
     /// @param tokensOffered The incentive token addresses offered by the IP
-    /// @param tokenAmounts The amount of each token offered by the IP
+    /// @param tokenAmountsPaid The amount of each token paid by the IP (including fees)
     /// @return marketID ID of the newly created market
     function createIPOrder(
         uint256 targetMarketID,
         uint256 quantity,
         uint256 expiry,
         address[] memory tokensOffered,
-        uint256[] memory tokenAmounts
+        uint256[] memory tokenAmountsPaid
     )
         external
         virtual

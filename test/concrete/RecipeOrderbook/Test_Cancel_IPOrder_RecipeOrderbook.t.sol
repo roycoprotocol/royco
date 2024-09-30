@@ -57,7 +57,7 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(_remainingQuantity, 0);
 
         // Check that refund was made
-        assertEq(mockIncentiveToken.balanceOf(IP_ADDRESS), incentiveAmountStored + frontendFeeStored + protocolFeeStored);
+        assertApproxEqRel(mockIncentiveToken.balanceOf(IP_ADDRESS), incentiveAmountStored + frontendFeeStored + protocolFeeStored, 0.0001e18);
     }
 
     function test_cancelIPOrder_WithTokens_PartiallyFilled() external {
@@ -112,7 +112,7 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(_remainingQuantity, 0);
 
         // Check that refund was made
-        assertEq(mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored);
+        assertApproxEqRel(mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored, 0.0001e18);
     }
 
     function test_cancelIPOrder_WithPoints() external {

@@ -132,14 +132,14 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param quantity The total amount of input tokens to be deposited
     /// @param expiry The timestamp after which the order is considered expired
     /// @param tokensOffered The incentive token addresses offered by the IP
-    /// @param tokenAmounts The amount of each token offered by the IP
+    /// @param tokenAmountsPaid The amount of each token paid by the IP (including fees)
     /// @return marketID ID of the newly created market
     function createIPOrder(
         uint256 targetMarketID,
         uint256 quantity,
         uint256 expiry,
         address[] memory tokensOffered,
-        uint256[] memory tokenAmounts
+        uint256[] memory tokenAmountsPaid
     )
         external
         override
@@ -154,8 +154,9 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         if (expiry != 0 && expiry < block.timestamp) {
             revert CannotPlaceExpiredOrder();
         }
+
         // Check that the token and price arrays are the same length
-        if (tokensOffered.length != tokenAmounts.length) {
+        if (tokensOffered.length != tokenAmountsPaid.length) {
             revert ArrayLengthMismatch();
         }
         // Check order isn't empty
@@ -183,34 +184,40 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         for (uint256 i = 0; i < tokensOffered.length; ++i) {
             // Get the incentive token offered and amount
             address token = tokensOffered[i];
-            uint256 amount = tokenAmounts[i];
+            uint256 amount = tokenAmountsPaid[i];
+
+            // Get the frontend fee for the target weiroll market
+            uint256 frontendFee = marketIDToWeirollMarket[targetMarketID].frontendFee;
 
             // Calculate incentive and fee breakdown
-            uint256 protocolFeeAmount = amount.mulWadDown(protocolFee);
-            uint256 frontendFeeAmount = amount.mulWadDown(marketIDToWeirollMarket[targetMarketID].frontendFee);
-            uint256 incentiveAmount = amount - protocolFeeAmount - frontendFeeAmount;
+            uint256 incentiveAmount = amount.divWadDown(1e18 + protocolFee + frontendFee);
+            uint256 protocolFeeAmount = incentiveAmount.mulWadDown(protocolFee);
+            uint256 frontendFeeAmount = incentiveAmount.mulWadDown(frontendFee);
+                            
+            // Use a scoping block to avoid stack to deep errors
+            {
+                // Set appropriate amounts in order mappings
+                order.tokenAmountsOffered[token] = incentiveAmount;
+                order.tokenToProtocolFeeAmount[token] = protocolFeeAmount;
+                order.tokenToFrontendFeeAmount[token] = frontendFeeAmount;
 
-            // Set appropriate amounts in order mappings
-            order.tokenAmountsOffered[token] = incentiveAmount;
-            order.tokenToProtocolFeeAmount[token] = protocolFeeAmount;
-            order.tokenToFrontendFeeAmount[token] = frontendFeeAmount;
-
-            // Track incentive amounts and fees (per incentive) for event emission
-            incentivesAmountsToBePaid[i] = incentiveAmount;
-            protocolFeesToBePaid[i] = protocolFeeAmount;
-            frontendFeesToBePaid[i] = frontendFeeAmount;
+                // Track incentive amounts and fees (per incentive) for event emission
+                incentivesAmountsToBePaid[i] = incentiveAmount;
+                protocolFeesToBePaid[i] = protocolFeeAmount;
+                frontendFeesToBePaid[i] = frontendFeeAmount;
+            }
 
             // Check if incentive is a points program
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
                 // If it is points, make sure the IP placing the order can award points and the points factory has this orderbook as a valid RO
-                if (!Points(tokensOffered[i]).allowedIPs(ip) || !PointsFactory(POINTS_FACTORY).isRecipeOrderbook(address(this))) {
+                if (!Points(token).allowedIPs(ip) || !PointsFactory(POINTS_FACTORY).isRecipeOrderbook(address(this))) {
                     revert InvalidPointsProgram();
                 }
             } else {
                 // SafeTransferFrom does not check if a token address has any code, so we need to check it manually to prevent token deployment frontrunning
                 if (token.code.length == 0) revert TokenDoesNotExist();
                 // Transfer frontend fee + protocol fee + incentiveAmount of the incentive token to orderbook
-                ERC20(tokensOffered[i]).safeTransferFrom(ip, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
+                ERC20(token).safeTransferFrom(ip, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
             }
         }
 

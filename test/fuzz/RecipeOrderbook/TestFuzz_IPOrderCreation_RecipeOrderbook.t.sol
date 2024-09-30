@@ -46,10 +46,11 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256[] memory frontendFeeAmount = new uint256[](_tokenCount);
         uint256[] memory incentiveAmount = new uint256[](_tokenCount);
         for (uint256 i = 0; i < _tokenCount; i++) {
-            protocolFeeAmount[i] = tokenAmountsOffered[i].mulWadDown(orderbook.protocolFee());
+            // Calculate expected fees
             (,, uint256 frontendFee,,,) = orderbook.marketIDToWeirollMarket(marketId);
-            frontendFeeAmount[i] = tokenAmountsOffered[i].mulWadDown(frontendFee);
-            incentiveAmount[i] = tokenAmountsOffered[i] - protocolFeeAmount[i] - frontendFeeAmount[i];
+            incentiveAmount[i] = tokenAmountsOffered[i].divWadDown(1e18 + orderbook.protocolFee() + frontendFee);
+            protocolFeeAmount[i] = incentiveAmount[i].mulWadDown(orderbook.protocolFee());
+            frontendFeeAmount[i] = incentiveAmount[i].mulWadDown(frontendFee);
         }
 
         vm.expectEmit(true, true, true, false, address(orderbook));
@@ -147,10 +148,10 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256[] memory incentiveAmount = new uint256[](_programCount);
 
         for (uint256 i = 0; i < _programCount; i++) {
-            protocolFeeAmount[i] = tokenAmountsOffered[i].mulWadDown(orderbook.protocolFee());
             (,, uint256 frontendFee,,,) = orderbook.marketIDToWeirollMarket(marketId);
-            frontendFeeAmount[i] = tokenAmountsOffered[i].mulWadDown(frontendFee);
-            incentiveAmount[i] = tokenAmountsOffered[i] - protocolFeeAmount[i] - frontendFeeAmount[i];
+            incentiveAmount[i] = tokenAmountsOffered[i].divWadDown(1e18 + orderbook.protocolFee() + frontendFee);
+            protocolFeeAmount[i] = incentiveAmount[i].mulWadDown(orderbook.protocolFee());
+            frontendFeeAmount[i] = incentiveAmount[i].mulWadDown(frontendFee);
         }
 
         vm.expectEmit(true, true, true, false, address(orderbook));
@@ -262,10 +263,10 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256[] memory incentiveAmount = new uint256[](totalCount);
 
         for (uint256 i = 0; i < totalCount; i++) {
-            protocolFeeAmount[i] = tokenAmountsOffered[i].mulWadDown(orderbook.protocolFee());
             (,, uint256 frontendFee,,,) = orderbook.marketIDToWeirollMarket(marketId);
-            frontendFeeAmount[i] = tokenAmountsOffered[i].mulWadDown(frontendFee);
-            incentiveAmount[i] = tokenAmountsOffered[i] - protocolFeeAmount[i] - frontendFeeAmount[i];
+            incentiveAmount[i] = tokenAmountsOffered[i].divWadDown(1e18 + orderbook.protocolFee() + frontendFee);
+            protocolFeeAmount[i] = incentiveAmount[i].mulWadDown(orderbook.protocolFee());
+            frontendFeeAmount[i] = incentiveAmount[i].mulWadDown(frontendFee);
         }
 
         vm.expectEmit(true, true, true, false, address(orderbook));

@@ -32,10 +32,10 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 expiry = block.timestamp + 1 days; // Order expires in 1 day
 
         // Calculate expected fees
-        uint256 protocolFeeAmount = tokenAmountsOffered[0].mulWadDown(orderbook.protocolFee());
         (,, uint256 frontendFee,,,) = orderbook.marketIDToWeirollMarket(marketId);
-        uint256 frontendFeeAmount = tokenAmountsOffered[0].mulWadDown(frontendFee);
-        uint256 incentiveAmount = tokenAmountsOffered[0] - protocolFeeAmount - frontendFeeAmount;
+        uint256 incentiveAmount = tokenAmountsOffered[0].divWadDown(1e18 + orderbook.protocolFee() + frontendFee);
+        uint256 protocolFeeAmount = incentiveAmount.mulWadDown(orderbook.protocolFee());
+        uint256 frontendFeeAmount = incentiveAmount.mulWadDown(frontendFee);
 
         // Expect the IPOfferCreated event to be emitted
         vm.expectEmit(false, false, false, false, address(orderbook));
@@ -102,10 +102,10 @@ contract Test_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 expiry = block.timestamp + 1 days; // Order expires in 1 day
 
         // Calculate expected fees
-        uint256 protocolFeeAmount = tokenAmountsOffered[0].mulWadDown(orderbook.protocolFee());
         (,, uint256 frontendFee,,,) = orderbook.marketIDToWeirollMarket(marketId);
-        uint256 frontendFeeAmount = tokenAmountsOffered[0].mulWadDown(frontendFee);
-        uint256 incentiveAmount = tokenAmountsOffered[0] - protocolFeeAmount - frontendFeeAmount;
+        uint256 incentiveAmount = tokenAmountsOffered[0].divWadDown(1e18 + orderbook.protocolFee() + frontendFee);
+        uint256 protocolFeeAmount = incentiveAmount.mulWadDown(orderbook.protocolFee());
+        uint256 frontendFeeAmount = incentiveAmount.mulWadDown(frontendFee);
 
         vm.expectEmit(false, false, false, false, address(orderbook));
         emit RecipeOrderbookBase.IPOfferCreated(
