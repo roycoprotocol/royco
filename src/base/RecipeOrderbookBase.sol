@@ -249,6 +249,8 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     error WeirollWalletFundingFailed();
     /// @notice emitted when creating an order with an invalid points program
     error InvalidPointsProgram();
+    /// @notice emitted when APOrderFill charges a trivial incentive amount
+    error NoIncentivesPaidOnFill();
 
     // modifier to check if msg.sender is owner of a weirollWallet
     modifier isWeirollOwner(address weirollWallet) {

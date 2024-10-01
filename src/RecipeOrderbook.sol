@@ -405,14 +405,20 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         // Address of IP filling the AP offer
         address ip = msg.sender;
 
+        // Fees at the time of fill
         uint256 protocolFeeAtFulfillment = protocolFee;
         uint256 marketFrontendFee = market.frontendFee;
 
         for (uint256 i = 0; i < numIncentives; ++i) {
             // Incentive requested by AP
             address token = order.tokensRequested[i];
+
             // This is the incentive amount allocated to the AP
             uint256 incentiveAmount = order.tokenAmountsRequested[i].mulWadDown(fillPercentage);
+            // Check that the incentives allocated to the AP are non-zero 
+            if (incentiveAmount == 0) {
+                revert NoIncentivesPaidOnFill();
+            }
             incentiveAmountsPaid[i] = incentiveAmount;
 
             // Calculate fees based on fill percentage. These fees will be taken on top of the AP's requested amount.
@@ -753,11 +759,12 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
 
-        uint256 fillAmount = wallet.amount();
-
         if (params.wasIPOrder) {
             // If it was an iporder, get the order so we can retrieve the fee amounts and fill quantity
             IPOrder storage order = orderIDToIPOrder[params.orderID];
+
+            // Calculate percentage of order quantity this order fulfilled
+            uint256 fillAmount = wallet.amount();
             uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
 
             for (uint256 i = 0; i < params.tokens.length; ++i) {
