@@ -209,8 +209,14 @@ contract RecipeOrderbook is RecipeOrderbookBase {
 
             // Check if incentive is a points program
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
-                // If it is points, make sure the IP placing the order can award points and the points factory has this orderbook as a valid RO
-                if (!Points(token).allowedIPs(ip) || !PointsFactory(POINTS_FACTORY).isRecipeOrderbook(address(this))) {
+                // If points incentive, make sure:
+                // 1. The points factory used to create the program is the same as this orderbooks PF
+                // 2. IP placing the order can award points
+                // 3. Points factory has this orderbook marked as a valid RO - is redundant
+                if (
+                    POINTS_FACTORY != address(Points(token).pointsFactory()) || !Points(token).allowedIPs(ip)
+                        || !PointsFactory(POINTS_FACTORY).isRecipeOrderbook(address(this))
+                ) {
                     revert InvalidPointsProgram();
                 }
             } else {
@@ -448,8 +454,14 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                 // RewardStyle is Forfeitable or Arrear
                 // If incentives will be paid out later, only handle the token case. Points will be awarded on claim.
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
-                    // If it is points, make sure the IP placing the order can award points and the points factory has this orderbook marked as valid
-                    if (!Points(token).allowedIPs(ip) || !PointsFactory(POINTS_FACTORY).isRecipeOrderbook(address(this))) {
+                    // If points incentive, make sure:
+                    // 1. The points factory used to create the program is the same as this orderbooks PF
+                    // 2. IP placing the order can award points
+                    // 3. Points factory has this orderbook marked as a valid RO - is redundant
+                    if (
+                        POINTS_FACTORY != address(Points(token).pointsFactory()) || !Points(token).allowedIPs(ip)
+                            || !PointsFactory(POINTS_FACTORY).isRecipeOrderbook(address(this))
+                    ) {
                         revert InvalidPointsProgram();
                     }
                 } else {
