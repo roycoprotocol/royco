@@ -197,9 +197,9 @@ contract RecipeOrderbook is RecipeOrderbookBase {
             // Use a scoping block to avoid stack to deep errors
             {
                 // Set appropriate amounts in order mappings
-                order.tokenAmountsOffered[token] = incentiveAmount;
-                order.tokenToProtocolFeeAmount[token] = protocolFeeAmount;
-                order.tokenToFrontendFeeAmount[token] = frontendFeeAmount;
+                order.tokenAmountsOffered[token] += incentiveAmount;
+                order.tokenToProtocolFeeAmount[token] += protocolFeeAmount;
+                order.tokenToFrontendFeeAmount[token] += frontendFeeAmount;
 
                 // Track incentive amounts and fees (per incentive) for event emission
                 incentivesAmountsToBePaid[i] = incentiveAmount;
