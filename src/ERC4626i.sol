@@ -61,15 +61,15 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     /// @custom:field accumulated The accumulated rewards per token for the intervaled, scaled up by WAD
     /// @custom:field lastUpdated THe last time rewards per token (accumulated) was updated
     struct RewardsPerToken {
-        uint128 accumulated;
+        uint256 accumulated;
         uint32 lastUpdated;
     }
 
     /// @custom:field accumulated Rewards accumulated for the user until the checkpoint
     /// @custom:field checkpoint  RewardsPerToken the last time the user rewards were updated
     struct UserRewards {
-        uint128 accumulated;
-        uint128 checkpoint;
+        uint256 accumulated;
+        uint256 checkpoint;
     }
 
     /// @dev The max amount of reward campaigns a user can be involved in
@@ -319,7 +319,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
 
         uint256 elapsedWAD = elapsed * 1e18;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply_))).toUint128(); // The
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply_))); // The
             // rewards per token are scaled up for precision
 
         return rewardsPerTokenOut;
