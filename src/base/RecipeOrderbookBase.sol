@@ -115,6 +115,7 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
         address frontendFeeRecipient;
         bool wasIPOrder;
         uint256 orderID; // For IP order identification
+        uint256 protocolFeeAtFulfillment; // Used to keep track of protocol fee charged on fill for AP orders.
     }
 
     /// @custom:field marketID The ID of the newly created market

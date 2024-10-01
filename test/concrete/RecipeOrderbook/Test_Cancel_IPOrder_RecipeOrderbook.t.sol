@@ -48,6 +48,116 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         orderbook.cancelIPOrder(orderId);
         vm.stopPrank();
 
+        // Check if order was deleted from mapping on upfront
+        (uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(_targetMarketID, 0);
+        assertEq(_ip, address(0));
+        assertEq(_expiry, 0);
+        assertEq(_quantity, 0);
+        assertEq(_remainingQuantity, 0);
+
+        // Check that refund was made
+        assertApproxEqRel(mockIncentiveToken.balanceOf(IP_ADDRESS), incentiveAmountStored + frontendFeeStored + protocolFeeStored, 0.0001e18);
+    }
+
+    function test_cancelIPOrder_WithTokens_PartiallyFilled() external {
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+
+        uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
+
+        // Create the IP order
+        uint256 orderId = createIPOrder_WithTokens(marketId, quantity, IP_ADDRESS);
+        (,,,, uint256 initialRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(initialRemainingQuantity, quantity);
+
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, quantity);
+        vm.startPrank(AP_ADDRESS);
+        mockLiquidityToken.approve(address(orderbook), quantity);
+        vm.stopPrank();
+
+        vm.startPrank(AP_ADDRESS);
+        // fill 50% of the order
+        orderbook.fillIPOrder(orderId, quantity.mulWadDown(5e17), address(0), DAN_ADDRESS);
+        vm.stopPrank();
+
+        (,,,, uint256 remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+
+        // Calculate amount to be refunded
+        uint256 protocolFeeStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, address(mockIncentiveToken));
+        uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, address(mockIncentiveToken));
+        uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, address(mockIncentiveToken));
+
+        uint256 percentNotFilled = remainingQuantity.divWadDown(quantity);
+        uint256 unchargedFrontendFeeAmount = frontendFeeStored.mulWadDown(percentNotFilled);
+        uint256 unchargedProtocolFeeStored = protocolFeeStored.mulWadDown(percentNotFilled);
+        uint256 incentivesRemaining = incentiveAmountStored.mulWadDown(percentNotFilled);
+
+        vm.expectEmit(true, true, true, true, address(mockIncentiveToken));
+        emit ERC20.Transfer(address(orderbook), IP_ADDRESS, incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored);
+
+        vm.expectEmit(true, false, false, true, address(orderbook));
+        emit RecipeOrderbookBase.IPOfferCancelled(orderId);
+
+        vm.startPrank(IP_ADDRESS);
+        orderbook.cancelIPOrder(orderId);
+        vm.stopPrank();
+
+        // Check if order was deleted from mapping
+        (uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(_targetMarketID, 0);
+        assertEq(_ip, address(0));
+        assertEq(_expiry, 0);
+        assertEq(_quantity, 0);
+        assertEq(_remainingQuantity, 0);
+
+        // Check that refund was made
+        assertApproxEqRel(mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored, 0.0001e18);
+    }
+
+    function test_cancelIPOrder_WithTokens_Arrear_PartiallyFilled() external {
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
+
+        uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
+
+        // Create the IP order
+        uint256 orderId = createIPOrder_WithTokens(marketId, quantity, IP_ADDRESS);
+        (,,,, uint256 initialRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+        assertEq(initialRemainingQuantity, quantity);
+
+        // Mint liquidity tokens to the AP to fill the order
+        mockLiquidityToken.mint(AP_ADDRESS, quantity);
+        vm.startPrank(AP_ADDRESS);
+        mockLiquidityToken.approve(address(orderbook), quantity);
+        vm.stopPrank();
+
+        vm.startPrank(AP_ADDRESS);
+        // fill 50% of the order
+        orderbook.fillIPOrder(orderId, quantity.mulWadDown(5e17), address(0), DAN_ADDRESS);
+        vm.stopPrank();
+
+        (,,,, uint256 remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
+
+        // Calculate amount to be refunded
+        uint256 protocolFeeStored = orderbook.getTokenToProtocolFeeAmountForIPOrder(orderId, address(mockIncentiveToken));
+        uint256 frontendFeeStored = orderbook.getTokenToFrontendFeeAmountForIPOrder(orderId, address(mockIncentiveToken));
+        uint256 incentiveAmountStored = orderbook.getTokenAmountsOfferedForIPOrder(orderId, address(mockIncentiveToken));
+
+        uint256 percentNotFilled = remainingQuantity.divWadDown(quantity);
+        uint256 unchargedFrontendFeeAmount = frontendFeeStored.mulWadDown(percentNotFilled);
+        uint256 unchargedProtocolFeeStored = protocolFeeStored.mulWadDown(percentNotFilled);
+        uint256 incentivesRemaining = incentiveAmountStored.mulWadDown(percentNotFilled);
+
+        vm.expectEmit(true, true, true, true, address(mockIncentiveToken));
+        emit ERC20.Transfer(address(orderbook), IP_ADDRESS, incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored);
+
+        vm.expectEmit(true, false, false, true, address(orderbook));
+        emit RecipeOrderbookBase.IPOfferCancelled(orderId);
+
+        vm.startPrank(IP_ADDRESS);
+        orderbook.cancelIPOrder(orderId);
+        vm.stopPrank();
+
         // Check if order was deleted from mapping
         (uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(_targetMarketID, 0);
@@ -57,11 +167,11 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(_remainingQuantity, 0);
 
         // Check that refund was made
-        assertApproxEqRel(mockIncentiveToken.balanceOf(IP_ADDRESS), incentiveAmountStored + frontendFeeStored + protocolFeeStored, 0.0001e18);
+        assertApproxEqRel(mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored, 0.0001e18);
     }
 
-    function test_cancelIPOrder_WithTokens_PartiallyFilled() external {
-        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+    function test_cancelIPOrder_WithTokens_Forfeitable_PartiallyFilled() external {
+        uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
 
@@ -136,8 +246,8 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         (uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
         assertEq(_targetMarketID, 0);
         assertEq(_ip, address(0));
-        assertGt(_expiry, 0);
-        assertEq(_quantity, quantity);
+        assertEq(_expiry, 0);
+        assertEq(_quantity, 0);
         assertEq(_remainingQuantity, 0);
     }
 
