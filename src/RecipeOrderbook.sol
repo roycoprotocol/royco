@@ -212,11 +212,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                 // If points incentive, make sure:
                 // 1. The points factory used to create the program is the same as this orderbooks PF
                 // 2. IP placing the order can award points
-                // 3. Points factory has this orderbook marked as a valid RO - is redundant
-                if (
-                    POINTS_FACTORY != address(Points(token).pointsFactory()) || !Points(token).allowedIPs(ip)
-                        || !PointsFactory(POINTS_FACTORY).isRecipeOrderbook(address(this))
-                ) {
+                // 3. Points factory has this orderbook marked as a valid RO - can be assumed true
+                if (POINTS_FACTORY != address(Points(token).pointsFactory()) || !Points(token).allowedIPs(ip)) {
                     revert InvalidPointsProgram();
                 }
             } else {
@@ -457,11 +454,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                     // If points incentive, make sure:
                     // 1. The points factory used to create the program is the same as this orderbooks PF
                     // 2. IP placing the order can award points
-                    // 3. Points factory has this orderbook marked as a valid RO - is redundant
-                    if (
-                        POINTS_FACTORY != address(Points(token).pointsFactory()) || !Points(token).allowedIPs(ip)
-                            || !PointsFactory(POINTS_FACTORY).isRecipeOrderbook(address(this))
-                    ) {
+                    // 3. Points factory has this orderbook marked as a valid RO - can be assumed true
+                    if (POINTS_FACTORY != address(Points(token).pointsFactory()) || !Points(token).allowedIPs(ip)) {
                         revert InvalidPointsProgram();
                     }
                 } else {
