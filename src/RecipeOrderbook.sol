@@ -415,7 +415,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
 
             // This is the incentive amount allocated to the AP
             uint256 incentiveAmount = order.tokenAmountsRequested[i].mulWadDown(fillPercentage);
-            // Check that the incentives allocated to the AP are non-zero 
+            // Check that the incentives allocated to the AP are non-zero
             if (incentiveAmount == 0) {
                 revert NoIncentivesPaidOnFill();
             }
@@ -699,6 +699,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                     ERC20(token).safeTransfer(to, params.amounts[i]);
                 }
 
+                emit WeirollWalletClaimedIncentive(weirollWallet, to, token);
+
                 /// Delete fields of dynamic arrays and mappings
                 delete params.tokens[i];
                 delete params.amounts[i];
@@ -727,6 +729,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                     ERC20(params.tokens[i]).safeTransfer(to, params.amounts[i]);
                 }
 
+                emit WeirollWalletClaimedIncentive(weirollWallet, to, token);
+
                 /// Delete fields of dynamic arrays and mappings
                 delete params.tokens[i];
                 delete params.amounts[i];
@@ -735,8 +739,6 @@ contract RecipeOrderbook is RecipeOrderbookBase {
 
         // Zero out the mapping
         delete weirollWalletToLockedRewardParams[weirollWallet];
-
-        emit WeirollWalletClaimedAllIncentives(weirollWallet, to);
     }
 
     /// @param weirollWallet The wallet to claim for
@@ -784,11 +786,11 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                     accountFee(protocolFeeClaimant, token, protocolFeeAmount, params.ip);
                     accountFee(params.frontendFeeRecipient, token, frontendFeeAmount, params.ip);
 
+                    emit WeirollWalletClaimedIncentive(weirollWallet, to, incentiveToken);
+
                     /// Delete fields of dynamic arrays and mappings once claimed
                     delete params.tokens[i];
                     delete params.amounts[i];
-
-                    emit WeirollWalletClaimedIncentive(weirollWallet, to, incentiveToken);
 
                     // Return upon claiming the incentive
                     return;
@@ -819,11 +821,11 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                         ERC20(params.tokens[i]).safeTransfer(to, amount);
                     }
 
+                    emit WeirollWalletClaimedIncentive(weirollWallet, to, incentiveToken);
+
                     /// Delete fields of dynamic arrays and mappings
                     delete params.tokens[i];
                     delete params.amounts[i];
-
-                    emit WeirollWalletClaimedIncentive(weirollWallet, to, incentiveToken);
 
                     // Return upon claiming the incentive
                     return;
