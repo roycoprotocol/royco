@@ -137,8 +137,16 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
 
     /// @param rewardsToken The new reward token / points program to be used as incentives
     function addRewardsToken(address rewardsToken) public onlyOwner {
+        // Check if max rewards offered limit has been reached
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
+
+        // Check if reward has already been added to the incentivized vault
         if (isReward[rewardsToken]) revert DuplicateRewardToken();
+
+        // Check if vault is authorized to award points if reward is a points program
+        if (POINTS_FACTORY.isPointsProgram(rewardsToken) && !Points(rewardsToken).isAllowedVault(address(this))) {
+            revert VaultNotAuthorizedToRewardPoints();
+        }
         rewards.push(rewardsToken);
         isReward[rewardsToken] = true;
         emit RewardsTokenAdded(rewardsToken);
