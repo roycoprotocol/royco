@@ -375,7 +375,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         }
     }
 
-    /// @dev Fill an AP order. IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function.
+    /// @dev Fill an AP order
+    /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function.
     /// @param order The AP order to fill
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
@@ -903,6 +904,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         address frontendFeeRecipient
     )
         internal
+        override
     {
         // msg.sender will always be AP
         // Take fees immediately in an Upfront market

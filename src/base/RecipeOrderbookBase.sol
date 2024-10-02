@@ -362,18 +362,24 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     /// @param frontendFeeRecipient The address that will receive the frontend fee
     function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public virtual;
 
-    function fillIPOrders(
-        uint256[] calldata orderIDs,
-        uint256[] calldata fillAmounts,
-        address fundingVault,
-        address frontendFeeRecipient
-    )
-        external
-        virtual;
+    /// @notice Filling multiple IP orders
+    /// @param orderIDs The IDs of the IP orders to fill
+    /// @param fillAmounts The amounts of input tokens to fill the corresponding orders with
+    /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
+    /// @param frontendFeeRecipient The address that will receive the frontend fee
+    function fillIPOrders(uint256[] calldata orderIDs, uint256[] calldata fillAmounts, address fundingVault, address frontendFeeRecipient) external virtual;
 
-    /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
+    /// @dev Fill an AP order
+    /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function.
+    /// @param order The AP order to fill
+    /// @param fillAmount The amount of input tokens to fill the order with
+    /// @param frontendFeeRecipient The address that will receive the frontend fee
     function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public virtual;
 
+    /// @dev Fill multiple AP orders
+    /// @param orders The AP orders to fill
+    /// @param fillAmounts The amount of input tokens to fill the corresponding order with
+    /// @param frontendFeeRecipient The address that will receive the frontend fee
     function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external virtual;
 
     /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
@@ -424,6 +430,27 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     /// @param amount The amount of market input token to fund the weiroll wallet with
     /// @param weirollWallet The weiroll wallet to fund with the specified amount of the market input token
     function _fundWeirollWallet(address fundingVault, address ap, ERC20 token, uint256 amount, address weirollWallet) internal virtual;
+
+    /**
+     * @notice Handles the transfer and accounting of fees incentives for an IP order fill in an Upfront market.
+     * @dev This function is called internally by `fillIPOrder` to manage the fees and incentives for an Upfront market.
+     * @param token The address of the incentive token.
+     * @param incentiveAmount The amount of the incentive token to be transferred.
+     * @param protocolFeeAmount The protocol fee amount taken at fulfillment.
+     * @param frontendFeeAmount The frontend fee amount taken for this market.
+     * @param ip The address of the action provider.
+     * @param frontendFeeRecipient The address that will receive the frontend fee.
+     */
+    function _pushIncentivesOnIPFill(
+        address token,
+        uint256 incentiveAmount,
+        uint256 protocolFeeAmount,
+        uint256 frontendFeeAmount,
+        address ip,
+        address frontendFeeRecipient
+    )
+        internal
+        virtual;
 
     /**
      * @notice Handles the transfer and accounting of incentives for an AP order fill.
