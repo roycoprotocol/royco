@@ -87,8 +87,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         address fundingVault,
         uint256 quantity,
         uint256 expiry,
-        address[] memory tokensRequested,
-        uint256[] memory tokenAmountsRequested
+        address[] calldata tokensRequested,
+        uint256[] calldata tokenAmountsRequested
     )
         external
         override
@@ -138,8 +138,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         uint256 targetMarketID,
         uint256 quantity,
         uint256 expiry,
-        address[] memory tokensOffered,
-        uint256[] memory tokenAmountsPaid
+        address[] calldata tokensOffered,
+        uint256[] calldata tokenAmountsPaid
     )
         external
         override

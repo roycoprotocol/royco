@@ -318,8 +318,8 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
         address fundingVault,
         uint256 quantity,
         uint256 expiry,
-        address[] memory tokensRequested,
-        uint256[] memory tokenAmountsRequested
+        address[] calldata tokensRequested,
+        uint256[] calldata tokenAmountsRequested
     )
         external
         virtual
@@ -337,8 +337,8 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
         uint256 targetMarketID,
         uint256 quantity,
         uint256 expiry,
-        address[] memory tokensOffered,
-        uint256[] memory tokenAmountsPaid
+        address[] calldata tokensOffered,
+        uint256[] calldata tokenAmountsPaid
     )
         external
         virtual
