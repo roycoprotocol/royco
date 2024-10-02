@@ -230,20 +230,6 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         return (numIPOrders++);
     }
 
-    /// @param recipient The address to send fees to
-    /// @param token The token address where fees are accrued in
-    /// @param amount The amount of fees to award
-    /// @param ip The incentive provider if awarding points
-    function accountFee(address recipient, address token, uint256 amount, address ip) internal override {
-        //check to see the token is actually a points campaign
-        if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
-            // Points cannot be claimed and are rather directly awarded
-            Points(token).award(recipient, amount, ip);
-        } else {
-            feeClaimantToTokenToAmount[recipient][token] += amount;
-        }
-    }
-
     /// @param token The token to claim fees for
     /// @param to The address to send fees claimed to
     function claimFees(address token, address to) external override {
@@ -610,7 +596,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                     // Calculate protocol fee to take based on percentage of fill
                     uint256 protocolFeeAmount = order.tokenToProtocolFeeAmount[token].mulWadDown(fillPercentage);
                     // Take protocol fee
-                    accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
+                    _accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
 
                     if (!PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
                         // Calculate frontend fee to refund to the IP on forfeit
@@ -655,7 +641,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                 // Calculate fees to take based on percentage of fill
                 uint256 protocolFeeAmount = amount.mulWadDown(protocolFeeAtFulfillment);
                 // Take fees
-                accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
+                _accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
 
                 if (!PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
                     // Calculate frontend fee to refund to the IP on forfeit
@@ -709,8 +695,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                 uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
 
                 // Take fees
-                accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
-                accountFee(frontendFeeRecipient, token, frontendFeeAmount, ip);
+                _accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
+                _accountFee(frontendFeeRecipient, token, frontendFeeAmount, ip);
 
                 // Reward incentives to AP upon wallet unlock
                 if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
@@ -739,8 +725,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                 uint256 frontendFeeAmount = amount.mulWadDown(marketFrontendFee);
 
                 // Take fees
-                accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
-                accountFee(params.frontendFeeRecipient, token, frontendFeeAmount, ip);
+                _accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
+                _accountFee(params.frontendFeeRecipient, token, frontendFeeAmount, ip);
 
                 // Reward incentives to AP upon wallet unlock
                 // Don't need to take fees. Taken from IP upon filling an AP order
@@ -802,8 +788,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                     uint256 frontendFeeAmount = order.tokenToFrontendFeeAmount[token].mulWadDown(fillPercentage);
 
                     // Take fees
-                    accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
-                    accountFee(frontendFeeRecipient, token, frontendFeeAmount, ip);
+                    _accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
+                    _accountFee(frontendFeeRecipient, token, frontendFeeAmount, ip);
 
                     // Reward incentives to AP upon wallet unlock
                     if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
@@ -836,8 +822,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
                     uint256 frontendFeeAmount = amount.mulWadDown(marketFrontendFee);
 
                     // Take fees
-                    accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
-                    accountFee(frontendFeeRecipient, token, frontendFeeAmount, ip);
+                    _accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
+                    _accountFee(frontendFeeRecipient, token, frontendFeeAmount, ip);
 
                     // Reward incentives to AP upon wallet unlock
                     // Don't need to take fees. Taken from IP upon filling an AP order
@@ -864,6 +850,20 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         //     // Zero out the mapping if no more locked incentives to claim
         //     delete weirollWalletToLockedRewardParams[weirollWallet];
         // }
+    }
+
+    /// @param recipient The address to send fees to
+    /// @param token The token address where fees are accrued in
+    /// @param amount The amount of fees to award
+    /// @param ip The incentive provider if awarding points
+    function _accountFee(address recipient, address token, uint256 amount, address ip) internal override {
+        //check to see the token is actually a points campaign
+        if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
+            // Points cannot be claimed and are rather directly awarded
+            Points(token).award(recipient, amount, ip);
+        } else {
+            feeClaimantToTokenToAmount[recipient][token] += amount;
+        }
     }
 
     /// @param fundingVault The ERC4626 vault to fund the weiroll wallet with - if address(0) fund directly via AP
@@ -908,8 +908,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     {
         // msg.sender will always be AP
         // Take fees immediately in an Upfront market
-        accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
-        accountFee(frontendFeeRecipient, token, frontendFeeAmount, ip);
+        _accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
+        _accountFee(frontendFeeRecipient, token, frontendFeeAmount, ip);
 
         // Give incentives to AP immediately in an Upfront market
         if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
@@ -945,8 +945,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         // msg.sender will always be IP
         if (rewardStyle == RewardStyle.Upfront) {
             // Take fees immediately from IP upon filling AP orders
-            accountFee(protocolFeeClaimant, token, protocolFeeAmount, msg.sender);
-            accountFee(frontendFeeRecipient, token, frontendFeeAmount, msg.sender);
+            _accountFee(protocolFeeClaimant, token, protocolFeeAmount, msg.sender);
+            _accountFee(frontendFeeRecipient, token, frontendFeeAmount, msg.sender);
 
             // Give incentives to AP immediately in an Upfront market
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {

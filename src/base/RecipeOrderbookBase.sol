@@ -344,12 +344,6 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
         virtual
         returns (uint256 marketID);
 
-    /// @param recipient The address to send fees to
-    /// @param token The token address where fees are accrued in
-    /// @param amount The amount of fees to award
-    /// @param ip The incentive provider if awarding points
-    function accountFee(address recipient, address token, uint256 amount, address ip) internal virtual;
-
     /// @param token The token to claim fees for
     /// @param to The address to send fees claimed to
     function claimFees(address token, address to) external virtual;
@@ -423,6 +417,12 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     function getOrderHash(APOrder memory order) public pure returns (bytes32) {
         return keccak256(abi.encode(order));
     }
+
+    /// @param recipient The address to send fees to
+    /// @param token The token address where fees are accrued in
+    /// @param amount The amount of fees to award
+    /// @param ip The incentive provider if awarding points
+    function _accountFee(address recipient, address token, uint256 amount, address ip) internal virtual;
 
     /// @param fundingVault The ERC4626 vault to fund the weiroll wallet with - if address(0) fund directly via AP
     /// @param ap The address of the AP to fund the weiroll wallet if no funding vault specified
