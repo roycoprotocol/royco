@@ -360,10 +360,21 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) external virtual;
+    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public virtual;
+
+    function fillIPOrders(
+        uint256[] calldata orderIDs,
+        uint256[] calldata fillAmounts,
+        address fundingVault,
+        address frontendFeeRecipient
+    )
+        external
+        virtual;
 
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
     function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public virtual;
+
+    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external virtual;
 
     /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
     function cancelAPOrder(APOrder calldata order) external virtual;
@@ -413,6 +424,29 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     /// @param amount The amount of market input token to fund the weiroll wallet with
     /// @param weirollWallet The weiroll wallet to fund with the specified amount of the market input token
     function _fundWeirollWallet(address fundingVault, address ap, ERC20 token, uint256 amount, address weirollWallet) internal virtual;
+
+    /**
+     * @notice Handles the transfer and accounting of incentives for an AP order fill.
+     * @dev This function is called internally by `fillAPOrder` to manage the incentives.
+     * @param token The address of the incentive token.
+     * @param incentiveAmount The amount of the incentive token to be transferred.
+     * @param protocolFeeAmount The protocol fee amount taken at fulfillment.
+     * @param frontendFeeAmount The frontend fee amount taken for this market.
+     * @param ap The address of the action provider.
+     * @param frontendFeeRecipient The address that will receive the frontend fee.
+     * @param rewardStyle The style of reward distribution (Upfront, Arrear, Forfeitable).
+     */
+    function _pullIncentivesOnAPFill(
+        address token,
+        uint256 incentiveAmount,
+        uint256 protocolFeeAmount,
+        uint256 frontendFeeAmount,
+        address ap,
+        address frontendFeeRecipient,
+        RewardStyle rewardStyle
+    )
+        internal
+        virtual;
 
     /// @notice executes the withdrawal script for the provided weiroll wallet
     function _executeWithdrawalScript(address weirollWallet) internal virtual;

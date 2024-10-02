@@ -225,7 +225,7 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice cancel an outstanding order
-    function cancelOrder(APOrder memory order) public {
+    function cancelOrder(APOrder calldata order) public {
         // Check if the AP is the creator of the order
         if (order.ap != msg.sender) {
             revert NotOrderCreator();

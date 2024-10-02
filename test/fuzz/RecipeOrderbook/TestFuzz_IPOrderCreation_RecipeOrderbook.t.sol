@@ -18,6 +18,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function testFuzz_CreateIPOrder_ForToken(address _creator, uint256 _quantity, uint256 _expiry, uint256 _tokenCount) external prankModifier(_creator) {
+        vm.assume(_creator != address(orderbook));
         _tokenCount = _tokenCount % 5 + 1; // Limit token count between 1 and 5
         uint256 marketId = createMarket();
         address[] memory tokensOffered = new address[](_tokenCount);
@@ -114,6 +115,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
     )
         external
     {
+        vm.assume(_creator != address(orderbook));
         vm.assume(_pointsOwner != address(0));
         _programCount = _programCount % 5 + 1; // Limit program count between 1 and 5
         uint256 marketId = createMarket();
@@ -207,7 +209,7 @@ contract TestFuzz_IPOrderCreation_RecipeOrderbook is RecipeOrderbookTestBase {
         external
     {
         vm.assume(_pointsOwner != address(0));
-
+        vm.assume(_creator != address(orderbook));
         _tokenCount = _tokenCount % 3 + 1; // Limit token count between 1 and 3
         _programCount = _programCount % 3 + 1; // Limit program count between 1 and 3
         uint256 totalCount = _tokenCount + _programCount; // Total offered assets
