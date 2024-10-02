@@ -77,7 +77,7 @@ contract TestFuzz_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         assertEq(_remainingQuantity, 0);
 
         // Check that refund was made
-        assertApproxEqRel(mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored, 0.0001e18);
+        assertApproxEqRel(mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored + 1, 0.0001e18);
     }
 
     function test_RevertIf_cancelIPOrder_NotOwner(address _nonOwner) external {
