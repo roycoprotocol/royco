@@ -40,6 +40,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     error RateCannotDecrease();
     error DuplicateRewardToken();
     error FrontendFeeBelowMinimum();
+    error NoZeroRateAllowed();
     error InvalidReward();
     error OnlyClaimant();
     error InvalidWithdrawal();
@@ -282,6 +283,8 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         uint256 rewardsAfterFee = totalRewards - frontendFeeTaken - protocolFeeTaken;
         uint256 rate = rewardsAfterFee / (end - start);
 
+        if (rate == 0) revert NoZeroRateAllowed();
+
         rewardsInterval.start = start.toUint32();
         rewardsInterval.end = end.toUint32();
         rewardsInterval.rate = rate.toUint96();
@@ -297,10 +300,13 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         pullReward(reward, msg.sender, totalRewards);
     }
 
+    /// @param reward The address of the reward for which campaign should be refunded
     function refundRewardsInterval(address reward) external onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         if (rewardsInterval.start >= block.timestamp) revert IntervalInProgress();
+
+        pushReward(reward, msg.sender, rewardsInterval.rate * (rewardsInterval.end - block.timestamp.toUint32()));
     }
 
     /// @notice Update the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.
