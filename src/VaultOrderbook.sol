@@ -141,78 +141,86 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice allocate the entirety of a given order
-    function allocateOrder(APOrder memory order) public {
+    function allocateOrder(APOrder calldata order) public {
         allocateOrder(order, orderHashToRemainingQuantity[getOrderHash(order)]);
     }
 
     /// @notice allocate a specific quantity of a given order
-    function allocateOrder(APOrder memory order, uint256 quantity) public nonReentrant {
+    function allocateOrder(APOrder calldata order, uint256 fillAmount) public nonReentrant {
         // Check for order expiry, 0 expiries live forever
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
         }
 
         bytes32 orderHash = getOrderHash(order);
-        uint256 remainingQuantity = orderHashToRemainingQuantity[orderHash];
 
-        // Zero orders have been completely filled, cancelled, or never existed
-        if (remainingQuantity == 0) {
-            revert OrderDoesNotExist();
-        }
-        if (quantity > remainingQuantity) {
-            revert NotEnoughRemainingQuantity();
+        {
+            // Get remaining quantity
+            uint256 remainingQuantity = orderHashToRemainingQuantity[orderHash];
+
+            // Zero orders have been completely filled, cancelled, or never existed
+            if (remainingQuantity == 0) {
+                revert OrderDoesNotExist();
+            }
+            if (fillAmount > remainingQuantity) {
+                // If fillAmount is max uint, fill the remaning, else revert
+                if (fillAmount != type(uint256).max) {
+                    revert NotEnoughRemainingQuantity();
+                }
+                fillAmount = remainingQuantity;
+            }
         }
 
         //Check that the AP has enough base asset in the funding vault for the order
-        if (order.fundingVault == address(0) && ERC20(ERC4626(order.targetVault).asset()).balanceOf(order.ap) < quantity) {
+        if (order.fundingVault == address(0) && ERC20(ERC4626(order.targetVault).asset()).balanceOf(order.ap) < fillAmount) {
             revert NotEnoughBaseAssetToAllocate();
-        } else if (order.fundingVault != address(0) && ERC4626(order.fundingVault).maxWithdraw(order.ap) < quantity) {
+        } else if (order.fundingVault != address(0) && ERC4626(order.fundingVault).maxWithdraw(order.ap) < fillAmount) {
             revert NotEnoughBaseAssetToAllocate();
         }
 
         // Reduce the remaining quantity of the order
-        orderHashToRemainingQuantity[orderHash] -= quantity;
+        orderHashToRemainingQuantity[orderHash] -= fillAmount;
 
         // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (order.fundingVault == address(0)) {
             // Transfer the base asset from the AP to the orderbook
-            ERC4626(order.targetVault).asset().safeTransferFrom(order.ap, address(this), quantity);
+            ERC4626(order.targetVault).asset().safeTransferFrom(order.ap, address(this), fillAmount);
         } else {
             // Get pre-withdraw token balance of orderbook
             uint256 preWithdrawTokenBalance = ERC4626(order.targetVault).asset().balanceOf(address(this));
 
             // Withdraw from the funding vault to the orderbook
-            ERC4626(order.fundingVault).withdraw(quantity, address(this), order.ap);
+            ERC4626(order.fundingVault).withdraw(fillAmount, address(this), order.ap);
 
             // Get post-withdraw token balance of orderbook
             uint256 postWithdrawTokenBalance = ERC4626(order.targetVault).asset().balanceOf(address(this));
 
             // Check that quantity withdrawn from the funding vault is at least the quantity to allocate
-            if ((postWithdrawTokenBalance - preWithdrawTokenBalance) < quantity) {
+            if ((postWithdrawTokenBalance - preWithdrawTokenBalance) < fillAmount) {
                 revert FundingVaultWithdrawFailed();
             }
         }
 
         for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
-            if (order.tokenRatesRequested[i] > ERC4626i(order.targetVault).previewRateAfterDeposit(order.tokensRequested[i], quantity)) {
+            if (order.tokenRatesRequested[i] > ERC4626i(order.targetVault).previewRateAfterDeposit(order.tokensRequested[i], fillAmount)) {
                 revert OrderConditionsNotMet();
             }
         }
 
         ERC4626(order.targetVault).asset().safeApprove(order.targetVault, 0);
-        ERC4626(order.targetVault).asset().safeApprove(order.targetVault, quantity);
+        ERC4626(order.targetVault).asset().safeApprove(order.targetVault, fillAmount);
 
         // Deposit into the target vault
-        ERC4626(order.targetVault).deposit(quantity, order.ap);
+        ERC4626(order.targetVault).deposit(fillAmount, order.ap);
 
-        emit APOfferFulfilled(order.orderID, quantity);
+        emit APOfferFulfilled(order.orderID, fillAmount);
     }
 
-    /// @notice fully allocate a selection of orders
-    function allocateOrders(APOrder[] memory orders) public {
+    /// @notice allocate a selection of orders
+    function allocateOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts) public {
         uint256 len = orders.length;
         for (uint256 i = 0; i < len; ++i) {
-            allocateOrder(orders[i]);
+            allocateOrder(orders[i], fillAmounts[i]);
         }
     }
 

@@ -420,7 +420,11 @@ contract VaultOrderbookTest is Test {
            );
 
        vm.expectRevert(VaultOrderbook.OrderDoesNotExist.selector);
-       orderbook.allocateOrders(orders);
+        uint256[] memory fillAmounts = new uint256[](3);
+        fillAmounts[0] = type(uint256).max;
+        fillAmounts[1] = type(uint256).max;
+        fillAmounts[2] = type(uint256).max;
+        orderbook.allocateOrders(orders, fillAmounts);
 
        //Verify none of the orders allocated
        assertEq(targetVault.balanceOf(alice), 0);
@@ -645,7 +649,11 @@ contract VaultOrderbookTest is Test {
            abi.encode(tokenRatesRequested[2])
            );
 
-       orderbook.allocateOrders(orders);
+        uint256[] memory fillAmounts = new uint256[](3);
+        fillAmounts[0] = type(uint256).max;
+        fillAmounts[1] = type(uint256).max;
+        fillAmounts[2] = type(uint256).max;
+        orderbook.allocateOrders(orders, fillAmounts);
 
        //Verify all of the orders allocated
        assertEq(targetVault.balanceOf(alice), quantity);
