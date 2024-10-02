@@ -241,7 +241,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         rewardsInterval.end = newEnd.toUint32();
         rewardsInterval.rate = rate.toUint96();
 
-        emit RewardsSet(reward, block.timestamp.toUint32(), newEnd.toUint32(), rate, rewardsAfterFee, protocolFeeTaken, frontendFeeTaken);
+        emit RewardsSet(reward, block.timestamp.toUint32(), newEnd.toUint32(), rate, (rewardsAfterFee + remainingRewards), protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, rewardsAdded);
     }
