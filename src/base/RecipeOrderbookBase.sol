@@ -363,7 +363,7 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) external virtual;
 
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
-    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) external virtual;
+    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public virtual;
 
     /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
     function cancelAPOrder(APOrder calldata order) external virtual;

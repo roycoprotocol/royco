@@ -360,7 +360,18 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
-    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) external override nonReentrant {
+    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external {
+        if (orders.length != fillAmounts.length) {
+            revert ArrayLengthMismatch();
+        }
+
+        for (uint256 i = 0; i < orders.length; ++i) {
+            fillAPOrder(orders[i], fillAmounts[i], frontendFeeRecipient);
+        }
+    }
+
+    /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function
+    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public override nonReentrant {
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
         }
@@ -428,45 +439,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
             protocolFeesPaid[i] = incentiveAmount.mulWadDown(protocolFeeAtFulfillment);
             frontendFeesPaid[i] = incentiveAmount.mulWadDown(marketFrontendFee);
 
-            if (market.rewardStyle == RewardStyle.Upfront) {
-                // Take fees immediately from IP upon filling AP orders
-                accountFee(protocolFeeClaimant, token, protocolFeesPaid[i], ip);
-                accountFee(frontendFeeRecipient, token, frontendFeesPaid[i], ip);
-
-                // Give incentives to AP immediately in an Upfront market
-                if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
-                    // Award points on fill
-                    Points(token).award(order.ap, incentiveAmount, ip);
-                } else {
-                    // SafeTransferFrom does not check if a token address has any code, so we need to check it manually to prevent token deployment frontrunning
-                    if (token.code.length == 0) {
-                        revert TokenDoesNotExist();
-                    }
-                    // Transfer protcol and frontend fees to orderbook for the claimants to withdraw them on-demand
-                    ERC20(token).safeTransferFrom(ip, address(this), protocolFeesPaid[i] + frontendFeesPaid[i]);
-                    // Transfer AP's incentives to them on fill if token incentive
-                    ERC20(token).safeTransferFrom(ip, order.ap, incentiveAmount);
-                }
-            } else {
-                // RewardStyle is Forfeitable or Arrear
-                // If incentives will be paid out later, only handle the token case. Points will be awarded on claim.
-                if (PointsFactory(POINTS_FACTORY).isPointsProgram(order.tokensRequested[i])) {
-                    // If points incentive, make sure:
-                    // 1. The points factory used to create the program is the same as this orderbooks PF
-                    // 2. IP placing the order can award points
-                    // 3. Points factory has this orderbook marked as a valid RO - can be assumed true
-                    if (POINTS_FACTORY != address(Points(token).pointsFactory()) || !Points(token).allowedIPs(ip)) {
-                        revert InvalidPointsProgram();
-                    }
-                } else {
-                    // SafeTransferFrom does not check if a token address has any code, so we need to check it manually to prevent token deployment frontrunning
-                    if (token.code.length == 0) {
-                        revert TokenDoesNotExist();
-                    }
-                    // If not a points program, transfer amount requested (based on fill percentage) to the orderbook in addition to protocol and frontend fees.
-                    ERC20(order.tokensRequested[i]).safeTransferFrom(ip, address(this), incentiveAmount + protocolFeesPaid[i] + frontendFeesPaid[i]);
-                }
-            }
+            // Handle incentives using the helper function
+            _pullIncentivesOnAPFill(token, incentiveAmount, protocolFeesPaid[i], frontendFeesPaid[i], ip, order.ap, frontendFeeRecipient, market.rewardStyle);
         }
 
         if (market.rewardStyle != RewardStyle.Upfront) {
@@ -861,6 +835,71 @@ contract RecipeOrderbook is RecipeOrderbookBase {
             // Ensure that the Weiroll wallet received at least fillAmount of the inputToken from the AP provided vault
             if (token.balanceOf(weirollWallet) < amount) {
                 revert WeirollWalletFundingFailed();
+            }
+        }
+    }
+
+    /**
+     * @notice Handles the transfer and accounting of incentives for an AP order fill.
+     * @dev This function is called internally by `fillAPOrder` to manage the incentives.
+     * @param token The address of the incentive token.
+     * @param incentiveAmount The amount of the incentive token to be transferred.
+     * @param protocolFeeAmount The protocol fee amount taken at fulfillment.
+     * @param frontendFeeAmount The frontend fee amount taken for this market.
+     * @param ip The address of the incentives provider.
+     * @param ap The address of the action provider.
+     * @param frontendFeeRecipient The address that will receive the frontend fee.
+     * @param rewardStyle The style of reward distribution (Upfront, Arrear, Forfeitable).
+     */
+    function _pullIncentivesOnAPFill(
+        address token,
+        uint256 incentiveAmount,
+        uint256 protocolFeeAmount,
+        uint256 frontendFeeAmount,
+        address ip,
+        address ap,
+        address frontendFeeRecipient,
+        RewardStyle rewardStyle
+    )
+        internal
+    {
+        if (rewardStyle == RewardStyle.Upfront) {
+            // Take fees immediately from IP upon filling AP orders
+            accountFee(protocolFeeClaimant, token, protocolFeeAmount, ip);
+            accountFee(frontendFeeRecipient, token, frontendFeeAmount, ip);
+
+            // Give incentives to AP immediately in an Upfront market
+            if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
+                // Award points on fill
+                Points(token).award(ap, incentiveAmount, ip);
+            } else {
+                // SafeTransferFrom does not check if a token address has any code, so we need to check it manually to prevent token deployment frontrunning
+                if (token.code.length == 0) {
+                    revert TokenDoesNotExist();
+                }
+                // Transfer protcol and frontend fees to orderbook for the claimants to withdraw them on-demand
+                ERC20(token).safeTransferFrom(ip, address(this), protocolFeeAmount + frontendFeeAmount);
+                // Transfer AP's incentives to them on fill if token incentive
+                ERC20(token).safeTransferFrom(ip, ap, incentiveAmount);
+            }
+        } else {
+            // RewardStyle is Forfeitable or Arrear
+            // If incentives will be paid out later, only handle the token case. Points will be awarded on claim.
+            if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
+                // If points incentive, make sure:
+                // 1. The points factory used to create the program is the same as this orderbooks PF
+                // 2. IP placing the order can award points
+                // 3. Points factory has this orderbook marked as a valid RO - can be assumed true
+                if (POINTS_FACTORY != address(Points(token).pointsFactory()) || !Points(token).allowedIPs(ip)) {
+                    revert InvalidPointsProgram();
+                }
+            } else {
+                // SafeTransferFrom does not check if a token address has any code, so we need to check it manually to prevent token deployment frontrunning
+                if (token.code.length == 0) {
+                    revert TokenDoesNotExist();
+                }
+                // If not a points program, transfer amount requested (based on fill percentage) to the orderbook in addition to protocol and frontend fees.
+                ERC20(token).safeTransferFrom(ip, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
             }
         }
     }
