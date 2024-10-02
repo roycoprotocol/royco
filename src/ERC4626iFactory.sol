@@ -52,7 +52,16 @@ contract ERC4626iFactory is Ownable2Step {
     event ProtocolFeeUpdated(uint256 newProtocolFee);
     event ReferralFeeUpdated(uint256 newReferralFee);
     event ProtocolFeeRecipientUpdated(address newRecipient);
-    event VaultCreated(ERC4626 indexed baseTokenAddress, ERC4626i indexed incentivzedVaultAddress);
+    event VaultCreated(
+        ERC4626 indexed underlyingVaultAddress,
+        ERC4626i indexed incentivizedVaultAddress,
+        address owner,
+        address inputToken,
+        uint256 frontendFee,
+        string name,
+        string vaultSymbol
+    );
+
     /*//////////////////////////////////////////////////////////////
                              OWNER CONTROLS
     //////////////////////////////////////////////////////////////*/
@@ -82,14 +91,22 @@ contract ERC4626iFactory is Ownable2Step {
     //////////////////////////////////////////////////////////////*/
 
     /// @param vault The ERC4626 Vault to deploy an incentivized vault for
-    function createIncentivizedVault(ERC4626 vault, address owner, string memory name, uint256 initialFrontendFee) public returns (ERC4626i incentivizedVault) {
+    function createIncentivizedVault(
+        ERC4626 vault,
+        address owner,
+        string memory name,
+        uint256 initialFrontendFee
+    )
+        public
+        returns (ERC4626i incentivizedVault)
+    {
         bytes32 salt = keccak256(abi.encodePacked(address(vault), owner, name, initialFrontendFee));
-        incentivizedVault = new ERC4626i{salt: salt}(owner, name, getNextSymbol(), address(vault), initialFrontendFee, pointsFactory);
+        incentivizedVault = new ERC4626i{ salt: salt }(owner, name, getNextSymbol(), address(vault), initialFrontendFee, pointsFactory);
 
         incentivizedVaults.push(address(incentivizedVault));
         isVault[address(incentivizedVault)] = true;
 
-        emit VaultCreated(vault, incentivizedVault);
+        emit VaultCreated(vault, incentivizedVault, owner, address(incentivizedVault.asset()), initialFrontendFee, name, getNextSymbol());
     }
 
     /// @dev Helper function to get the symbol for a new incentivized vault, ROY-0, ROY-1, etc.

@@ -24,12 +24,13 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
                                INTERFACE
     //////////////////////////////////////////////////////////////*/
 
-    event RewardsSet(uint32 start, uint32 end, uint256 rate);
-    event RewardsPerTokenUpdated(uint256 accumulated);
-    event UserRewardsUpdated(address user, uint256 userRewards, uint256 paidRewardPerToken);
+    event RewardsSet(address reward, uint32 start, uint32 end, uint256 rate, uint256 totalRewards, uint256 protocolFee, uint256 frontendFee);
+    event RewardsPerTokenUpdated(address reward, uint256 accumulated);
+    event UserRewardsUpdated(address reward, address user, uint256 accumulated, uint256 checkpoint);
     event Claimed(address reward, address user, address receiver, uint256 claimed);
-    event FeesClaimed(address claimant, address reward);
-    event RewardsTokenAdded(address rewardsToken);
+    event FeesClaimed(address claimant, address incentiveToken);
+    event RewardsTokenAdded(address reward);
+    event FrontendFeeUpdated(uint256 frontendFee);
 
     error MaxRewardsReached();
     error VaultNotAuthorizedToRewardPoints();
@@ -156,6 +157,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     function setFrontendFee(uint256 newFrontendFee) public onlyOwner {
         if (newFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
         frontendFee = newFrontendFee;
+        emit FrontendFeeUpdated(newFrontendFee);
     }
 
     /// @param to The address to send all fees owed to msg.sender to
@@ -239,7 +241,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         rewardsInterval.end = newEnd.toUint32();
         rewardsInterval.rate = rate.toUint96();
 
-        emit RewardsSet(block.timestamp.toUint32(), newEnd.toUint32(), rate);
+        emit RewardsSet(reward, block.timestamp.toUint32(), newEnd.toUint32(), rate, rewardsAfterFee, protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, rewardsAdded);
     }
@@ -286,7 +288,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         // Any unclaimed rewards can still be claimed
         rewardsPerToken.lastUpdated = start.toUint32();
 
-        emit RewardsSet(start.toUint32(), end.toUint32(), rate);
+        emit RewardsSet(reward, block.timestamp.toUint32(), rewardsInterval.end, rate, rewardsAfterFee, protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, totalRewards);
     }
@@ -341,7 +343,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         if (rewardsPerTokenIn.lastUpdated == rewardsPerTokenOut.lastUpdated) return rewardsPerTokenOut;
 
         rewardToRPT[reward] = rewardsPerTokenOut;
-        emit RewardsPerTokenUpdated(rewardsPerTokenOut.accumulated);
+        emit RewardsPerTokenUpdated(reward, rewardsPerTokenOut.accumulated);
 
         return rewardsPerTokenOut;
     }
@@ -366,7 +368,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         userRewards_.checkpoint = rewardsPerToken_.accumulated;
 
         rewardToUserToAR[reward][user] = userRewards_;
-        emit UserRewardsUpdated(user, userRewards_.accumulated, userRewards_.checkpoint);
+        emit UserRewardsUpdated(reward, user, userRewards_.accumulated, userRewards_.checkpoint);
 
         return userRewards_;
     }

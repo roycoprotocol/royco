@@ -38,30 +38,28 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     /// @notice maps order hashes to the remaining quantity of the order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
-    /// @param orderID Set to numOrders - 1 on order creation (zero-indexed)
-    /// @param targetVault The address of the vault where the input tokens will be deposited
-    /// @param ap The address of the liquidity provider
+    /// @param offerID Set to numOrders - 1 on offer creation (zero-indexed)
+    /// @param marketID The ID of the market to place the offer in
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
-    /// @param expiry The timestamp after which the order is considered expired
-    /// @param tokensRequested The incentive tokens requested by the AP in order to fill the order
-    /// @param tokenRatesRequested The desired rewards per input token per second to fill the order
     /// @param quantity The total amount of the base asset to be withdrawn from the funding vault
-    event APOrderCreated(
-        uint256 indexed orderID,
-        address indexed targetVault,
-        address indexed ap,
+    /// @param tokenAddresses The incentives requested by the AP in order to fill the order
+    /// @param tokenRates The desired rewards per input token per second to fill the order
+    /// @param expiry The timestamp after which the order is considered expired
+    event APOfferCreated(
+        uint256 indexed offerID,
+        address indexed marketID,
         address fundingVault,
-        uint256 expiry,
-        address[] tokensRequested,
-        uint256[] tokenRatesRequested,
-        uint256 quantity
+        uint256 quantity,
+        address[] tokenAddresses,
+        uint256[] tokenRates,
+        uint256 expiry
     );
 
     /// @notice emitted when an order is cancelled and the remaining quantity is set to 0
-    event APOrderCancelled(uint256 indexed orderID);
+    event APOfferCancelled(uint256 indexed offerID);
 
     /// @notice emitted when an AP is allocated to a vault
-    event APOrderFilled(uint256 indexed orderID, uint256 quantity);
+    event APOfferFulfilled(uint256 indexed offerID, uint256 fulfillAmount);
 
     /// @notice emitted when trying to fill an order that has expired
     error OrderExpired();
@@ -129,12 +127,12 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
         //Check that the AP has enough base asset in the funding vault for the order
         if (fundingVault == address(0) && ERC20(ERC4626(targetVault).asset()).balanceOf(msg.sender) < quantity) {
             revert NotEnoughBaseAssetToOrder();
-        } else if(fundingVault != address(0) && ERC4626(fundingVault).maxWithdraw(msg.sender) < quantity) {
+        } else if (fundingVault != address(0) && ERC4626(fundingVault).maxWithdraw(msg.sender) < quantity) {
             revert NotEnoughBaseAssetToOrder();
         }
 
         // Emit the order creation event, used for matching orders
-        emit APOrderCreated(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested, quantity);
+        emit APOfferCreated(numOrders, targetVault, fundingVault, quantity, tokensRequested, tokenRatesRequested, expiry);
         // Set the quantity of the order
         APOrder memory order = APOrder(numOrders, targetVault, msg.sender, fundingVault, expiry, tokensRequested, tokenRatesRequested);
         orderHashToRemainingQuantity[getOrderHash(order)] = quantity;
@@ -168,7 +166,7 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
         //Check that the AP has enough base asset in the funding vault for the order
         if (order.fundingVault == address(0) && ERC20(ERC4626(order.targetVault).asset()).balanceOf(order.ap) < quantity) {
             revert NotEnoughBaseAssetToAllocate();
-        } else if(order.fundingVault != address(0) && ERC4626(order.fundingVault).maxWithdraw(order.ap) < quantity) {
+        } else if (order.fundingVault != address(0) && ERC4626(order.fundingVault).maxWithdraw(order.ap) < quantity) {
             revert NotEnoughBaseAssetToAllocate();
         }
 
@@ -207,7 +205,7 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
         // Deposit into the target vault
         ERC4626(order.targetVault).deposit(quantity, order.ap);
 
-        emit APOrderFilled(order.orderID, quantity);
+        emit APOfferFulfilled(order.orderID, quantity);
     }
 
     /// @notice fully allocate a selection of orders
@@ -233,7 +231,7 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
         // Set the remaining quantity of the order to 0, effectively cancelling it
         delete orderHashToRemainingQuantity[orderHash];
 
-        emit APOrderCancelled(order.orderID);
+        emit APOfferCancelled(order.orderID);
     }
 
     /// @notice calculate the hash of an order
