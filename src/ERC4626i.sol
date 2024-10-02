@@ -133,6 +133,8 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         DEPOSIT_ASSET = ERC20(VAULT.asset());
         POINTS_FACTORY = PointsFactory(pointsFactory);
 
+        _mint(address(0), 10_000); // Burn 10,000 wei to stop 'first share' front running attacks on depositors
+
         DEPOSIT_ASSET.approve(vault, type(uint256).max);
     }
 
@@ -263,6 +265,8 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         // A new rewards program can be set if one is not running
         if (block.timestamp.toUint32() >= rewardsInterval.start && block.timestamp.toUint32() <= rewardsInterval.end) revert IntervalInProgress();
 
+        if (end <= block.timestamp) revert InvalidInterval();
+
         // Update the rewards per token so that we don't lose any rewards
         _updateRewardsPerToken(reward);
 
@@ -291,6 +295,12 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         emit RewardsSet(reward, block.timestamp.toUint32(), rewardsInterval.end, rate, rewardsAfterFee, protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, totalRewards);
+    }
+
+    function refundRewardsInterval(address reward) external onlyOwner {
+        if (!isReward[reward]) revert InvalidReward();
+        RewardsInterval storage rewardsInterval = rewardToInterval[reward];
+        if (rewardsInterval.start >= block.timestamp) revert IntervalInProgress();
     }
 
     /// @notice Update the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.

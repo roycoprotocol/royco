@@ -45,7 +45,7 @@ contract ERC20Test is Test {
         mintTokensTo(address(this), 1e18);
 
         assertTrue(token.transfer(address(0xBEEF), 1e18));
-        assertEq(token.totalSupply(), 1e18);
+        assertEq(token.totalSupply(), 1e18 + 10_000);
 
         assertEq(token.balanceOf(address(this)), 0);
         assertEq(token.balanceOf(address(0xBEEF)), 1e18);
@@ -60,7 +60,7 @@ contract ERC20Test is Test {
         token.approve(address(this), 1e18);
 
         assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
-        assertEq(token.totalSupply(), 1e18);
+        assertEq(token.totalSupply(), 1e18 + 10_000);
 
         assertEq(token.allowance(from, address(this)), 0);
 
@@ -77,7 +77,7 @@ contract ERC20Test is Test {
         token.approve(address(this), type(uint256).max);
 
         assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
-        assertEq(token.totalSupply(), 1e18);
+        assertEq(token.totalSupply(), 1e18 + 10_000);
 
         assertEq(token.allowance(from, address(this)), type(uint256).max);
 
