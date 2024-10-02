@@ -300,6 +300,7 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
         RewardStyle rewardStyle
     )
         external
+        payable
         virtual
         returns (uint256);
 
@@ -322,6 +323,7 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
         uint256[] calldata tokenAmountsRequested
     )
         external
+        payable
         virtual
         returns (uint256 orderID);
 
@@ -341,12 +343,13 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
         uint256[] calldata tokenAmountsPaid
     )
         external
+        payable
         virtual
         returns (uint256 marketID);
 
     /// @param token The token to claim fees for
     /// @param to The address to send fees claimed to
-    function claimFees(address token, address to) external virtual;
+    function claimFees(address token, address to) external payable virtual;
 
     /// @notice Fill an IP order, transferring the IP's incentives to the AP, withdrawing the AP from their funding vault into a fresh weiroll wallet, and
     /// executing the weiroll recipe
@@ -354,62 +357,62 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public virtual;
+    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public payable virtual;
 
     /// @notice Filling multiple IP orders
     /// @param orderIDs The IDs of the IP orders to fill
     /// @param fillAmounts The amounts of input tokens to fill the corresponding orders with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrders(uint256[] calldata orderIDs, uint256[] calldata fillAmounts, address fundingVault, address frontendFeeRecipient) external virtual;
+    function fillIPOrders(uint256[] calldata orderIDs, uint256[] calldata fillAmounts, address fundingVault, address frontendFeeRecipient) external payable virtual;
 
     /// @dev Fill an AP order
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function.
     /// @param order The AP order to fill
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public virtual;
+    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public payable virtual;
 
     /// @dev Fill multiple AP orders
     /// @param orders The AP orders to fill
     /// @param fillAmounts The amount of input tokens to fill the corresponding order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external virtual;
+    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external payable virtual;
 
     /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
-    function cancelAPOrder(APOrder calldata order) external virtual;
+    function cancelAPOrder(APOrder calldata order) external payable virtual;
 
     /// @notice Cancel an IP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
-    function cancelIPOrder(uint256 orderID) external virtual;
+    function cancelIPOrder(uint256 orderID) external payable virtual;
 
     /// @notice For wallets of Forfeitable markets, an AP can call this function to forgo their rewards and unlock their wallet
-    function forfeit(address weirollWallet, bool executeWithdrawal) external virtual;
+    function forfeit(address weirollWallet, bool executeWithdrawal) external payable virtual;
 
     /// @notice Execute the withdrawal script in the weiroll wallet
-    function executeWithdrawalScript(address weirollWallet) external virtual;
+    function executeWithdrawalScript(address weirollWallet) external payable virtual;
 
     /// @param weirollWallet The wallet to claim for
     /// @param to The address to send the incentive to
-    function claim(address weirollWallet, address to) external virtual;
+    function claim(address weirollWallet, address to) external payable virtual;
 
     /// @param weirollWallet The wallet to claim for
     /// @param incentiveToken The incentiveToken to claim
     /// @param to The address to send the incentive to
-    function claim(address weirollWallet, address incentiveToken, address to) external virtual;
+    function claim(address weirollWallet, address incentiveToken, address to) external payable virtual;
 
     /// @notice sets the protocol fee recipient, taken on all fills
-    function setProtocolFeeClaimant(address _protocolFeeClaimant) external onlyOwner {
+    function setProtocolFeeClaimant(address _protocolFeeClaimant) external payable onlyOwner {
         protocolFeeClaimant = _protocolFeeClaimant;
     }
 
     /// @notice sets the protocol fee rate, taken on all fills
     /// @param _protocolFee The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant, 1e18 == 100% fee
-    function setProtocolFee(uint256 _protocolFee) external onlyOwner {
+    function setProtocolFee(uint256 _protocolFee) external payable onlyOwner {
         protocolFee = _protocolFee;
     }
 
     /// @notice sets the minimum frontend fee that a market can set and is paid to whoever fills the order
-    function setMinimumFrontendFee(uint256 _minimumFrontendFee) external onlyOwner {
+    function setMinimumFrontendFee(uint256 _minimumFrontendFee) external payable onlyOwner {
         minimumFrontendFee = _minimumFrontendFee;
     }
 

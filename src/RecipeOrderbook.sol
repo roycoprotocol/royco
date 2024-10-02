@@ -56,6 +56,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         RewardStyle rewardStyle
     )
         external
+        payable
         override
         returns (uint256)
     {
@@ -91,6 +92,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         uint256[] calldata tokenAmountsRequested
     )
         external
+        payable
         override
         returns (uint256 orderID)
     {
@@ -142,6 +144,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         uint256[] calldata tokenAmountsPaid
     )
         external
+        payable
         override
         nonReentrant
         returns (uint256 marketID)
@@ -232,7 +235,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
 
     /// @param token The token to claim fees for
     /// @param to The address to send fees claimed to
-    function claimFees(address token, address to) external override {
+    function claimFees(address token, address to) external payable override {
         uint256 amount = feeClaimantToTokenToAmount[msg.sender][token];
         delete feeClaimantToTokenToAmount[msg.sender][token];
         ERC20(token).safeTransfer(to, amount);
@@ -245,7 +248,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public override nonReentrant {
+    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public payable override nonReentrant {
         // Retreive the IPOrder and WeirollMarket structs
         IPOrder storage order = orderIDToIPOrder[orderID];
         WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
@@ -350,6 +353,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         address frontendFeeRecipient
     )
         external
+        payable
         override
     {
         if (orderIDs.length != fillAmounts.length) {
@@ -366,7 +370,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param order The AP order to fill
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public override nonReentrant {
+    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public payable override nonReentrant {
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
         }
@@ -467,7 +471,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param orders The AP orders to fill
     /// @param fillAmounts The amount of input tokens to fill the corresponding order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external override {
+    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external payable override {
         if (orders.length != fillAmounts.length) {
             revert ArrayLengthMismatch();
         }
@@ -478,7 +482,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
-    function cancelAPOrder(APOrder calldata order) external override {
+    function cancelAPOrder(APOrder calldata order) external payable override {
         // Check that the cancelling party is the order's owner
         if (order.ap != msg.sender) revert NotOwner();
 
@@ -498,7 +502,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @notice Cancel an IP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
-    function cancelIPOrder(uint256 orderID) external override nonReentrant {
+    function cancelIPOrder(uint256 orderID) external payable override nonReentrant {
         IPOrder storage order = orderIDToIPOrder[orderID];
 
         // Check that the cancelling party is the order's owner
@@ -557,7 +561,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @notice For wallets of Forfeitable markets, an AP can call this function to forgo their rewards and unlock their wallet
-    function forfeit(address weirollWallet, bool executeWithdrawal) external override isWeirollOwner(weirollWallet) nonReentrant {
+    function forfeit(address weirollWallet, bool executeWithdrawal) external payable override isWeirollOwner(weirollWallet) nonReentrant {
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
 
@@ -663,13 +667,13 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @notice Execute the withdrawal script in the weiroll wallet
-    function executeWithdrawalScript(address weirollWallet) external override isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
+    function executeWithdrawalScript(address weirollWallet) external payable override isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
         _executeWithdrawalScript(weirollWallet);
     }
 
     /// @param weirollWallet The wallet to claim for
     /// @param to The address to send the incentive to
-    function claim(address weirollWallet, address to) external override isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
+    function claim(address weirollWallet, address to) external payable override isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
         // Get locked reward details to facilitate claim
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
 
@@ -757,6 +761,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         address to
     )
         external
+        payable
         override
         isWeirollOwner(weirollWallet)
         weirollIsUnlocked(weirollWallet)
