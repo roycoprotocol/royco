@@ -27,8 +27,8 @@ contract Deploy is Script {
         WrappedVaultFactory erc4626iFactory = new WrappedVaultFactory(deployerAddress, 0.01e18, 0.001e18, address(pointsFactory) );
 
         WeirollWallet wwi = new WeirollWallet();
-        VaultKernel orderbook = new VaultKernel();
-        RecipeKernel RecipeKernel = new RecipeKernel(
+        VaultKernel vaultKernel = new VaultKernel();
+        RecipeKernel recipeKernel = new RecipeKernel(
             address(wwi),
             0.01e18, // 1% protocol fee
             0.001e18, // 0.1% minimum frontend fee
