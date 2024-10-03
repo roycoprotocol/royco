@@ -238,11 +238,14 @@ contract ERC4626iTest is Test {
     }
 
     function testRefundInterval(uint32 start, uint32 duration, uint256 totalRewards) public {
+        if (start < block.timestamp + 10000) {
+            start = uint32(block.timestamp + 10000);
+        }
+        
         vm.assume(duration >= testIncentivizedVault.MIN_CAMPAIGN_DURATION());
         vm.assume(duration <= type(uint32).max - start); //If this is not here, then 'end' variable will overflow
         vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
         vm.assume(totalRewards / duration > 1e6);
-        vm.assume(start > block.timestamp + 10000);
 
         uint32 end = start + duration;
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
