@@ -306,9 +306,12 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     function refundRewardsInterval(address reward) external onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
-        if (rewardsInterval.start >= block.timestamp) revert IntervalInProgress();
+        if (block.timestamp >= rewardsInterval.start) revert IntervalInProgress();
 
-        pushReward(reward, msg.sender, rewardsInterval.rate * (rewardsInterval.end - block.timestamp.toUint32()));
+        uint256 rewardsOwed = (rewardsInterval.rate * (rewardsInterval.end - rewardsInterval.start)) - 1; // Round down
+        if (!POINTS_FACTORY.isPointsProgram(reward)) {
+            ERC20(reward).safeTransfer(msg.sender, rewardsOwed);
+        }
     }
 
     /// @notice Update the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.

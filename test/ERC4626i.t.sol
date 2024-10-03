@@ -237,6 +237,32 @@ contract ERC4626iTest is Test {
         assertEq(testIncentivizedVault.totalAssets(), amount);
     }
 
+    function testRefundInterval(uint32 start, uint32 duration, uint256 totalRewards) public {
+        vm.assume(duration >= testIncentivizedVault.MIN_CAMPAIGN_DURATION());
+        vm.assume(duration <= type(uint32).max - start); //If this is not here, then 'end' variable will overflow
+        vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
+        vm.assume(totalRewards / duration > 1e6);
+        vm.assume(start > block.timestamp + 10000);
+
+        uint32 end = start + duration;
+        testIncentivizedVault.addRewardsToken(address(rewardToken1));
+
+        rewardToken1.mint(address(this), totalRewards);
+        rewardToken1.approve(address(testIncentivizedVault), totalRewards);
+        testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, end, totalRewards, DEFAULT_FEE_RECIPIENT);
+        
+        vm.startPrank(REGULAR_USER);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(REGULAR_USER)));
+        testIncentivizedVault.refundRewardsInterval(address(rewardToken1));
+        vm.stopPrank();
+
+        uint256 initialBalance = rewardToken1.balanceOf(address(this));
+
+        testIncentivizedVault.refundRewardsInterval(address(rewardToken1));
+
+    }
+    
+
     function testWithdraw(uint256 depositAmount, uint256 withdrawAmount) public {
         vm.assume(depositAmount > 0 && depositAmount <= type(uint96).max);
         vm.assume(withdrawAmount > 0 && withdrawAmount <= depositAmount);
