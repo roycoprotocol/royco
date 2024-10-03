@@ -35,6 +35,9 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     /// @notice starts at 0 and increments by 1 for each order created
     uint256 public numOrders;
 
+    /// @notice The minimum time a campaign must run for before someone can be allocated into it
+    uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
+
     /// @notice maps order hashes to the remaining quantity of the order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
@@ -202,6 +205,10 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
         }
 
         for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
+            (uint32 start, uint32 end, ) = ERC4626i(order.targetVault).rewardToInterval(order.tokensRequested[i]);
+            if (end - start < MIN_CAMPAIGN_DURATION) {
+                revert OrderConditionsNotMet();
+            }
             if (order.tokenRatesRequested[i] > ERC4626i(order.targetVault).previewRateAfterDeposit(order.tokensRequested[i], fillAmount)) {
                 revert OrderConditionsNotMet();
             }
