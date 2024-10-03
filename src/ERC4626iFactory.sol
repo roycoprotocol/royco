@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.12;
 
-import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { LibString } from "lib/solmate/src/utils/LibString.sol";
 import { ERC4626i } from "src/ERC4626i.sol";
@@ -9,11 +9,11 @@ import { ERC4626i } from "src/ERC4626i.sol";
 /// @title ERC4626iFactory
 /// @author CopyPaste, corddry
 /// @dev A factory for deploying incentivized vaults, and managing protocol or other fees
-contract ERC4626iFactory is Ownable2Step {
+contract ERC4626iFactory is Owned(msg.sender) {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) payable Ownable(msg.sender) {
+    constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) payable {
         if (_protocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeTooHigh();
         if (_minimumFrontendFee > MAX_MIN_REFERRAL_FEE) revert ReferralFeeTooHigh();
 

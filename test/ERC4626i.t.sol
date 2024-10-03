@@ -87,7 +87,7 @@ contract ERC4626iTest is Test {
 
     function testDeployment() public view {
         assertEq(address(testIncentivizedVault.VAULT()), address(testVault));
-        assertEq(address(testIncentivizedVault.DEPOSIT_ASSET()), address(token));
+        assertEq(address(testIncentivizedVault.asset()), address(token));
         assertEq(testIncentivizedVault.owner(), address(this));
         assertEq(testIncentivizedVault.frontendFee(), DEFAULT_FRONTEND_FEE);
     }
