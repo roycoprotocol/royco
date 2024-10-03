@@ -57,7 +57,7 @@ contract VaultWrapperTest is Test {
 
     function testFactoryUpdateProtocolFees() public {
         vm.startPrank(address(0x8482));
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(0x8482)));
+        vm.expectRevert("UNAUTHORIZED");
         testFactory.updateProtocolFee(0.01e18);
         vm.stopPrank();
 
@@ -72,7 +72,7 @@ contract VaultWrapperTest is Test {
 
     function testFactoryUpdateReferralFee() public {
         vm.startPrank(address(0x8482));
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(0x8482)));
+        vm.expectRevert("UNAUTHORIZED");
         testFactory.updateMinimumReferralFee(0.01e18);
         vm.stopPrank();
 
@@ -87,7 +87,7 @@ contract VaultWrapperTest is Test {
 
     function testDeployment() public view {
         assertEq(address(testIncentivizedVault.VAULT()), address(testVault));
-        assertEq(address(testIncentivizedVault.DEPOSIT_ASSET()), address(token));
+        assertEq(address(testIncentivizedVault.asset()), address(token));
         assertEq(testIncentivizedVault.owner(), address(this));
         assertEq(testIncentivizedVault.frontendFee(), DEFAULT_FRONTEND_FEE);
     }
@@ -117,7 +117,7 @@ contract VaultWrapperTest is Test {
 
     function testAddRewardTokenUnauthorized(address unauthorized) public {
         vm.assume(unauthorized != address(this));
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, unauthorized));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(unauthorized)));
         vm.prank(unauthorized);
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
     }

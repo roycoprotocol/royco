@@ -11,6 +11,7 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IERC4626 } from "src/interfaces/IERC4626.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
+
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
@@ -75,7 +76,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
     }
 
     /// @dev The max amount of reward campaigns a user can be involved in
-    uint256 public MAX_REWARDS = 20;
+    uint256 public constant MAX_REWARDS = 20;
     /// @dev The minimum duration a reward campaign must last
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
     /// @dev The minimum lifespan of an extended campaign
@@ -84,7 +85,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
     /// @dev The address of the underlying vault being incentivized
     IERC4626 public immutable VAULT;
     /// @dev The underlying asset being deposited into the vault
-    ERC20 public immutable DEPOSIT_ASSET;
+    ERC20 immutable DEPOSIT_ASSET;
     /// @dev The address of the canonical points program factory
     PointsFactory public immutable POINTS_FACTORY;
     /// @dev The address of the canonical VaultWrapper factory
@@ -142,7 +143,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
     }
 
     /// @param rewardsToken The new reward token / points program to be used as incentives
-    function addRewardsToken(address rewardsToken) public onlyOwner {
+    function addRewardsToken(address rewardsToken) payable public onlyOwner {
         // Check if max rewards offered limit has been reached
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
 
@@ -159,14 +160,14 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
     }
 
     /// @param newFrontendFee The new front-end fee out of WAD
-    function setFrontendFee(uint256 newFrontendFee) public onlyOwner {
+    function setFrontendFee(uint256 newFrontendFee) payable public onlyOwner {
         if (newFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
         frontendFee = newFrontendFee;
         emit FrontendFeeUpdated(newFrontendFee);
     }
 
     /// @param to The address to send all fees owed to msg.sender to
-    function claimFees(address to) external {
+    function claimFees(address to) payable external {
         for (uint256 i = 0; i < rewards.length; i++) {
             address reward = rewards[i];
             claimFees(to, reward);
@@ -175,7 +176,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
 
     /// @param to The address to send all fees owed to msg.sender to
     /// @param reward The reward token / points program to claim fees from
-    function claimFees(address to, address reward) public {
+    function claimFees(address to, address reward) payable public {
         if (!isReward[reward]) revert InvalidReward();
 
         uint256 owed = rewardToClaimantToFees[reward][msg.sender];
@@ -215,7 +216,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
     /// @param rewardsAdded The amount of rewards to add to the campaign
     /// @param newEnd The end date of the rewards campaign
     /// @param frontendFeeRecipient The address to reward for directing IP flow
-    function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) public onlyOwner {
+    function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) payable public onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         if (newEnd <= rewardsInterval.end) revert InvalidInterval();
@@ -257,9 +258,9 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
     /// @param end The end timestamp of the interval
     /// @param totalRewards The amount of rewards to distribute over the interval
     /// @param frontendFeeRecipient The address to reward the frontendFee
-    function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) external onlyOwner {
+    function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) payable external onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
-        if (start >= end) revert InvalidInterval();
+        if (start >= end || end <= block.timestamp) revert InvalidInterval();
         if ((end - start) < MIN_CAMPAIGN_DURATION) revert InvalidIntervalDuration();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
@@ -267,8 +268,6 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
 
         // A new rewards program can be set if one is not running
         if (block.timestamp.toUint32() >= rewardsInterval.start && block.timestamp.toUint32() <= rewardsInterval.end) revert IntervalInProgress();
-
-        if (end <= block.timestamp) revert InvalidInterval();
 
         // Update the rewards per token so that we don't lose any rewards
         _updateRewardsPerToken(reward);
@@ -303,7 +302,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
     }
 
     /// @param reward The address of the reward for which campaign should be refunded
-    function refundRewardsInterval(address reward) external onlyOwner {
+    function refundRewardsInterval(address reward) payable external onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         if (block.timestamp >= rewardsInterval.start) revert IntervalInProgress();
@@ -324,7 +323,6 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
         returns (RewardsPerToken memory)
     {
         RewardsPerToken memory rewardsPerTokenOut = RewardsPerToken(rewardsPerTokenIn.accumulated, rewardsPerTokenIn.lastUpdated);
-        uint256 totalSupply_ = totalSupply;
 
         // No changes if the program hasn't started
         if (block.timestamp < rewardsInterval_.start) return rewardsPerTokenOut;
@@ -338,6 +336,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
         rewardsPerTokenOut.lastUpdated = updateTime.toUint32();
 
         // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
+        uint256 totalSupply_ = totalSupply;
         if (totalSupply_ == 0) return rewardsPerTokenOut;
 
         uint256 elapsedWAD = elapsed * 1e18;
@@ -433,7 +432,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
 
     /// @notice Claim all rewards for the caller
     /// @param to The address to send the rewards to
-    function claim(address to) public {
+    function claim(address to) payable public {
         for (uint256 i = 0; i < rewards.length; i++) {
             address reward = rewards[i];
             _claim(reward, msg.sender, to, currentUserRewards(reward, msg.sender));
@@ -442,7 +441,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IERC4626 {
 
     /// @param to The address to send the rewards to
     /// @param reward The reward token / points program to claim rewards from
-    function claim(address to, address reward) public {
+    function claim(address to, address reward) payable public {
         if (!isReward[reward]) revert InvalidReward();
         _claim(reward, msg.sender, to, currentUserRewards(reward, msg.sender));
     }

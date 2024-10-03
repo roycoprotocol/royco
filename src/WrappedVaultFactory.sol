@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.12;
 
-import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { LibString } from "lib/solmate/src/utils/LibString.sol";
 import { VaultWrapper } from "src/VaultWrapper.sol";
 
 /// @title WrappedVaultFactory
 /// @author CopyPaste, corddry
-/// @dev A factory for deploying incentivized vaults, and managing protocol or other fees
-contract WrappedVaultFactory is Ownable2Step {
+/// @dev A factory for deploying wrapped vaults, and managing protocol or other fees
+contract WrappedVaultFactory is Owned(msg.sender) {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) payable Ownable(msg.sender) {
+    constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) payable {
         if (_protocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeTooHigh();
         if (_minimumFrontendFee > MAX_MIN_REFERRAL_FEE) revert ReferralFeeTooHigh();
 

@@ -408,6 +408,8 @@ contract RecipeKernel is RecipeKernelBase {
         // Calculate percentage of AP oder that IP is fulfilling (IP gets this percantage of the offer quantity in a Weiroll wallet specified by the market)
         uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
 
+        if (fillPercentage < MIN_FILL_PERCENT) revert InsufficientFillPercent();
+
         // Get Weiroll market
         WeirollMarket storage market = marketIDToWeirollMarket[offer.targetMarketID];
 
