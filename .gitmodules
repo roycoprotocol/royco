@@ -16,3 +16,6 @@
 [submodule "lib/erc4626-tests"]
 	path = lib/erc4626-tests
 	url = https://github.com/a16z/erc4626-tests
+[submodule "lib/weiroll"]
+	path = lib/weiroll
+	url = https://github.com/weiroll/weiroll
