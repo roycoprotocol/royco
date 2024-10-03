@@ -78,6 +78,8 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     uint256 public constant MAX_REWARDS = 20;
     /// @dev The minimum duration a reward campaign must last
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
+    /// @dev The minimum lifespan of an extended campaign
+    uint256 public constant MIN_CAMPAIGN_EXTENSION = 1 weeks;
 
     /// @dev The address of the underlying vault being incentivized
     IERC4626 public immutable VAULT;
@@ -233,7 +235,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
 
         uint256 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp : uint256(rewardsInterval.start);
 
-        if ((newEnd - newStart) < MIN_CAMPAIGN_DURATION) revert InvalidIntervalDuration();
+        if ((newEnd - newStart) < MIN_CAMPAIGN_EXTENSION) revert InvalidIntervalDuration();
 
         uint256 remainingRewards = rewardsInterval.end < newStart ? 0 : rewardsInterval.rate * (rewardsInterval.end - newStart.toUint32());
         uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - newStart);
