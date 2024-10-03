@@ -18,4 +18,4 @@
 	url = https://github.com/a16z/erc4626-tests
 [submodule "lib/weiroll"]
 	path = lib/weiroll
-	url = https://github.com/roycoprotocol/weiroll
+	url = https://github.com/weiroll/weiroll
