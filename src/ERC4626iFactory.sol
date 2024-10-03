@@ -13,7 +13,7 @@ contract ERC4626iFactory is Ownable2Step {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) Ownable(msg.sender) {
+    constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) payable Ownable(msg.sender) {
         if (_protocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeTooHigh();
         if (_minimumFrontendFee > MAX_MIN_REFERRAL_FEE) revert ReferralFeeTooHigh();
 
@@ -67,21 +67,21 @@ contract ERC4626iFactory is Ownable2Step {
     //////////////////////////////////////////////////////////////*/
 
     /// @param newProtocolFee The new protocol fee to set for a given vault
-    function updateProtocolFee(uint256 newProtocolFee) external onlyOwner {
+    function updateProtocolFee(uint256 newProtocolFee) external payable onlyOwner {
         if (newProtocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeTooHigh();
         protocolFee = newProtocolFee;
         emit ProtocolFeeUpdated(newProtocolFee);
     }
 
     /// @param newMinimumReferralFee The new minimum referral fee to set for all incentivized vaults
-    function updateMinimumReferralFee(uint256 newMinimumReferralFee) external onlyOwner {
+    function updateMinimumReferralFee(uint256 newMinimumReferralFee) external payable onlyOwner {
         if (newMinimumReferralFee > MAX_MIN_REFERRAL_FEE) revert ReferralFeeTooHigh();
         minimumFrontendFee = newMinimumReferralFee;
         emit ReferralFeeUpdated(newMinimumReferralFee);
     }
 
     /// @param newRecipient The new protocol fee recipient to set for all incentivized vaults
-    function updateProtocolFeeRecipient(address newRecipient) external onlyOwner {
+    function updateProtocolFeeRecipient(address newRecipient) external payable onlyOwner {
         protocolFeeRecipient = newRecipient;
         emit ProtocolFeeRecipientUpdated(newRecipient);
     }
@@ -94,10 +94,11 @@ contract ERC4626iFactory is Ownable2Step {
     function createIncentivizedVault(
         ERC4626 vault,
         address owner,
-        string memory name,
+        string calldata name,
         uint256 initialFrontendFee
     )
-        public
+        external
+        payable
         returns (ERC4626i incentivizedVault)
     {
         bytes32 salt = keccak256(abi.encodePacked(address(vault), owner, name, initialFrontendFee));

@@ -30,6 +30,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         address _owner,
         address _pointsFactory
     )
+        payable
         Ownable(_owner)
     {
         WEIROLL_WALLET_IMPLEMENTATION = _weirollWalletImplementation;
@@ -667,7 +668,14 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @notice Execute the withdrawal script in the weiroll wallet
-    function executeWithdrawalScript(address weirollWallet) external payable override isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
+    function executeWithdrawalScript(address weirollWallet)
+        external
+        payable
+        override
+        isWeirollOwner(weirollWallet)
+        weirollIsUnlocked(weirollWallet)
+        nonReentrant
+    {
         _executeWithdrawalScript(weirollWallet);
     }
 
