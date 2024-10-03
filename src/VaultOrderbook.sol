@@ -35,7 +35,8 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     /// @notice starts at 0 and increments by 1 for each order created
     uint256 public numOrders;
 
-
+    /// @notice whether order fills are paused
+    bool ordersPaused;
 
     /// @notice maps order hashes to the remaining quantity of the order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
