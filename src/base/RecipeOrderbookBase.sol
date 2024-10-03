@@ -5,6 +5,7 @@ import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { WeirollWallet } from "src/WeirollWallet.sol";
 import { Ownable2Step } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import { ReentrancyGuardTransient } from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
 
 enum RewardStyle {
     Upfront,
@@ -14,7 +15,7 @@ enum RewardStyle {
 
 /// @title RecipeOrderbookBase
 /// @notice Base contract for the RecipeOrderbook
-abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient {
+abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
     /// @notice The address of the WeirollWallet implementation contract for use with ClonesWithImmutableArgs
     address public immutable WEIROLL_WALLET_IMPLEMENTATION;
 
@@ -265,7 +266,7 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     }
 
     // Getters to access nested mappings
-    function getTokenAmountsOfferedForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
+    /* function getTokenAmountsOfferedForIPOrder(uint256 orderId, address tokenAddress) external view returns (uint256) {
         return orderIDToIPOrder[orderId].tokenAmountsOffered[tokenAddress];
     }
 
@@ -281,7 +282,7 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     function getLockedRewardParams(address weirollWallet) external view returns (address[] memory tokens, uint256[] memory amounts, address ip) {
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
         return (params.tokens, params.amounts, params.ip);
-    }
+    } */
 
     /// @notice Create a new recipe market
     /// @param inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
@@ -357,27 +358,27 @@ abstract contract RecipeOrderbookBase is Ownable2Step, ReentrancyGuardTransient 
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public payable virtual;
+    // function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public payable virtual;
 
     /// @notice Filling multiple IP orders
     /// @param orderIDs The IDs of the IP orders to fill
     /// @param fillAmounts The amounts of input tokens to fill the corresponding orders with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrders(uint256[] calldata orderIDs, uint256[] calldata fillAmounts, address fundingVault, address frontendFeeRecipient) external payable virtual;
+    // function fillIPOrders(uint256[] calldata orderIDs, uint256[] calldata fillAmounts, address fundingVault, address frontendFeeRecipient) external payable virtual;
 
     /// @dev Fill an AP order
     /// @dev IP must approve all tokens to be spent (both fills + fees!) by the orderbook before calling this function.
     /// @param order The AP order to fill
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public payable virtual;
+    // function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public payable virtual;
 
     /// @dev Fill multiple AP orders
     /// @param orders The AP orders to fill
     /// @param fillAmounts The amount of input tokens to fill the corresponding order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external payable virtual;
+    // function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external payable virtual;
 
     /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
     function cancelAPOrder(APOrder calldata order) external payable virtual;

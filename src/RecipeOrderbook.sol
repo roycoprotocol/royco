@@ -6,6 +6,7 @@ import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 import { Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Points } from "src/Points.sol";
@@ -31,7 +32,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         address _pointsFactory
     )
         payable
-        Ownable(_owner)
+        Owned(_owner)
     {
         WEIROLL_WALLET_IMPLEMENTATION = _weirollWalletImplementation;
         POINTS_FACTORY = _pointsFactory;
@@ -249,7 +250,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) public payable override nonReentrant {
+    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) internal {
         // Retreive the IPOrder and WeirollMarket structs
         IPOrder storage order = orderIDToIPOrder[orderID];
         WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
@@ -353,9 +354,9 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         address fundingVault,
         address frontendFeeRecipient
     )
+        nonReentrant
         external
         payable
-        override
     {
         if (orderIDs.length != fillAmounts.length) {
             revert ArrayLengthMismatch();
@@ -371,7 +372,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param order The AP order to fill
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) public payable override nonReentrant {
+    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) internal {
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
         }
@@ -472,7 +473,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param orders The AP orders to fill
     /// @param fillAmounts The amount of input tokens to fill the corresponding order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external payable override {
+    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) nonReentrant external payable {
         if (orders.length != fillAmounts.length) {
             revert ArrayLengthMismatch();
         }
