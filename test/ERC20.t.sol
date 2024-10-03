@@ -7,24 +7,24 @@ import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 
-import { ERC4626i } from "src/ERC4626i.sol";
-import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
+import { VaultWrapper } from "src/VaultWrapper.sol";
+import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { Test } from "forge-std/Test.sol";
 
 contract ERC20Test is Test {
     ERC20 underlyingToken = ERC20(address(new MockERC20("Mock Token", "MOCK")));
     ERC4626 testVault = ERC4626(address(new MockERC4626(underlyingToken)));
-    ERC4626i token;
+    VaultWrapper token;
 
-    ERC4626iFactory testFactory;
+    WrappedVaultFactory testFactory;
 
     address public constant REGULAR_USER = address(0xbeef);
     address public constant REFERRAL_USER = address(0x33f123);
 
     function setUp() public {
         vm.startPrank(address(0x1));
-        testFactory = new ERC4626iFactory(address(0x0), 0.01e18, 0.01e18, address(0x0));
+        testFactory = new WrappedVaultFactory(address(0x0), 0.01e18, 0.01e18, address(0x0));
         vm.stopPrank();
         token = testFactory.createIncentivizedVault(testVault, address(0x01), "Test iVault", 0.05e18);
     }

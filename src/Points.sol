@@ -6,7 +6,7 @@ import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/acce
 
 /// @title Points
 /// @author CopyPaste, corddry, ShivaanshK
-/// @dev A simple program for running points programs
+/// @dev A simple contract for running Points Programs
 contract Points is Ownable2Step {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
@@ -48,7 +48,7 @@ contract Points is Ownable2Step {
     string public symbol;
     /// @dev We track all points logic using base 1
     uint256 public decimals;
-    /// @dev Track which RecipeOrderbook IPs are allowed to mint
+    /// @dev Track which RecipeKernel IPs are allowed to mint
     mapping(address => bool) public allowedIPs;
 
     /*//////////////////////////////////////////////////////////////
@@ -68,13 +68,13 @@ contract Points is Ownable2Step {
         emit AllowedVaultAdded(vault);
     }
 
-    /// @param ip The incentive provider address to allow to mint points on RecipeOrderbook
+    /// @param ip The incentive provider address to allow to mint points on RecipeKernel
     function addAllowedIP(address ip) external onlyOwner {
         allowedIPs[ip] = true;
     }
 
     error OnlyAllowedVaults();
-    error OnlyRecipeOrderbook();
+    error OnlyRecipeKernel();
     error NotAllowedIP();
 
     modifier onlyAllowedVaults() {
@@ -84,11 +84,11 @@ contract Points is Ownable2Step {
         _;
     }
 
-    /// @dev only the orderbook can call this function
+    /// @dev only the RecipeKernel can call this function
     /// @param ip The address to check if allowed
-    modifier onlyRecipeOrderbookAllowedIP(address ip) {
-        if (!pointsFactory.isRecipeOrderbook(msg.sender)) {
-            revert OnlyRecipeOrderbook();
+    modifier onlyRecipeKernelAllowedIP(address ip) {
+        if (!pointsFactory.isRecipeKernel(msg.sender)) {
+            revert OnlyRecipeKernel();
         }
         if (!allowedIPs[ip]) {
             revert NotAllowedIP();
@@ -109,7 +109,7 @@ contract Points is Ownable2Step {
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
     /// @param ip The incentive provider attempting to mint the points
-    function award(address to, uint256 amount, address ip) external onlyRecipeOrderbookAllowedIP(ip) {
+    function award(address to, uint256 amount, address ip) external onlyRecipeKernelAllowedIP(ip) {
         emit Award(to, amount);
     }
 }

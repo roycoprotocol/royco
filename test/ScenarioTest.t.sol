@@ -7,22 +7,22 @@ import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 
-import { ERC4626i } from "src/ERC4626i.sol";
-import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
+import { VaultWrapper } from "src/VaultWrapper.sol";
+import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { WeirollWallet } from "src/WeirollWallet.sol";
 
 import { PointsFactory } from "src/PointsFactory.sol";
 import { Points } from "src/Points.sol";
 
-import { VaultOrderbook } from "src/VaultOrderbook.sol";
-import "test/mocks/MockRecipeOrderbook.sol";
+import { VaultKernel } from "src/VaultKernel.sol";
+import "test/mocks/MockRecipeKernel.sol";
 
 import { Test, console } from "forge-std/Test.sol";
 
 contract ScenarioTest is Test {
-    VaultOrderbook public vaultOrderbook;
-    MockRecipeOrderbook public recipeOrderbook;
+    VaultKernel public vaultKernel;
+    MockRecipeKernel public recipeKernel;
 
     WeirollWallet public weirollImplementation = new WeirollWallet();
     PointsFactory public pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER);
@@ -45,7 +45,7 @@ contract ScenarioTest is Test {
     uint256 initialProtocolFee = 0.05e18;
     uint256 initialMinimumFrontendFee = 0.025e18;
 
-    RecipeOrderbook.Recipe NULL_RECIPE = RecipeOrderbookBase.Recipe(new bytes32[](0), new bytes[](0));
+    RecipeKernel.Recipe NULL_RECIPE = RecipeKernelBase.Recipe(new bytes32[](0), new bytes[](0));
 
     function setUp() public {
         baseToken = new MockERC20("Base Token", "BT");
@@ -57,7 +57,7 @@ contract ScenarioTest is Test {
         fundingVault = new MockERC4626(baseToken);
         fundingVault2 = new MockERC4626(baseToken2);
 
-        recipeOrderbook = new MockRecipeOrderbook(
+        recipeKernel = new MockRecipeKernel(
             address(weirollImplementation),
             initialProtocolFee,
             initialMinimumFrontendFee,
@@ -65,13 +65,13 @@ contract ScenarioTest is Test {
             address(pointsFactory)
         );
 
-        vaultOrderbook = new VaultOrderbook();
+        vaultKernel = new VaultKernel();
     }
 
-    function testBasicVaultOrderbookAllocate() public {
+    function testBasicVaultKernelAllocate() public {
         vm.startPrank(USER01);
         baseToken.mint(USER01, 1000 * 1e18);
-        baseToken.approve(address(vaultOrderbook), 300 * 1e18);
+        baseToken.approve(address(vaultKernel), 300 * 1e18);
         baseToken.approve(address(fundingVault), 100 * 1e18);
 
         address[] memory tokensRequested = new address[](1);
@@ -79,19 +79,19 @@ contract ScenarioTest is Test {
         uint256[] memory tokenRatesRequested = new uint256[](1);
         tokenRatesRequested[0] = 1e18;
 
-        uint256 order1Id =
-            vaultOrderbook.createAPOrder(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        uint256 order2Id =
-            vaultOrderbook.createAPOrder(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        uint256 order3Id =
-            vaultOrderbook.createAPOrder(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 offer1Id =
+            vaultKernel.createAPOffer(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 offer2Id =
+            vaultKernel.createAPOffer(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        uint256 offer3Id =
+            vaultKernel.createAPOffer(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-        VaultOrderbook.APOrder memory order1 =
-            VaultOrderbook.APOrder(order1Id, address(targetVault), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        VaultOrderbook.APOrder memory order2 =
-            VaultOrderbook.APOrder(order2Id, address(targetVault2), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        VaultOrderbook.APOrder memory order3 =
-            VaultOrderbook.APOrder(order3Id, address(targetVault3), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        VaultKernel.APOffer memory offer1 =
+            VaultKernel.APOffer(offer1Id, address(targetVault), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        VaultKernel.APOffer memory offer2 =
+            VaultKernel.APOffer(offer2Id, address(targetVault2), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        VaultKernel.APOffer memory offer3 =
+            VaultKernel.APOffer(offer3Id, address(targetVault3), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         uint256[][] memory moreCampaignIds = new uint256[][](3);
         moreCampaignIds[0] = new uint256[](1);
@@ -100,85 +100,85 @@ contract ScenarioTest is Test {
         moreCampaignIds[1][0] = 1;
         moreCampaignIds[2] = new uint256[](1);
         moreCampaignIds[2][0] = 2;
-        VaultOrderbook.APOrder[] memory orders = new VaultOrderbook.APOrder[](3);
+        VaultKernel.APOffer[] memory offers = new VaultKernel.APOffer[](3);
 
-        bytes32 order1Hash = vaultOrderbook.getOrderHash(order1);
-        bytes32 order2Hash = vaultOrderbook.getOrderHash(order2);
-        bytes32 order3Hash = vaultOrderbook.getOrderHash(order3);
+        bytes32 offer1Hash = vaultKernel.getOfferHash(offer1);
+        bytes32 offer2Hash = vaultKernel.getOfferHash(offer2);
+        bytes32 offer3Hash = vaultKernel.getOfferHash(offer3);
 
-        orders[0] = order1;
-        orders[1] = order2;
-        orders[2] = order3;
+        offers[0] = offer1;
+        offers[1] = offer2;
+        offers[2] = offer3;
 
         // Mock the previewRateAfterDeposit function
         vm.mockCall(
-            address(targetVault), abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
+            address(targetVault), abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
         );
         vm.mockCall(
-            address(targetVault2), abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
+            address(targetVault2), abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
         );
         vm.mockCall(
-            address(targetVault3), abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
+            address(targetVault3), abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
         );
 
         uint256[] memory fillAmounts = new uint256[](3);
         fillAmounts[0] = type(uint256).max;
         fillAmounts[1] = type(uint256).max;
         fillAmounts[2] = type(uint256).max;
-        vaultOrderbook.allocateOrders(orders, fillAmounts);
+        vaultKernel.allocateOffers(offers, fillAmounts);
 
-        //Verify none of the orders allocated
+        //Verify none of the offers allocated
         assertEq(targetVault.balanceOf(USER01), 100 * 1e18);
         assertEq(targetVault2.balanceOf(USER01), 100 * 1e18);
         assertEq(targetVault3.balanceOf(USER01), 100 * 1e18);
 
-        assertEq(vaultOrderbook.orderHashToRemainingQuantity(order1Hash), 0);
-        assertEq(vaultOrderbook.orderHashToRemainingQuantity(order2Hash), 0);
-        assertEq(vaultOrderbook.orderHashToRemainingQuantity(order3Hash), 0);
+        assertEq(vaultKernel.offerHashToRemainingQuantity(offer1Hash), 0);
+        assertEq(vaultKernel.offerHashToRemainingQuantity(offer2Hash), 0);
+        assertEq(vaultKernel.offerHashToRemainingQuantity(offer3Hash), 0);
 
         assertEq(baseToken.balanceOf(address(USER01)), 1000 * 1e18 - 300 * 1e18);
 
         vm.stopPrank();
     }
 
-    function testBasicRecipeOrderbookAllocate() public {
-        uint256 frontendFee = recipeOrderbook.minimumFrontendFee();
-        uint256 marketId = recipeOrderbook.createMarket(address(baseToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+    function testBasicRecipeKernelAllocate() public {
+        uint256 frontendFee = recipeKernel.minimumFrontendFee();
+        uint256 marketId = recipeKernel.createMarket(address(baseToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 orderAmount = 100_000e18; // Order amount requested
+        uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
-        // Create a fillable IP order
+        // Create a fillable IP offer
         vm.startPrank(USER02);
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(baseToken2);
-        uint256[] memory tokenAmountsOffered = new uint256[](1);
-        tokenAmountsOffered[0] = 1000e18;
+        uint256[] memory incentiveAmountsOffered = new uint256[](1);
+        incentiveAmountsOffered[0] = 1000e18;
 
         baseToken2.mint(USER02, 1000e18);
-        baseToken2.approve(address(recipeOrderbook), 1000e18);
+        baseToken2.approve(address(recipeKernel), 1000e18);
 
-        uint256 orderId = recipeOrderbook.createIPOrder(
+        uint256 offerId = recipeKernel.createIPOffer(
             marketId, // Referencing the created market
-            orderAmount, // Total input token amount
+            offerAmount, // Total input token amount
             block.timestamp + 30 days, // Expiry time
             tokensOffered, // Incentive tokens offered
-            tokenAmountsOffered // Incentive amounts offered
+            incentiveAmountsOffered // Incentive amounts offered
         );
         vm.stopPrank();
 
-        // Mint liquidity tokens to the AP to fill the order
+        // Mint liquidity tokens to the AP to fill the offer
         baseToken.mint(USER01, fillAmount);
         vm.startPrank(USER01);
-        baseToken.approve(address(recipeOrderbook), fillAmount);
+        baseToken.approve(address(recipeKernel), fillAmount);
         vm.stopPrank();
 
-        // Fill the order
+        // Fill the offer
         vm.startPrank(USER01);
-        recipeOrderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeOrderbook.orderIDToIPOrder(orderId);
+        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
     }
 }

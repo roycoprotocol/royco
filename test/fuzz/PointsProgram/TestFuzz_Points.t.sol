@@ -2,14 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "src/Points.sol";
-import { ERC4626i } from "../../../src/ERC4626i.sol";
+import { VaultWrapper } from "../../../src/VaultWrapper.sol";
 import { RoycoTestBase } from "../../utils/RoycoTestBase.sol";
 
 contract TestFuzz_Points is RoycoTestBase {
     string programName = "TestPoints";
     string programSymbol = "TP";
     uint256 decimals = 18;
-    ERC4626i vault;
+    VaultWrapper vault;
     Points pointsProgram;
     address owner;
     uint256 constant MINIMUM_CAMPAIGN_DURATION = 7 days;
@@ -24,7 +24,7 @@ contract TestFuzz_Points is RoycoTestBase {
         ipAddress = CHARLIE_ADDRESS;
 
         vm.startPrank(POINTS_FACTORY_OWNER_ADDRESS);
-        pointsFactory.addRecipeOrderbook(address(orderbook));
+        pointsFactory.addRecipeKernel(address(recipeKernel));
         vm.stopPrank();
 
         vm.startPrank(owner);
@@ -36,7 +36,7 @@ contract TestFuzz_Points is RoycoTestBase {
     function testFuzz_PointsCreation(address _owner, string memory _name, string memory _symbol, uint256 _decimals) external {
         vm.assume(_owner != address(0));
 
-        ERC4626i newVault = erc4626iFactory.createIncentivizedVault(mockVault, _owner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
+        VaultWrapper newVault = erc4626iFactory.createIncentivizedVault(mockVault, _owner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
         Points fuzzPoints = PointsFactory(vault.POINTS_FACTORY()).createPointsProgram(_name, _symbol, _decimals, _owner);
 
         assertEq(fuzzPoints.name(), _name);
@@ -67,24 +67,24 @@ contract TestFuzz_Points is RoycoTestBase {
         vm.expectEmit(true, true, false, true, address(pointsProgram));
         emit Points.Award(_to, _amount);
 
-        vm.startPrank(address(orderbook));
+        vm.startPrank(address(recipeKernel));
         pointsProgram.award(_to, _amount, _ip);
         vm.stopPrank();
     }
 
     // Fuzz test reverting when a non-allowed IP tries to award points
-    function testFuzz_RevertIf_NonAllowedIPAwardsPoints(address _to, uint256 _amount, address _nonAllowedIP) external prankModifier(address(orderbook)) {
+    function testFuzz_RevertIf_NonAllowedIPAwardsPoints(address _to, uint256 _amount, address _nonAllowedIP) external prankModifier(address(recipeKernel)) {
         vm.assume(_nonAllowedIP != ipAddress);
 
         vm.expectRevert(abi.encodeWithSelector(Points.NotAllowedIP.selector));
         pointsProgram.award(_to, _amount, _nonAllowedIP);
     }
 
-    // Fuzz test reverting when a non-orderbook address calls award for IPs
-    function testFuzz_RevertIf_NonOrderbookCallsAwardForIP(address _to, uint256 _amount, address _nonOrderbook) external prankModifier(_nonOrderbook) {
-        vm.assume(_nonOrderbook != address(orderbook));
+    // Fuzz test reverting when a non-recipeKernel address calls award for IPs
+    function testFuzz_RevertIf_NonRecipekernelCallsAwardForIP(address _to, uint256 _amount, address _nonRecipekernel) external prankModifier(_nonRecipekernel) {
+        vm.assume(_nonRecipekernel != address(recipeKernel));
 
-        vm.expectRevert(abi.encodeWithSelector(Points.OnlyRecipeOrderbook.selector));
+        vm.expectRevert(abi.encodeWithSelector(Points.OnlyRecipeKernel.selector));
         pointsProgram.award(_to, _amount, ipAddress);
     }
 }

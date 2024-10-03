@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "src/Points.sol";
-import { ERC4626i } from "../../../src/ERC4626i.sol";
+import { VaultWrapper } from "../../../src/VaultWrapper.sol";
 import { ERC4626 } from "../../../lib/solmate/src/tokens/ERC4626.sol";
 import { RoycoTestBase } from "../../utils/RoycoTestBase.sol";
 
@@ -12,7 +12,7 @@ contract Test_Points is RoycoTestBase {
     uint256 decimals = 18;
     address programOwner = ALICE_ADDRESS;
     address ipAddress = CHARLIE_ADDRESS;
-    ERC4626i vault;
+    VaultWrapper vault;
     Points pointsProgram;
     uint256 campaignId;
 
@@ -26,7 +26,7 @@ contract Test_Points is RoycoTestBase {
         ipAddress = CHARLIE_ADDRESS;
 
         vm.startPrank(POINTS_FACTORY_OWNER_ADDRESS);
-        pointsFactory.addRecipeOrderbook(address(orderbook));
+        pointsFactory.addRecipeKernel(address(recipeKernel));
         vm.stopPrank();
 
         vm.startPrank(programOwner);
@@ -91,7 +91,7 @@ contract Test_Points is RoycoTestBase {
         vm.startPrank(pointsProgram.owner());
         pointsProgram.addAllowedIP(ipAddress);
         vm.stopPrank();
-        vm.startPrank(address(orderbook));
+        vm.startPrank(address(recipeKernel));
 
         // Check if the event was emitted (Points awarded)
         vm.expectEmit(true, true, false, true, address(pointsProgram));
@@ -103,10 +103,10 @@ contract Test_Points is RoycoTestBase {
 
     function test_RevertIf_NonAllowedIPAwardsPoints() external {
         vm.startPrank(POINTS_FACTORY_OWNER_ADDRESS);
-        pointsFactory.addRecipeOrderbook(address(orderbook));
+        pointsFactory.addRecipeKernel(address(recipeKernel));
         vm.stopPrank();
 
-        vm.startPrank(address(orderbook));
+        vm.startPrank(address(recipeKernel));
         // Expect revert if a non-allowed IP tries to award points
         vm.expectRevert(abi.encodeWithSelector(Points.NotAllowedIP.selector));
         pointsProgram.award(BOB_ADDRESS, 300e18, BOB_ADDRESS);
@@ -114,8 +114,8 @@ contract Test_Points is RoycoTestBase {
     }
 
     function test_RevertIf_NonOrderbookCallsAwardForIP() external prankModifier(BOB_ADDRESS) {
-        // Expect revert if a non-orderbook address calls award for IPs
-        vm.expectRevert(abi.encodeWithSelector(Points.OnlyRecipeOrderbook.selector));
+        // Expect revert if a non-recipeKernel address calls award for IPs
+        vm.expectRevert(abi.encodeWithSelector(Points.OnlyRecipeKernel.selector));
         pointsProgram.award(BOB_ADDRESS, 300e18, ipAddress);
     }
 }

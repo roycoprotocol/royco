@@ -2,33 +2,33 @@
 pragma solidity ^0.8.0;
 
 import { Points } from "src/Points.sol";
-import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
+import { RecipeKernel } from "src/RecipeKernel.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 
 /// @title PointsFactory
 /// @author CopyPaste, corddry, ShivaanshK
-/// @dev A simple program for creating points programs
+/// @dev A simple factory for creating Points Programs
 contract PointsFactory is Ownable2Step {
     /// @notice Mapping of Points Program address => bool (indicator of if Points Program was deployed using this factory)
     mapping(address => bool) public isPointsProgram;
 
-    /// @notice Mapping of Orderbook address => bool (indicator of if the address is of a Royco orderbook)
-    mapping(address => bool) public isRecipeOrderbook;
+    /// @notice Mapping of Orderbook address => bool (indicator of if the address is of a Royco RecipeKernel)
+    mapping(address => bool) public isRecipeKernel;
 
     /// @notice Emitted when creating a points program using this factory
     event NewPointsProgram(Points indexed points, string indexed name, string indexed symbol);
 
-    /// @notice Emitted when adding an orderbook to this Points Factory
-    event RecipeOrderbookAdded(address indexed recipeOrderbook);
+    /// @notice Emitted when adding an RecipeKernel to this Points Factory
+    event RecipeKernelAdded(address indexed recipeKernel);
 
-    /// @param _owner The owner of the points factory - responsible for adding valid orderbooks to the 
+    /// @param _owner The owner of the points factory - responsible for adding valid RecipeKernel(s) to the PointsFactory
     constructor(address _owner) Ownable(_owner) {}
 
-    /// @param _recipeOrderbook The orderbook to add to the Points Factory
-    function addRecipeOrderbook(address _recipeOrderbook) external onlyOwner {
-        isRecipeOrderbook[_recipeOrderbook] = true;
-        emit RecipeOrderbookAdded(_recipeOrderbook);
+    /// @param _recipeKernel The RecipeKernel to mark as valid in the Points Factory
+    function addRecipeKernel(address _recipeKernel) external onlyOwner {
+        isRecipeKernel[_recipeKernel] = true;
+        emit RecipeKernelAdded(_recipeKernel);
     }
 
     /// @param _name The name for the new points program

@@ -6,12 +6,12 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 
-import {ERC4626i} from "../src/ERC4626i.sol";
-import {ERC4626iFactory} from "../src/ERC4626iFactory.sol";
+import {VaultWrapper} from "../src/VaultWrapper.sol";
+import {WrappedVaultFactory} from "../src/WrappedVaultFactory.sol";
 import {Points} from "../src/Points.sol";
 import {PointsFactory} from"../src/PointsFactory.sol";
-import {VaultOrderbook} from "../src/VaultOrderbook.sol";
-import {RecipeOrderbook} from "../src/RecipeOrderbook.sol";
+import {VaultKernel} from "../src/VaultKernel.sol";
+import {RecipeKernel} from "../src/RecipeKernel.sol";
 import {WeirollWallet} from "../src/WeirollWallet.sol";
 
 import { MockERC20 } from "test/mocks/MockERC20.sol";
@@ -24,11 +24,11 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         PointsFactory pointsFactory = new PointsFactory(deployerAddress);
-        ERC4626iFactory erc4626iFactory = new ERC4626iFactory(deployerAddress, 0.01e18, 0.001e18, address(pointsFactory) );
+        WrappedVaultFactory erc4626iFactory = new WrappedVaultFactory(deployerAddress, 0.01e18, 0.001e18, address(pointsFactory) );
 
         WeirollWallet wwi = new WeirollWallet();
-        VaultOrderbook orderbook = new VaultOrderbook();
-        RecipeOrderbook recipeOrderbook = new RecipeOrderbook(
+        VaultKernel orderbook = new VaultKernel();
+        RecipeKernel RecipeKernel = new RecipeKernel(
             address(wwi),
             0.01e18, // 1% protocol fee
             0.001e18, // 0.1% minimum frontend fee

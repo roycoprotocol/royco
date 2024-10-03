@@ -7,8 +7,8 @@ import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 
-import { ERC4626i } from "src/ERC4626i.sol";
-import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
+import { VaultWrapper } from "src/VaultWrapper.sol";
+import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
@@ -17,15 +17,15 @@ import { PointsFactory } from "src/PointsFactory.sol";
 
 import { Test, console } from "forge-std/Test.sol";
 
-contract ERC4626iTest is Test {
+contract VaultWrapperTest is Test {
     using FixedPointMathLib for *;
 
     ERC20 token = ERC20(address(new MockERC20("Mock Token", "MOCK")));
     ERC4626 testVault = ERC4626(address(new MockERC4626(token)));
-    ERC4626i testIncentivizedVault;
+    VaultWrapper testIncentivizedVault;
 
     PointsFactory pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER);
-    ERC4626iFactory testFactory;
+    WrappedVaultFactory testFactory;
     uint256 constant WAD = 1e18;
 
     uint256 constant DEFAULT_REFERRAL_FEE = 0.025e18;
@@ -42,7 +42,7 @@ contract ERC4626iTest is Test {
     MockERC20 rewardToken2;
 
     function setUp() public {
-        testFactory = new ERC4626iFactory(DEFAULT_FEE_RECIPIENT, DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(pointsFactory));
+        testFactory = new WrappedVaultFactory(DEFAULT_FEE_RECIPIENT, DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(pointsFactory));
         testIncentivizedVault = testFactory.createIncentivizedVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
 
         rewardToken1 = new MockERC20("Reward Token 1", "RWD1");
@@ -63,7 +63,7 @@ contract ERC4626iTest is Test {
 
         vm.startPrank(testFactory.owner());
         uint256 maxProtocolFee = testFactory.MAX_PROTOCOL_FEE();
-        vm.expectRevert(ERC4626iFactory.ProtocolFeeTooHigh.selector);
+        vm.expectRevert(WrappedVaultFactory.ProtocolFeeTooHigh.selector);
         testFactory.updateProtocolFee(maxProtocolFee + 1);
 
         testFactory.updateProtocolFee(0.075e18);
@@ -78,7 +78,7 @@ contract ERC4626iTest is Test {
 
         vm.startPrank(testFactory.owner());
         uint256 maxMinFee = testFactory.MAX_MIN_REFERRAL_FEE();
-        vm.expectRevert(ERC4626iFactory.ReferralFeeTooHigh.selector);
+        vm.expectRevert(WrappedVaultFactory.ReferralFeeTooHigh.selector);
         testFactory.updateMinimumReferralFee(maxMinFee + 1);
 
         testFactory.updateMinimumReferralFee(0.075e18);
@@ -111,7 +111,7 @@ contract ERC4626iTest is Test {
         assertEq(testIncentivizedVault.rewards(0), newRewardToken);
 
         // Test we cannot add the second reward token twice
-        vm.expectRevert(ERC4626i.DuplicateRewardToken.selector);
+        vm.expectRevert(VaultWrapper.DuplicateRewardToken.selector);
         testIncentivizedVault.addRewardsToken(newRewardToken);
     }
 
@@ -128,7 +128,7 @@ contract ERC4626iTest is Test {
         }
 
         address mockToken = address(new MockERC20("", ""));
-        vm.expectRevert(ERC4626i.MaxRewardsReached.selector);
+        vm.expectRevert(VaultWrapper.MaxRewardsReached.selector);
         testIncentivizedVault.addRewardsToken(mockToken);
     }
 
@@ -140,7 +140,7 @@ contract ERC4626iTest is Test {
 
     function testSetFrontendFeeBelowMinimum(uint256 newFee) public {
         vm.assume(newFee < testFactory.minimumFrontendFee());
-        vm.expectRevert(ERC4626i.FrontendFeeBelowMinimum.selector);
+        vm.expectRevert(VaultWrapper.FrontendFeeBelowMinimum.selector);
         testIncentivizedVault.setFrontendFee(newFee);
     }
 
