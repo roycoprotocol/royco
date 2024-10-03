@@ -75,16 +75,16 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     }
 
     /// @dev The max amount of reward campaigns a user can be involved in
-    uint256 public constant MAX_REWARDS = 20;
+    uint256 public MAX_REWARDS = 20;
     /// @dev The minimum duration a reward campaign must last
-    uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
+    uint256 constant MIN_CAMPAIGN_DURATION = 1 weeks;
     /// @dev The minimum lifespan of an extended campaign
-    uint256 public constant MIN_CAMPAIGN_EXTENSION = 1 weeks;
+    uint256 constant MIN_CAMPAIGN_EXTENSION = 1 weeks;
 
     /// @dev The address of the underlying vault being incentivized
     IERC4626 public immutable VAULT;
     /// @dev The underlying asset being deposited into the vault
-    ERC20 public immutable DEPOSIT_ASSET;
+    ERC20 immutable DEPOSIT_ASSET;
     /// @dev The address of the canonical points program factory
     PointsFactory public immutable POINTS_FACTORY;
     /// @dev The address of the canonical ERC4626i factory
@@ -366,6 +366,7 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
         return rewardsPerTokenOut;
     }
 
+    /// @param user The user to update rewards for
     function _updateUserRewards(address user) internal {
         for (uint256 i = 0; i < rewards.length; i++) {
             address reward = rewards[i];
@@ -374,6 +375,8 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     }
 
     /// @notice Calculate and store current rewards for an user. Checkpoint the rewardsPerToken value with the user.
+    /// @param reward The reward token / points program to update rewards for
+    /// @param user The user to update rewards for
     function _updateUserRewards(address reward, address user) internal returns (UserRewards memory) {
         RewardsPerToken memory rewardsPerToken_ = _updateRewardsPerToken(reward);
         UserRewards memory userRewards_ = rewardToUserToAR[reward][user];
