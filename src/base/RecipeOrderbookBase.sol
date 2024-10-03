@@ -28,6 +28,9 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
     /// @notice The number of unique weiroll markets added
     uint256 public numMarkets;
 
+    /// @notice whether order fills are paused
+    bool ordersPaused;
+
     /// @notice The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant
     uint256 public protocolFee; // 1e18 == 100% fee
     address public protocolFeeClaimant;
@@ -247,8 +250,10 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
     error InvalidPointsProgram();
     /// @notice emitted when APOrderFill charges a trivial incentive amount
     error NoIncentivesPaidOnFill();
+    /// @notice emitted when trying to fill orders while orders are paused
+    error OrdersPaused();
 
-    // modifier to check if msg.sender is owner of a weirollWallet
+    /// @notice Modifier to check if msg.sender is owner of a weirollWallet
     modifier isWeirollOwner(address weirollWallet) {
         if (WeirollWallet(payable(weirollWallet)).owner() != msg.sender) {
             revert NotOwner();
@@ -256,12 +261,25 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
         _;
     }
 
-    // modifier to check if the weiroll wallet is unlocked
+    /// @notice Modifier to check if the weiroll wallet is unlocked
     modifier weirollIsUnlocked(address weirollWallet) {
         if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
             revert WalletLocked();
         }
         _;
+    }
+
+    /// @notice Check if order fills have been paused
+    modifier ordersNotPaused() {
+        if (ordersPaused) {
+            revert OrdersPaused();
+        }
+        _;
+    }
+
+    /// @notice Setter to pause and unpause fills
+    function setOrdersPaused(bool _ordersPaused) external onlyOwner {
+        ordersPaused = _ordersPaused;
     }
 
     /// @notice sets the protocol fee recipient, taken on all fills
