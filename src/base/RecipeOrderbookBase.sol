@@ -21,6 +21,8 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
     /// @notice The address of the PointsFactory contract
     address public immutable POINTS_FACTORY;
 
+    /// @notice The minimum percent you can fill an AP order with, to prevent griefing attacks
+    uint256 public constant MIN_FILL_PERCENT = .25e18; // == 25%
     /// @notice The number of AP orders that have been created
     uint256 public numAPOrders;
     /// @notice The number of IP orders that have been created
@@ -252,6 +254,8 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
     error NoIncentivesPaidOnFill();
     /// @notice emitted when trying to fill orders while orders are paused
     error OrdersPaused();
+    /// @notice emitted when trying to fill an order with a quantity below the minimum fill percent
+    error InsufficientFillPercent();
 
     /// @notice Modifier to check if msg.sender is owner of a weirollWallet
     modifier isWeirollOwner(address weirollWallet) {

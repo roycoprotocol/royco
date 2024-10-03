@@ -411,6 +411,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         // Calculate percentage of AP oder that IP is fulfilling (IP gets this percantage of the order quantity in a Weiroll wallet specified by the market)
         uint256 fillPercentage = fillAmount.divWadDown(order.quantity);
 
+        if (fillPercentage < MIN_FILL_PERCENT) revert InsufficientFillPercent();
+
         // Get Weiroll market
         WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
 

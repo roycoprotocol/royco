@@ -32,7 +32,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
@@ -166,7 +166,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP order
         (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(0), orderAmount, AP_ADDRESS, IP_ADDRESS);
@@ -228,7 +228,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
 
@@ -302,7 +302,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP order
         (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(mockVault), orderAmount, AP_ADDRESS, IP_ADDRESS);
@@ -368,7 +368,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
@@ -432,7 +432,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP order
         (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(0), orderAmount, AP_ADDRESS, IP_ADDRESS);
@@ -487,7 +487,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
 
@@ -558,7 +558,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP order
         (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(mockVault), orderAmount, AP_ADDRESS, IP_ADDRESS);
@@ -617,7 +617,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(0), orderAmount, AP_ADDRESS);
 
@@ -681,7 +681,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP order
         (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(0), orderAmount, AP_ADDRESS, IP_ADDRESS);
@@ -736,7 +736,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         (, RecipeOrderbookBase.APOrder memory order) = createAPOrder_ForTokens(marketId, address(mockVault), orderAmount, AP_ADDRESS);
 
@@ -807,7 +807,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         uint256 marketId = orderbook.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
         uint256 orderAmount = 100_000e18; // Order amount requested
-        uint256 fillAmount = 1000e18; // Fill amount
+        uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP order
         (, RecipeOrderbookBase.APOrder memory order, Points points) = createAPOrder_ForPoints(marketId, address(mockVault), orderAmount, AP_ADDRESS, IP_ADDRESS);
