@@ -233,7 +233,7 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice allocate a selection of orders
-    function allocateOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts) public {
+    function allocateOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts) external {
         uint256 len = orders.length;
         for (uint256 i = 0; i < len; ++i) {
             allocateOrder(orders[i], fillAmounts[i]);
@@ -241,7 +241,7 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice cancel an outstanding order
-    function cancelOrder(APOrder calldata order) public {
+    function cancelOrder(APOrder calldata order) external {
         // Check if the AP is the creator of the order
         if (order.ap != msg.sender) {
             revert NotOrderCreator();
