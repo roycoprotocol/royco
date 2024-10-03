@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.19;
 
-interface IVaultWrapper {
+interface IWrappedVault {
     /// @return assetTokenAddress The address of the asset token
     function asset() external view returns (address assetTokenAddress);
 

@@ -7,7 +7,7 @@ import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 
-import { VaultWrapper } from "src/VaultWrapper.sol";
+import { WrappedVault } from "src/WrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
@@ -17,12 +17,12 @@ import { PointsFactory } from "src/PointsFactory.sol";
 
 import { Test, console } from "forge-std/Test.sol";
 
-contract VaultWrapperTest is Test {
+contract WrappedVaultTest is Test {
     using FixedPointMathLib for *;
 
     ERC20 token = ERC20(address(new MockERC20("Mock Token", "MOCK")));
     ERC4626 testVault = ERC4626(address(new MockERC4626(token)));
-    VaultWrapper testIncentivizedVault;
+    WrappedVault testIncentivizedVault;
 
     PointsFactory pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER);
     WrappedVaultFactory testFactory;
@@ -43,7 +43,7 @@ contract VaultWrapperTest is Test {
 
     function setUp() public {
         testFactory = new WrappedVaultFactory(DEFAULT_FEE_RECIPIENT, DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(pointsFactory));
-        testIncentivizedVault = testFactory.createIncentivizedVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
+        testIncentivizedVault = testFactory.wrapVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
 
         rewardToken1 = new MockERC20("Reward Token 1", "RWD1");
         rewardToken2 = new MockERC20("Reward Token 2", "RWD2");
@@ -93,7 +93,7 @@ contract VaultWrapperTest is Test {
     }
 
     function testVaultPassThroughFunctions() public {
-        testIncentivizedVault = testFactory.createIncentivizedVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
+        testIncentivizedVault = testFactory.wrapVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
 
         assertEq(address(testIncentivizedVault.asset()), address(testVault.asset()));
         assertEq(testIncentivizedVault.maxDeposit(address(this)), testVault.maxDeposit(address(this)));
@@ -111,7 +111,7 @@ contract VaultWrapperTest is Test {
         assertEq(testIncentivizedVault.rewards(0), newRewardToken);
 
         // Test we cannot add the second reward token twice
-        vm.expectRevert(VaultWrapper.DuplicateRewardToken.selector);
+        vm.expectRevert(WrappedVault.DuplicateRewardToken.selector);
         testIncentivizedVault.addRewardsToken(newRewardToken);
     }
 
@@ -128,7 +128,7 @@ contract VaultWrapperTest is Test {
         }
 
         address mockToken = address(new MockERC20("", ""));
-        vm.expectRevert(VaultWrapper.MaxRewardsReached.selector);
+        vm.expectRevert(WrappedVault.MaxRewardsReached.selector);
         testIncentivizedVault.addRewardsToken(mockToken);
     }
 
@@ -140,7 +140,7 @@ contract VaultWrapperTest is Test {
 
     function testSetFrontendFeeBelowMinimum(uint256 newFee) public {
         vm.assume(newFee < testFactory.minimumFrontendFee());
-        vm.expectRevert(VaultWrapper.FrontendFeeBelowMinimum.selector);
+        vm.expectRevert(WrappedVault.FrontendFeeBelowMinimum.selector);
         testIncentivizedVault.setFrontendFee(newFee);
     }
 

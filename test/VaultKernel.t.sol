@@ -7,7 +7,7 @@ import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 
-import { VaultWrapper } from "src/VaultWrapper.sol";
+import { WrappedVault } from "src/WrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { VaultKernel } from "src/VaultKernel.sol";
@@ -415,7 +415,7 @@ contract VaultKernelTest is Test {
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault2),
-           abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), uint256(quantity)),
+           abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), uint256(quantity)),
            abi.encode(tokenRateRequested)
            );
 
@@ -473,7 +473,7 @@ contract VaultKernelTest is Test {
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault),
-           abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
            abi.encode(uint256(tokenRateRequested-1))
            );
        // Allocate the offer
@@ -522,7 +522,7 @@ contract VaultKernelTest is Test {
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault),
-           abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
            abi.encode(tokenRateRequested)
            );
        // Allocate the offer
@@ -571,7 +571,7 @@ contract VaultKernelTest is Test {
 
        vm.mockCall(
            address(targetVault),
-           abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
            abi.encode(tokenRateRequested)
            );
 
@@ -635,17 +635,17 @@ contract VaultKernelTest is Test {
        // Mock the previewRateAfterDeposit function
        vm.mockCall(
            address(targetVault),
-           abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
            abi.encode(tokenRatesRequested[0])
            );
        vm.mockCall(
            address(targetVault2),
-           abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
            abi.encode(tokenRatesRequested[1])
            );
        vm.mockCall(
            address(targetVault3),
-           abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), quantity),
+           abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
            abi.encode(tokenRatesRequested[2])
            );
 

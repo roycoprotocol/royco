@@ -6,7 +6,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 
-import {VaultWrapper} from "../src/VaultWrapper.sol";
+import {WrappedVault} from "../src/WrappedVault.sol";
 import {WrappedVaultFactory} from "../src/WrappedVaultFactory.sol";
 import {Points} from "../src/Points.sol";
 import {PointsFactory} from"../src/PointsFactory.sol";

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { ERC20 } from "../lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "../lib/solmate/src/tokens/ERC4626.sol";
-import { VaultWrapper } from "src/VaultWrapper.sol";
+import { WrappedVault } from "src/WrappedVault.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import { ReentrancyGuardTransient } from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
@@ -221,11 +221,11 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
         }
 
         for (uint256 i; i < offer.incentivesRatesRequested.length; ++i) {
-            (uint32 start, uint32 end, ) = VaultWrapper(offer.targetVault).rewardToInterval(offer.incentivesRequested[i]);
+            (uint32 start, uint32 end, ) = WrappedVault(offer.targetVault).rewardToInterval(offer.incentivesRequested[i]);
             if (end - start < MIN_CAMPAIGN_DURATION) {
                 revert OfferConditionsNotMet();
             }
-            if (offer.incentivesRatesRequested[i] > VaultWrapper(offer.targetVault).previewRateAfterDeposit(offer.incentivesRequested[i], fillAmount)) {
+            if (offer.incentivesRatesRequested[i] > WrappedVault(offer.targetVault).previewRateAfterDeposit(offer.incentivesRequested[i], fillAmount)) {
                 revert OfferConditionsNotMet();
             }
         }

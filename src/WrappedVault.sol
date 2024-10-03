@@ -8,14 +8,14 @@ import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/acce
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
-import { IVaultWrapper } from "src/interfaces/IVaultWrapper.sol";
+import { IWrappedVault } from "src/interfaces/IWrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
-contract VaultWrapper is Ownable2Step, ERC20, IVaultWrapper {
+contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     using SafeTransferLib for ERC20;
 
     using SafeCast for uint256;
@@ -83,12 +83,12 @@ contract VaultWrapper is Ownable2Step, ERC20, IVaultWrapper {
     uint256 public constant MIN_CAMPAIGN_EXTENSION = 1 weeks;
 
     /// @dev The address of the underlying vault being incentivized
-    IVaultWrapper public immutable VAULT;
+    IWrappedVault public immutable VAULT;
     /// @dev The underlying asset being deposited into the vault
     ERC20 immutable DEPOSIT_ASSET;
     /// @dev The address of the canonical points program factory
     PointsFactory public immutable POINTS_FACTORY;
-    /// @dev The address of the canonical VaultWrapper factory
+    /// @dev The address of the canonical WrappedVault factory
     WrappedVaultFactory public immutable ERC4626I_FACTORY;
 
     /// @dev The fee taken by the referring frontend, out of WAD
@@ -133,7 +133,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IVaultWrapper {
         if (initialFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
 
         frontendFee = initialFrontendFee;
-        VAULT = IVaultWrapper(vault);
+        VAULT = IWrappedVault(vault);
         DEPOSIT_ASSET = ERC20(VAULT.asset());
         POINTS_FACTORY = PointsFactory(pointsFactory);
 
@@ -473,17 +473,17 @@ contract VaultWrapper is Ownable2Step, ERC20, IVaultWrapper {
                             ERC4626 OVERRIDE
     //////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function asset() external view returns (address _asset) {
         return address(DEPOSIT_ASSET);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function totalAssets() public view returns (uint256) {
         return VAULT.convertToAssets(ERC20(address(VAULT)).balanceOf(address(this)));
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function deposit(uint256 assets, address receiver) public returns (uint256 shares) {
         DEPOSIT_ASSET.safeTransferFrom(msg.sender, address(this), assets);
 
@@ -493,7 +493,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IVaultWrapper {
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
         DEPOSIT_ASSET.safeTransferFrom(msg.sender, address(this), VAULT.previewMint(shares));
 
@@ -503,7 +503,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IVaultWrapper {
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
         uint256 expectedShares = VAULT.previewWithdraw(assets);
         // Check the caller is the token owner or has been approved by the owner
@@ -522,7 +522,7 @@ contract VaultWrapper is Ownable2Step, ERC20, IVaultWrapper {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
         // Check the caller is the token owner or has been approved by the owner
         if (msg.sender != owner) {
@@ -539,52 +539,52 @@ contract VaultWrapper is Ownable2Step, ERC20, IVaultWrapper {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function convertToShares(uint256 assets) external view returns (uint256 shares) {
         shares = VAULT.convertToShares(assets);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function convertToAssets(uint256 shares) external view returns (uint256 assets) {
         assets = VAULT.convertToAssets(shares);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function maxDeposit(address) external view returns (uint256 maxAssets) {
         maxAssets = VAULT.maxDeposit(address(this));
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function previewDeposit(uint256 assets) external view returns (uint256 shares) {
         shares = VAULT.previewDeposit(assets);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function maxMint(address) external view returns (uint256 maxShares) {
         maxShares = VAULT.maxMint(address(this));
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function previewMint(uint256 shares) external view returns (uint256 assets) {
         assets = VAULT.previewMint(shares);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function maxWithdraw(address) external view returns (uint256 maxAssets) {
         maxAssets = VAULT.maxWithdraw(address(this));
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function previewWithdraw(uint256 assets) external view virtual returns (uint256 shares) {
         shares = VAULT.previewWithdraw(assets);
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function maxRedeem(address) external view returns (uint256 maxShares) {
         maxShares = VAULT.maxRedeem(address(this));
     }
 
-    /// @inheritdoc IVaultWrapper
+    /// @inheritdoc IWrappedVault
     function previewRedeem(uint256 shares) external view returns (uint256 assets) {
         assets = VAULT.previewRedeem(shares);
     }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "src/Points.sol";
-import { VaultWrapper } from "../../../src/VaultWrapper.sol";
+import { WrappedVault } from "../../../src/WrappedVault.sol";
 import { ERC4626 } from "../../../lib/solmate/src/tokens/ERC4626.sol";
 import { RoycoTestBase } from "../../utils/RoycoTestBase.sol";
 
@@ -12,7 +12,7 @@ contract Test_Points is RoycoTestBase {
     uint256 decimals = 18;
     address programOwner = ALICE_ADDRESS;
     address ipAddress = CHARLIE_ADDRESS;
-    VaultWrapper vault;
+    WrappedVault vault;
     Points pointsProgram;
     uint256 campaignId;
 
@@ -21,7 +21,7 @@ contract Test_Points is RoycoTestBase {
     function setUp() external {
         setupBaseEnvironment();
         programOwner = ALICE_ADDRESS;
-        vault = erc4626iFactory.createIncentivizedVault(mockVault, programOwner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
+        vault = erc4626iFactory.wrapVault(mockVault, programOwner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
         pointsProgram = PointsFactory(vault.POINTS_FACTORY()).createPointsProgram(programName, programSymbol, decimals, programOwner);
         ipAddress = CHARLIE_ADDRESS;
 

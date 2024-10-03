@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "src/base/RecipeKernelBase.sol";
-import "src/VaultWrapper.sol";
+import "src/WrappedVault.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";

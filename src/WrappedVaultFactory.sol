@@ -4,7 +4,7 @@ pragma solidity ^0.8.12;
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { LibString } from "lib/solmate/src/utils/LibString.sol";
-import { VaultWrapper } from "src/VaultWrapper.sol";
+import { WrappedVault } from "src/WrappedVault.sol";
 
 /// @title WrappedVaultFactory
 /// @author CopyPaste, corddry
@@ -52,9 +52,9 @@ contract WrappedVaultFactory is Owned(msg.sender) {
     event ProtocolFeeUpdated(uint256 newProtocolFee);
     event ReferralFeeUpdated(uint256 newReferralFee);
     event ProtocolFeeRecipientUpdated(address newRecipient);
-    event VaultCreated(
+    event WrappedVaultCreated(
         ERC4626 indexed underlyingVaultAddress,
-        VaultWrapper indexed incentivizedVaultAddress,
+        WrappedVault indexed incentivizedVaultAddress,
         address owner,
         address inputToken,
         uint256 frontendFee,
@@ -90,8 +90,11 @@ contract WrappedVaultFactory is Owned(msg.sender) {
                              VAULT CREATION
     //////////////////////////////////////////////////////////////*/
 
-    /// @param vault The ERC4626 Vault to deploy an incentivized vault for
-    function createIncentivizedVault(
+    /// @param vault The ERC4626 Vault to wrap
+    /// @param owner The address of the wrapped vault owner
+    /// @param name The name of the wrapped vault
+    /// @param initialFrontendFee The initial frontend fee for the wrapped vault ()
+    function wrapVault(
         ERC4626 vault,
         address owner,
         string calldata name,
@@ -99,15 +102,15 @@ contract WrappedVaultFactory is Owned(msg.sender) {
     )
         external
         payable
-        returns (VaultWrapper incentivizedVault)
+        returns (WrappedVault wrappedVault)
     {
         bytes32 salt = keccak256(abi.encodePacked(address(vault), owner, name, initialFrontendFee));
-        incentivizedVault = new VaultWrapper{ salt: salt }(owner, name, getNextSymbol(), address(vault), initialFrontendFee, pointsFactory);
+        wrappedVault = new WrappedVault{ salt: salt }(owner, name, getNextSymbol(), address(vault), initialFrontendFee, pointsFactory);
 
-        incentivizedVaults.push(address(incentivizedVault));
-        isVault[address(incentivizedVault)] = true;
+        incentivizedVaults.push(address(wrappedVault));
+        isVault[address(wrappedVault)] = true;
 
-        emit VaultCreated(vault, incentivizedVault, owner, address(incentivizedVault.asset()), initialFrontendFee, name, getNextSymbol());
+        emit WrappedVaultCreated(vault, wrappedVault, owner, address(wrappedVault.asset()), initialFrontendFee, name, getNextSymbol());
     }
 
     /// @dev Helper function to get the symbol for a new incentivized vault, ROY-0, ROY-1, etc.

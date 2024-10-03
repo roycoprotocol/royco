@@ -2,14 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "src/Points.sol";
-import { VaultWrapper } from "../../../src/VaultWrapper.sol";
+import { WrappedVault } from "../../../src/WrappedVault.sol";
 import { RoycoTestBase } from "../../utils/RoycoTestBase.sol";
 
 contract TestFuzz_Points is RoycoTestBase {
     string programName = "TestPoints";
     string programSymbol = "TP";
     uint256 decimals = 18;
-    VaultWrapper vault;
+    WrappedVault vault;
     Points pointsProgram;
     address owner;
     uint256 constant MINIMUM_CAMPAIGN_DURATION = 7 days;
@@ -19,7 +19,7 @@ contract TestFuzz_Points is RoycoTestBase {
     function setUp() external {
         setupBaseEnvironment();
         owner = ALICE_ADDRESS;
-        vault = erc4626iFactory.createIncentivizedVault(mockVault, owner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
+        vault = erc4626iFactory.wrapVault(mockVault, owner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
         pointsProgram = PointsFactory(vault.POINTS_FACTORY()).createPointsProgram(programName, programSymbol, decimals, owner);
         ipAddress = CHARLIE_ADDRESS;
 
@@ -36,7 +36,7 @@ contract TestFuzz_Points is RoycoTestBase {
     function testFuzz_PointsCreation(address _owner, string memory _name, string memory _symbol, uint256 _decimals) external {
         vm.assume(_owner != address(0));
 
-        VaultWrapper newVault = erc4626iFactory.createIncentivizedVault(mockVault, _owner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
+        WrappedVault newVault = erc4626iFactory.wrapVault(mockVault, _owner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
         Points fuzzPoints = PointsFactory(vault.POINTS_FACTORY()).createPointsProgram(_name, _symbol, _decimals, _owner);
 
         assertEq(fuzzPoints.name(), _name);

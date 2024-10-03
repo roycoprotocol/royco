@@ -5,8 +5,8 @@ Royco allows anyone to create a market around any onchain action. Those who wish
 
 ## Vault Markets
 Actions which deposit in staking vaults are called "Vault Markets". Vault Markets consist of a Royco wrapped vault and a Vault Kernel.
-### VaultWrapper.sol
-Vault Markets are centered around wrapped vaults, which are 4626 vaults wrapped with the ability to stream "incentives". Wrapped vaults are created through the WrappedVaultFactory by simply pointing to an existing 4626 vault and deploying a new VaultWrapper to allow IPs to distribute Unipool style staking incentives to APs who deposit in the vault through the wrapper. The underlying 4626 vault must be fully compliant to vanilla 4626 behavior, meaning working previewWithdraw functions, immediate deposits/withdrawals, etc.
+### WrappedVault.sol
+Vault Markets are centered around wrapped vaults, which are 4626 vaults wrapped with the ability to stream "incentives". Wrapped vaults are created through the WrappedVaultFactory by simply pointing to an existing 4626 vault and deploying a new WrappedVault to allow IPs to distribute Unipool style staking incentives to APs who deposit in the vault through the wrapper. The underlying 4626 vault must be fully compliant to vanilla 4626 behavior, meaning working previewWithdraw functions, immediate deposits/withdrawals, etc.
 
 Wrapped vaults are owned by the Incentive Provider who deploys them. The IP who owns a wrapped vault is solely permissioned to distribute incentives, and may add additional incentive tokens or points campaigns at any time, (for up to 20 different assets). IPs can also "extend" incentive campaigns by calling extendRewardsInterval, however to prevent dishonest AP limit offer sniping, IPs must keep the new rewards rate equivalent or higher than the current rewards rate when doing so.
 

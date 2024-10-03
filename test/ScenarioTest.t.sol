@@ -7,7 +7,7 @@ import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 
-import { VaultWrapper } from "src/VaultWrapper.sol";
+import { WrappedVault } from "src/WrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { WeirollWallet } from "src/WeirollWallet.sol";
@@ -115,19 +115,19 @@ contract ScenarioTest is Test {
             address(targetVault), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
         );
         vm.mockCall(
-            address(targetVault), abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
+            address(targetVault), abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
         );
         vm.mockCall(
             address(targetVault2), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
         );
         vm.mockCall(
-            address(targetVault2), abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
+            address(targetVault2), abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
         );
         vm.mockCall(
             address(targetVault3), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
         );
         vm.mockCall(
-            address(targetVault3), abi.encodeWithSelector(VaultWrapper.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
+            address(targetVault3), abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
         );
 
         uint256[] memory fillAmounts = new uint256[](3);
