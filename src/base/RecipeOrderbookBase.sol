@@ -28,6 +28,9 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
     /// @notice The number of unique weiroll markets added
     uint256 public numMarkets;
 
+    /// @notice whether order fills are paused
+    bool ordersPaused;
+
     /// @notice The percent deducted from the IP's incentive amount and claimable by protocolFeeClaimant
     uint256 public protocolFee; // 1e18 == 100% fee
     address public protocolFeeClaimant;
@@ -247,6 +250,8 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
     error InvalidPointsProgram();
     /// @notice emitted when APOrderFill charges a trivial incentive amount
     error NoIncentivesPaidOnFill();
+    /// @notice emitted when trying to fill orders while orders are paused
+    error OrdersPaused();
 
     // modifier to check if msg.sender is owner of a weirollWallet
     modifier isWeirollOwner(address weirollWallet) {
@@ -262,6 +267,17 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
             revert WalletLocked();
         }
         _;
+    }
+
+    modifier ordersNotPaused() {
+        if (ordersPaused) {
+            revert OrdersPaused();
+        }
+        _;
+    }
+
+    function setOrdersPaused(bool _ordersPaused) external onlyOwner {
+        ordersPaused = _ordersPaused;
     }
 
     /// @notice sets the protocol fee recipient, taken on all fills

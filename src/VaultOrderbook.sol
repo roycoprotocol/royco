@@ -35,6 +35,8 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     /// @notice starts at 0 and increments by 1 for each order created
     uint256 public numOrders;
 
+
+
     /// @notice maps order hashes to the remaining quantity of the order
     mapping(bytes32 => uint256) public orderHashToRemainingQuantity;
 
@@ -85,6 +87,19 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     error NotOrderCreator();
     /// @notice emitted when the withdraw from funding vault fails on allocate
     error FundingVaultWithdrawFailed();
+    /// @notice emitted when trying to fill orders while orders are paused
+    error OrdersPaused();
+
+    modifier ordersNotPaused() {
+        if (ordersPaused) {
+            revert OrdersPaused();
+        }
+        _;
+    }
+
+    function setOrdersPaused(bool _ordersPaused) external onlyOwner {
+        ordersPaused = _ordersPaused;
+    }
 
     constructor() Ownable(msg.sender) { }
 
@@ -141,12 +156,12 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice allocate the entirety of a given order
-    function allocateOrder(APOrder calldata order) public {
+    function allocateOrder(APOrder calldata order) public ordersNotPaused {
         allocateOrder(order, orderHashToRemainingQuantity[getOrderHash(order)]);
     }
 
     /// @notice allocate a specific quantity of a given order
-    function allocateOrder(APOrder calldata order, uint256 fillAmount) public nonReentrant {
+    function allocateOrder(APOrder calldata order, uint256 fillAmount) public nonReentrant ordersNotPaused {
         // Check for order expiry, 0 expiries live forever
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();

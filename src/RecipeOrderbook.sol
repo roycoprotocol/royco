@@ -255,6 +255,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         external
         payable
         nonReentrant
+        ordersNotPaused
     {
         if (orderIDs.length != fillAmounts.length) {
             revert ArrayLengthMismatch();
@@ -368,7 +369,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param orders The AP orders to fill
     /// @param fillAmounts The amount of input tokens to fill the corresponding order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external payable nonReentrant {
+    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external payable nonReentrant ordersNotPaused {
         if (orders.length != fillAmounts.length) {
             revert ArrayLengthMismatch();
         }
