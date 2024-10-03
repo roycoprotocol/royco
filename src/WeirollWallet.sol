@@ -18,7 +18,7 @@ contract WeirollWallet is Clone, VM {
     //////////////////////////////////////////////////////////////*/
 
     error NotOwner();
-    error NotOrderbook();
+    error NotRecipeKernel();
     error WalletLocked();
     error WalletNotForfeitable();
 
@@ -30,15 +30,15 @@ contract WeirollWallet is Clone, VM {
         _;
     }
 
-    /// @notice Only the orderbook contract can call the function
-    modifier onlyOrderbook() {
-        if (msg.sender != orderbook()) {
-            revert NotOrderbook();
+    /// @notice Only the recipeKernel contract can call the function
+    modifier onlyRecipeKernel() {
+        if (msg.sender != recipeKernel()) {
+            revert NotRecipeKernel();
         }
         _;
     }
 
-    /// @notice The wallet cannot be locked
+    /// @notice The wallet can be locked
     modifier notLocked() {
         if (!forfeited && lockedUntil() > block.timestamp) {
             revert WalletLocked();
@@ -59,8 +59,11 @@ contract WeirollWallet is Clone, VM {
     address public forfeitRecipient;
 
     /// @notice Forfeit all rewards to get control of the wallet back
-    function forfeit() public onlyOrderbook {
-        if (!isForfeitable()) {
+    function forfeit() public onlyRecipeKernel {
+        if (!isForfeitable() || block.timestamp >= lockedUntil()) {
+            // Can't forfeit if:
+            // 1. Wallet not created through a forfeitable market
+            // 2. Lock time has passed and claim window has started
             revert WalletNotForfeitable();
         }
 
@@ -72,12 +75,12 @@ contract WeirollWallet is Clone, VM {
         return _getArgAddress(0);
     }
 
-    /// @notice The address of the orderbook exchange contract
-    function orderbook() public pure returns (address) {
+    /// @notice The address of the recipeKernel exchange contract
+    function recipeKernel() public pure returns (address) {
         return _getArgAddress(20);
     }
 
-    /// @notice The amount of tokens deposited into this wallet from the orderbook
+    /// @notice The amount of tokens deposited into this wallet from the recipeKernel
     function amount() public pure returns (uint256) {
         return _getArgUint256(40);
     }
@@ -102,7 +105,7 @@ contract WeirollWallet is Clone, VM {
     //////////////////////////////////////////////////////////////*/
     /// @notice Execute the Weiroll VM with the given commands.
     /// @param commands The commands to be executed by the Weiroll VM.
-    function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOrderbook returns (bytes[] memory) {
+    function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyRecipeKernel returns (bytes[] memory) {
         executed = true;
         // Execute the Weiroll VM.
         return _execute(commands, state);

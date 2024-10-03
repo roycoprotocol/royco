@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-Liense-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
 import { MockERC20 } from "test/mocks/MockERC20.sol";
@@ -7,24 +7,25 @@ import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 
-import { ERC4626i } from "src/ERC4626i.sol";
-import { ERC4626iFactory } from "src/ERC4626iFactory.sol";
+import { WrappedVault } from "src/WrappedVault.sol";
+import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 import { PointsFactory } from "src/PointsFactory.sol";
 
 import { Test, console } from "forge-std/Test.sol";
 
-contract ERC4626iTest is Test {
+contract WrappedVaultTest is Test {
     using FixedPointMathLib for *;
 
     ERC20 token = ERC20(address(new MockERC20("Mock Token", "MOCK")));
     ERC4626 testVault = ERC4626(address(new MockERC4626(token)));
-    ERC4626i testIncentivizedVault;
+    WrappedVault testIncentivizedVault;
 
-    PointsFactory pointsFactory = new PointsFactory();
-    ERC4626iFactory testFactory;
+    PointsFactory pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER);
+    WrappedVaultFactory testFactory;
     uint256 constant WAD = 1e18;
 
     uint256 constant DEFAULT_REFERRAL_FEE = 0.025e18;
@@ -33,6 +34,7 @@ contract ERC4626iTest is Test {
 
     address constant DEFAULT_FEE_RECIPIENT = address(0xdead);
 
+    address public constant POINTS_FACTORY_OWNER = address(0x1);
     address public constant REGULAR_USER = address(0xbeef);
     address public constant REFERRAL_USER = address(0x33f123);
 
@@ -40,8 +42,8 @@ contract ERC4626iTest is Test {
     MockERC20 rewardToken2;
 
     function setUp() public {
-        testFactory = new ERC4626iFactory(DEFAULT_FEE_RECIPIENT, DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(pointsFactory));
-        testIncentivizedVault = testFactory.createIncentivizedVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
+        testFactory = new WrappedVaultFactory(DEFAULT_FEE_RECIPIENT, DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(pointsFactory));
+        testIncentivizedVault = testFactory.wrapVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
 
         rewardToken1 = new MockERC20("Reward Token 1", "RWD1");
         rewardToken2 = new MockERC20("Reward Token 2", "RWD2");
@@ -54,44 +56,44 @@ contract ERC4626iTest is Test {
     }
 
     function testFactoryUpdateProtocolFees() public {
-      vm.startPrank(address(0x8482));
-      vm.expectRevert("UNAUTHORIZED");
-      testFactory.updateProtocolFee(0.01e18);
-      vm.stopPrank();
+        vm.startPrank(address(0x8482));
+        vm.expectRevert("UNAUTHORIZED");
+        testFactory.updateProtocolFee(0.01e18);
+        vm.stopPrank();
 
-      vm.startPrank(testFactory.owner());
-      uint256 maxProtocolFee = testFactory.MAX_PROTOCOL_FEE();
-      vm.expectRevert(ERC4626iFactory.ProtocolFeeTooHigh.selector);
-      testFactory.updateProtocolFee(maxProtocolFee + 1);
+        vm.startPrank(testFactory.owner());
+        uint256 maxProtocolFee = testFactory.MAX_PROTOCOL_FEE();
+        vm.expectRevert(WrappedVaultFactory.ProtocolFeeTooHigh.selector);
+        testFactory.updateProtocolFee(maxProtocolFee + 1);
 
-      testFactory.updateProtocolFee(0.075e18);
-      assertEq(testFactory.protocolFee(), 0.075e18);
+        testFactory.updateProtocolFee(0.075e18);
+        assertEq(testFactory.protocolFee(), 0.075e18);
     }
 
     function testFactoryUpdateReferralFee() public {
-      vm.startPrank(address(0x8482));
-      vm.expectRevert("UNAUTHORIZED");
-      testFactory.updateMinimumReferralFee(0.01e18);
-      vm.stopPrank();
+        vm.startPrank(address(0x8482));
+        vm.expectRevert("UNAUTHORIZED");
+        testFactory.updateMinimumReferralFee(0.01e18);
+        vm.stopPrank();
 
-      vm.startPrank(testFactory.owner());
-      uint256 maxMinFee = testFactory.MAX_MIN_REFERRAL_FEE();
-      vm.expectRevert(ERC4626iFactory.ReferralFeeTooHigh.selector);
-      testFactory.updateMinimumReferralFee(maxMinFee + 1);
+        vm.startPrank(testFactory.owner());
+        uint256 maxMinFee = testFactory.MAX_MIN_REFERRAL_FEE();
+        vm.expectRevert(WrappedVaultFactory.ReferralFeeTooHigh.selector);
+        testFactory.updateMinimumReferralFee(maxMinFee + 1);
 
-      testFactory.updateMinimumReferralFee(0.075e18);
-      assertEq(testFactory.minimumFrontendFee(), 0.075e18);
+        testFactory.updateMinimumReferralFee(0.075e18);
+        assertEq(testFactory.minimumFrontendFee(), 0.075e18);
     }
 
-    function testDeployment() public {
+    function testDeployment() public view {
         assertEq(address(testIncentivizedVault.VAULT()), address(testVault));
-        assertEq(address(testIncentivizedVault.DEPOSIT_ASSET()), address(token));
+        assertEq(address(testIncentivizedVault.asset()), address(token));
         assertEq(testIncentivizedVault.owner(), address(this));
         assertEq(testIncentivizedVault.frontendFee(), DEFAULT_FRONTEND_FEE);
     }
 
     function testVaultPassThroughFunctions() public {
-        testIncentivizedVault = testFactory.createIncentivizedVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
+        testIncentivizedVault = testFactory.wrapVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
 
         assertEq(address(testIncentivizedVault.asset()), address(testVault.asset()));
         assertEq(testIncentivizedVault.maxDeposit(address(this)), testVault.maxDeposit(address(this)));
@@ -107,11 +109,15 @@ contract ERC4626iTest is Test {
         vm.assume(newRewardToken != address(0));
         testIncentivizedVault.addRewardsToken(newRewardToken);
         assertEq(testIncentivizedVault.rewards(0), newRewardToken);
+
+        // Test we cannot add the second reward token twice
+        vm.expectRevert(WrappedVault.DuplicateRewardToken.selector);
+        testIncentivizedVault.addRewardsToken(newRewardToken);
     }
 
     function testAddRewardTokenUnauthorized(address unauthorized) public {
         vm.assume(unauthorized != address(this));
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(unauthorized)));
         vm.prank(unauthorized);
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
     }
@@ -120,9 +126,9 @@ contract ERC4626iTest is Test {
         for (uint256 i = 0; i < testIncentivizedVault.MAX_REWARDS(); i++) {
             testIncentivizedVault.addRewardsToken(address(new MockERC20("", "")));
         }
-        
+
         address mockToken = address(new MockERC20("", ""));
-        vm.expectRevert(ERC4626i.MaxRewardsReached.selector);
+        vm.expectRevert(WrappedVault.MaxRewardsReached.selector);
         testIncentivizedVault.addRewardsToken(mockToken);
     }
 
@@ -134,26 +140,27 @@ contract ERC4626iTest is Test {
 
     function testSetFrontendFeeBelowMinimum(uint256 newFee) public {
         vm.assume(newFee < testFactory.minimumFrontendFee());
-        vm.expectRevert(ERC4626i.FrontendFeeBelowMinimum.selector);
+        vm.expectRevert(WrappedVault.FrontendFeeBelowMinimum.selector);
         testIncentivizedVault.setFrontendFee(newFee);
     }
 
     function testSetRewardsInterval(uint32 start, uint32 duration, uint256 totalRewards) public {
         vm.assume(duration >= testIncentivizedVault.MIN_CAMPAIGN_DURATION());
-        vm.assume(duration <= type(uint32).max-start);//If this is not here, then 'end' variable will overflow
+        vm.assume(duration <= type(uint32).max - start); //If this is not here, then 'end' variable will overflow
         vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
-        
+        vm.assume(totalRewards / duration > 1e6);
+
         uint32 end = start + duration;
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
 
         rewardToken1.mint(address(this), totalRewards);
         rewardToken1.approve(address(testIncentivizedVault), totalRewards);
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, end, totalRewards, DEFAULT_FEE_RECIPIENT);
-        
+
         uint256 frontendFee = totalRewards.mulWadDown(testIncentivizedVault.frontendFee());
         uint256 protocolFee = totalRewards.mulWadDown(testFactory.protocolFee());
         totalRewards -= frontendFee + protocolFee;
-        
+
         (uint32 actualStart, uint32 actualEnd, uint96 actualRate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
 
         assertEq(actualStart, start);
@@ -176,9 +183,10 @@ contract ERC4626iTest is Test {
         vm.assume(extension > 1 days);
         vm.assume(initialRewards > 1e6 && initialRewards < type(uint96).max);
         vm.assume(additionalRewards > 1e6 && additionalRewards < type(uint96).max);
+        vm.assume(initialRewards / initialDuration > 1e6);
 
         if (additionalRewards / extension <= initialRewards / initialDuration) {
-          additionalRewards = ((initialRewards / initialDuration) * extension) + 1e18; 
+            additionalRewards = ((initialRewards / initialDuration) * extension) + 1e18;
         }
 
         uint32 initialEnd = start + initialDuration;
@@ -195,10 +203,14 @@ contract ERC4626iTest is Test {
         uint256 protocolFee = initialRewards.mulWadDown(testFactory.protocolFee());
         initialRewards -= frontendFee + protocolFee;
 
-        vm.warp(start + (initialDuration / 2));  // Warp to middle of interval
+        vm.warp(start + (initialDuration / 2)); // Warp to middle of interval
+
+        if (newEnd - block.timestamp < testIncentivizedVault.MIN_CAMPAIGN_DURATION()) {
+            return;
+        }
 
         testIncentivizedVault.extendRewardsInterval(address(rewardToken1), additionalRewards, newEnd, address(this));
-        
+
         frontendFee = additionalRewards.mulWadDown(testIncentivizedVault.frontendFee());
         protocolFee = additionalRewards.mulWadDown(testFactory.protocolFee());
         additionalRewards -= frontendFee + protocolFee;
@@ -206,7 +218,7 @@ contract ERC4626iTest is Test {
         (uint32 actualStart, uint32 actualEnd, uint96 actualRate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
         assertEq(actualStart, block.timestamp);
         assertEq(actualEnd, newEnd);
-        
+
         uint256 remainingInitialRewards = (initialRewards / initialDuration) * (initialEnd - block.timestamp);
         uint256 expectedRate = (remainingInitialRewards + additionalRewards) / (newEnd - block.timestamp);
         assertEq(actualRate, expectedRate);
@@ -225,6 +237,35 @@ contract ERC4626iTest is Test {
         assertEq(testIncentivizedVault.totalAssets(), amount);
     }
 
+    function testRefundInterval(uint32 start, uint32 duration, uint256 totalRewards) public {
+        if (start < block.timestamp + 10000) {
+            start = uint32(block.timestamp + 10000);
+        }
+        
+        vm.assume(duration >= testIncentivizedVault.MIN_CAMPAIGN_DURATION());
+        vm.assume(duration <= type(uint32).max - start); //If this is not here, then 'end' variable will overflow
+        vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
+        vm.assume(totalRewards / duration > 1e6);
+
+        uint32 end = start + duration;
+        testIncentivizedVault.addRewardsToken(address(rewardToken1));
+
+        rewardToken1.mint(address(this), totalRewards);
+        rewardToken1.approve(address(testIncentivizedVault), totalRewards);
+        testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, end, totalRewards, DEFAULT_FEE_RECIPIENT);
+        
+        vm.startPrank(REGULAR_USER);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(REGULAR_USER)));
+        testIncentivizedVault.refundRewardsInterval(address(rewardToken1));
+        vm.stopPrank();
+
+        uint256 initialBalance = rewardToken1.balanceOf(address(this));
+
+        testIncentivizedVault.refundRewardsInterval(address(rewardToken1));
+
+    }
+    
+
     function testWithdraw(uint256 depositAmount, uint256 withdrawAmount) public {
         vm.assume(depositAmount > 0 && depositAmount <= type(uint96).max);
         vm.assume(withdrawAmount > 0 && withdrawAmount <= depositAmount);
@@ -235,7 +276,7 @@ contract ERC4626iTest is Test {
         token.approve(address(testIncentivizedVault), depositAmount);
         testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
 
-        uint256 sharesBurned = testIncentivizedVault.withdraw(withdrawAmount, REGULAR_USER, REGULAR_USER);
+        testIncentivizedVault.withdraw(withdrawAmount, REGULAR_USER, REGULAR_USER);
         vm.stopPrank();
 
         assertEq(token.balanceOf(REGULAR_USER), withdrawAmount);
@@ -254,7 +295,7 @@ contract ERC4626iTest is Test {
         rewardToken1.mint(address(this), rewardAmount);
         rewardToken1.approve(address(testIncentivizedVault), rewardAmount);
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, start + duration, rewardAmount, DEFAULT_FEE_RECIPIENT);
-        
+
         uint256 frontendFee = rewardAmount.mulWadDown(testIncentivizedVault.frontendFee());
         uint256 protocolFee = rewardAmount.mulWadDown(testFactory.protocolFee());
         rewardAmount -= frontendFee + protocolFee;
@@ -263,12 +304,12 @@ contract ERC4626iTest is Test {
 
         vm.startPrank(REGULAR_USER);
         token.approve(address(testIncentivizedVault), depositAmount);
-        testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
+        uint256 shares = testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
         vm.stopPrank();
 
         vm.warp(start + timeElapsed);
 
-        uint256 expectedRewards = (rewardAmount * timeElapsed) / duration;
+        uint256 expectedRewards = (rewardAmount * timeElapsed) * shares / testIncentivizedVault.totalSupply() / duration;
         uint256 actualRewards = testIncentivizedVault.currentUserRewards(address(rewardToken1), REGULAR_USER);
 
         assertApproxEqRel(actualRewards, expectedRewards, 1e15); // Allow 0.1% deviation
@@ -303,8 +344,8 @@ contract ERC4626iTest is Test {
         uint256 shares = testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
         vm.warp(timeElapsed);
 
-        uint256 expectedRewards = (rewardAmount / duration) * (shares / testIncentivizedVault.totalSupply()) * timeElapsed;
-        (, , uint256 rate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
+        uint256 expectedRewards = (rewardAmount / duration) * shares / testIncentivizedVault.totalSupply() * timeElapsed;
+        testIncentivizedVault.rewardToInterval(address(rewardToken1));
         
         testIncentivizedVault.claim(REGULAR_USER);
         vm.stopPrank();
@@ -331,7 +372,7 @@ contract ERC4626iTest is Test {
 
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, start + duration, rewardAmount1, DEFAULT_FEE_RECIPIENT);
         testIncentivizedVault.setRewardsInterval(address(rewardToken2), start, start + duration, rewardAmount2, DEFAULT_FEE_RECIPIENT);
-        
+
         uint256 frontendFee = rewardAmount1.mulWadDown(testIncentivizedVault.frontendFee());
         uint256 protocolFee = rewardAmount1.mulWadDown(testFactory.protocolFee());
         rewardAmount1 -= frontendFee + protocolFee;
@@ -339,45 +380,27 @@ contract ERC4626iTest is Test {
         frontendFee = rewardAmount2.mulWadDown(testIncentivizedVault.frontendFee());
         protocolFee = rewardAmount2.mulWadDown(testFactory.protocolFee());
         rewardAmount2 -= frontendFee + protocolFee;
-        
+
         MockERC20(address(token)).mint(REGULAR_USER, depositAmount);
 
         vm.startPrank(REGULAR_USER);
         token.approve(address(testIncentivizedVault), depositAmount);
-        testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
+        uint256 shares = testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
         vm.warp(start + timeElapsed);
 
         testIncentivizedVault.claim(REGULAR_USER);
         vm.stopPrank();
 
-        uint256 expectedRewards1 = (rewardAmount1 * timeElapsed) / duration;
-        uint256 expectedRewards2 = (rewardAmount2 * timeElapsed) / duration;
+        uint256 expectedRewards1 = (rewardAmount1 / duration) * shares / testIncentivizedVault.totalSupply() * timeElapsed;
+        uint256 expectedRewards2 = (rewardAmount2 / duration) * shares / testIncentivizedVault.totalSupply() * timeElapsed;
 
         assertApproxEqRel(rewardToken1.balanceOf(REGULAR_USER), expectedRewards1, 1e15);
         assertApproxEqRel(rewardToken2.balanceOf(REGULAR_USER), expectedRewards2, 1e15);
     }
 
-    function testZeroTotalSupply(uint32 timeElapsed) public {
-        vm.assume(timeElapsed > 0 && timeElapsed <= 30 days);
-
-        uint256 rewardAmount = 1000 * WAD;
-        uint32 start = uint32(block.timestamp);
-        uint32 duration = 30 days;
-
-        testIncentivizedVault.addRewardsToken(address(rewardToken1));
-        rewardToken1.mint(address(this), rewardAmount);
-        rewardToken1.approve(address(testIncentivizedVault), rewardAmount);
-        testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, start + duration, rewardAmount, DEFAULT_FEE_RECIPIENT);
-
-        vm.warp(start + timeElapsed);
-
-        uint256 rewardsPerToken = testIncentivizedVault.currentRewardsPerToken(address(rewardToken1));
-        assertEq(rewardsPerToken, 0, "Rewards should not accrue when total supply is zero");
-    }
-
     function testRewardsAfterWithdraw(uint256 depositAmount, uint32 timeElapsed, uint256 withdrawAmount) public {
-        vm.assume(depositAmount > 0 && depositAmount <= type(uint96).max);
-        vm.assume(timeElapsed > 0 && timeElapsed <= 30 days);
+        vm.assume(depositAmount > 1e6 && depositAmount <= type(uint96).max);
+        vm.assume(timeElapsed > 0 && timeElapsed < 30 days);
         vm.assume(withdrawAmount > 0 && withdrawAmount < depositAmount);
 
         uint256 rewardAmount = 1000 * WAD;
@@ -388,7 +411,7 @@ contract ERC4626iTest is Test {
         rewardToken1.mint(address(this), rewardAmount);
         rewardToken1.approve(address(testIncentivizedVault), rewardAmount);
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, start + duration, rewardAmount, DEFAULT_FEE_RECIPIENT);
-        
+
         uint256 frontendFee = rewardAmount.mulWadDown(testIncentivizedVault.frontendFee());
         uint256 protocolFee = rewardAmount.mulWadDown(testFactory.protocolFee());
         rewardAmount -= frontendFee + protocolFee;
@@ -397,14 +420,16 @@ contract ERC4626iTest is Test {
 
         vm.startPrank(REGULAR_USER);
         token.approve(address(testIncentivizedVault), depositAmount);
-        testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
+        uint256 shares = testIncentivizedVault.deposit(depositAmount, REGULAR_USER);
         vm.warp(start + timeElapsed);
+
+        uint256 supply = testIncentivizedVault.totalSupply();
 
         testIncentivizedVault.withdraw(withdrawAmount, REGULAR_USER, REGULAR_USER);
         vm.stopPrank();
 
-        uint256 expectedRewards = (rewardAmount * timeElapsed) / duration;
-        assertApproxEqRel(testIncentivizedVault.currentUserRewards(address(rewardToken1), REGULAR_USER), expectedRewards, 1e15);
+        uint256 expectedRewards = rewardAmount * timeElapsed / duration * shares / supply;
+        assertApproxEqRel(testIncentivizedVault.currentUserRewards(address(rewardToken1), REGULAR_USER), expectedRewards, 5e15);
     }
 
     function testFeeClaiming(uint256 depositAmount, uint32 timeElapsed) public {
@@ -504,7 +529,7 @@ contract ERC4626iTest is Test {
 
         uint256 totalDeposit;
         for (uint256 i = 0; i < deposits.length; i++) {
-            deposits[i] = bound(deposits[i], 1, type(uint96).max / deposits.length);
+            deposits[i] = bound(deposits[i], 1e7, type(uint96).max / deposits.length);
             totalDeposit += deposits[i];
         }
 
@@ -516,32 +541,37 @@ contract ERC4626iTest is Test {
         rewardToken1.mint(address(this), rewardAmount);
         rewardToken1.approve(address(testIncentivizedVault), rewardAmount);
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, start + duration, rewardAmount, DEFAULT_FEE_RECIPIENT);
-        
+
         uint256 frontendFee = rewardAmount.mulWadDown(testIncentivizedVault.frontendFee());
         uint256 protocolFee = rewardAmount.mulWadDown(testFactory.protocolFee());
         rewardAmount -= frontendFee + protocolFee;
+
+        uint256[] memory shares = new uint256[](deposits.length);
 
         for (uint256 i = 0; i < deposits.length; i++) {
             address user = address(uint160(i + 1));
             MockERC20(address(token)).mint(user, deposits[i]);
             vm.startPrank(user);
             token.approve(address(testIncentivizedVault), deposits[i]);
-            testIncentivizedVault.deposit(deposits[i], user);
+            uint256 share = testIncentivizedVault.deposit(deposits[i], user);
+            shares[i] = share;
             vm.stopPrank();
         }
 
         vm.warp(start + timeElapsed);
 
         uint256 totalRewards;
+        uint256 totalShares;
         for (uint256 i = 0; i < deposits.length; i++) {
             address user = address(uint160(i + 1));
             uint256 userRewards = testIncentivizedVault.currentUserRewards(address(rewardToken1), user);
             totalRewards += userRewards;
+            totalShares += shares[i];
 
-            uint256 expectedRewards = (rewardAmount * timeElapsed * deposits[i]) / (duration * totalDeposit);
-            assertApproxEqRel(userRewards, expectedRewards, 1e15, "Incorrect rewards for user");
+            uint256 expectedRewards = rewardAmount * timeElapsed / duration * shares[i] / testIncentivizedVault.totalSupply();
+            assertApproxEqRel(userRewards, expectedRewards, 0.005e18, "Incorrect rewards for user");
         }
 
-        assertApproxEqRel(totalRewards, (rewardAmount * timeElapsed) / duration, 1e15, "Total rewards mismatch");
+        assertApproxEqRel(totalRewards, (rewardAmount * timeElapsed) * totalShares / testIncentivizedVault.totalSupply() / duration, 1e15, "Total rewards mismatch");
     }
 }

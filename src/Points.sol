@@ -1,31 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { ERC4626i } from "src/ERC4626i.sol";
-import { RecipeOrderbook } from "src/RecipeOrderbook.sol";
-
-import { Ownable } from "lib/solady/src/auth/Ownable.sol";
-import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import { PointsFactory } from "src/PointsFactory.sol";
+import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 /// @title Points
-/// @author CopyPaste, corddry
-/// @dev A simple program for running points programs
-contract Points is Ownable {
+/// @author CopyPaste, corddry, ShivaanshK
+/// @dev A simple contract for running Points Programs
+contract Points is Ownable2Step {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /// @param _name The name of the points program
     /// @param _symbol The symbol for the points program
-    /// @param _decimals The amount of decimals per 1 point
-    constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner, RecipeOrderbook _orderbook) {
-        _initializeOwner(_owner);
-
+    /// @param _decimals The amount of decimals to use for accounting with points
+    /// @param _owner The owner of the points program
+    constructor(string memory _name, string memory _symbol, uint256 _decimals, address _owner) Ownable(_owner) {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-
-        orderbook = _orderbook;
+        // Enforces that the Points Program deployer is a factory
+        pointsFactory = PointsFactory(msg.sender);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -33,17 +29,18 @@ contract Points is Ownable {
     //////////////////////////////////////////////////////////////*/
     event Award(address indexed to, uint256 indexed amount);
     event AllowedVaultAdded(address indexed vault);
-
+    event VaultRemoved(address indexed vault);
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
     /// @dev The allowed vaults to call this contract
+
     address[] public allowedVaults;
     /// @dev Maps a vault to if the vault is allowed to call this contract
     mapping(address => bool) public isAllowedVault;
 
-    /// @dev The RecipeOrderbook for IP Orders
-    RecipeOrderbook public immutable orderbook;
+    /// @dev The PointsFactory used to create this program
+    PointsFactory public immutable pointsFactory;
 
     /// @dev The name of the points program
     string public name;
@@ -51,45 +48,47 @@ contract Points is Ownable {
     string public symbol;
     /// @dev We track all points logic using base 1
     uint256 public decimals;
-    /// @dev Track which RecipeOrderbook IPs are allowed to mint
+    /// @dev Track which RecipeKernel IPs are allowed to mint
     mapping(address => bool) public allowedIPs;
 
     /*//////////////////////////////////////////////////////////////
                               POINTS AUTH
     //////////////////////////////////////////////////////////////*/
+    error VaultIsDuplicate();
 
+    /// @param vault The address to add to the allowed vaults for the points program
     function addAllowedVault(address vault) external onlyOwner {
+        if (isAllowedVault[vault]) {
+            revert VaultIsDuplicate();
+        }
+
         allowedVaults.push(vault);
         isAllowedVault[vault] = true;
+
         emit AllowedVaultAdded(vault);
     }
 
-    /// @param ip The incentive provider address to allow to mint points on RecipeOrderbook
+    /// @param ip The incentive provider address to allow to mint points on RecipeKernel
     function addAllowedIP(address ip) external onlyOwner {
         allowedIPs[ip] = true;
     }
 
-    /// @param ip The incentive provider address to disallow to mint points on RecipeOrderbook
-    function removeAllowedIP(address ip) external onlyOwner {
-        allowedIPs[ip] = false;
-    }
-
     error OnlyAllowedVaults();
-    error OnlyRecipeOrderbook();
+    error OnlyRecipeKernel();
     error NotAllowedIP();
 
-    modifier onlyAllowedVaults {
+    modifier onlyAllowedVaults() {
         if (!isAllowedVault[msg.sender]) {
             revert OnlyAllowedVaults();
         }
         _;
     }
 
-    /// @dev only the orderbook can call this function
+    /// @dev only the RecipeKernel can call this function
     /// @param ip The address to check if allowed
-    modifier onlyRecipeOrderbookAllowedIP(address ip) {
-        if (msg.sender != address(orderbook)) {
-            revert OnlyRecipeOrderbook();
+    modifier onlyRecipeKernelAllowedIP(address ip) {
+        if (!pointsFactory.isRecipeKernel(msg.sender)) {
+            revert OnlyRecipeKernel();
         }
         if (!allowedIPs[ip]) {
             revert NotAllowedIP();
@@ -110,7 +109,7 @@ contract Points is Ownable {
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
     /// @param ip The incentive provider attempting to mint the points
-    function award(address to, uint256 amount, address ip) external onlyRecipeOrderbookAllowedIP(ip) {
+    function award(address to, uint256 amount, address ip) external onlyRecipeKernelAllowedIP(ip) {
         emit Award(to, amount);
     }
 }
