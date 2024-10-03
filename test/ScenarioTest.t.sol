@@ -112,10 +112,19 @@ contract ScenarioTest is Test {
 
         // Mock the previewRateAfterDeposit function
         vm.mockCall(
+            address(targetVault), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(10 days, 0, 0)
+        );
+        vm.mockCall(
             address(targetVault), abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
         );
         vm.mockCall(
+            address(targetVault), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(0, 10 days)
+        );
+        vm.mockCall(
             address(targetVault2), abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)
+        );
+        vm.mockCall(
+            address(targetVault), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(0, 10 days)
         );
         vm.mockCall(
             address(targetVault3), abi.encodeWithSelector(ERC4626i.previewRateAfterDeposit.selector, address(baseToken), uint256(100 * 1e18)), abi.encode(2e18)

@@ -8,6 +8,8 @@ import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import { ReentrancyGuardTransient } from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
+import { console } from "forge-std/console.sol";
+
 /// @title VaultOrderbook
 /// @author CopyPaste, corddry, ShivaanshK
 /// @notice Orderbook Contract for Incentivizing AP/IPs to participate incentivized ERC4626 markets
@@ -222,6 +224,8 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
 
         for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
             (uint32 start, uint32 end, ) = ERC4626i(order.targetVault).rewardToInterval(order.tokensRequested[i]);
+            console.log(end);
+            console.log(start);
             if (end - start < MIN_CAMPAIGN_DURATION) {
                 revert OrderConditionsNotMet();
             }
