@@ -206,9 +206,9 @@ contract VaultOrderbook is Ownable2Step, ReentrancyGuardTransient {
 
         for (uint256 i; i < order.tokenRatesRequested.length; ++i) {
             (uint32 start, uint32 end, ) = ERC4626i(order.targetVault).rewardToInterval(order.tokensRequested[i]);
-            //if (end - start < MIN_CAMPAIGN_DURATION) {
-                //revert OrderConditionsNotMet();
-            //}
+            if (end - start < MIN_CAMPAIGN_DURATION) {
+                revert OrderConditionsNotMet();
+            }
             if (order.tokenRatesRequested[i] > ERC4626i(order.targetVault).previewRateAfterDeposit(order.tokensRequested[i], fillAmount)) {
                 revert OrderConditionsNotMet();
             }
