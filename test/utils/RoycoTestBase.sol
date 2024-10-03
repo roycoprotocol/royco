@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../../../src/WeirollWallet.sol";
-import "../../../src/RecipeOrderbook.sol";
+import "test/mocks/MockRecipeOrderbook.sol";
 import "../../../src/PointsFactory.sol";
 import { ERC4626iFactory } from "../../../src/ERC4626iFactory.sol";
 
@@ -39,7 +39,7 @@ contract RoycoTestBase is Test {
     // Royco Contracts
     // -----------------------------------------
     WeirollWallet public weirollImplementation;
-    RecipeOrderbook public orderbook;
+    MockRecipeOrderbook public orderbook;
     MockERC20 public mockLiquidityToken;
     MockERC20 public mockIncentiveToken;
     MockERC4626 public mockVault;

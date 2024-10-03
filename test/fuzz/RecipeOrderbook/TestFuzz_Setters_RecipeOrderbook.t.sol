@@ -20,7 +20,7 @@ contract TestFuzz_Setters_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function testFuzz_RevertIf_NonOwnerSetProtocolFeeClaimant(address _nonOwner, address _newClaimant) external prankModifier(_nonOwner) {
         vm.assume(_nonOwner != OWNER_ADDRESS);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _nonOwner));
+        vm.expectRevert("UNAUTHORIZED");
         orderbook.setProtocolFeeClaimant(_newClaimant);
     }
 
@@ -31,7 +31,7 @@ contract TestFuzz_Setters_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function testFuzz_RevertIf_NonOwnerSetProtocolFee(address _nonOwner, uint256 _newProtocolFee) external prankModifier(_nonOwner) {
         vm.assume(_nonOwner != OWNER_ADDRESS);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _nonOwner));
+        vm.expectRevert("UNAUTHORIZED");
         orderbook.setProtocolFee(_newProtocolFee);
     }
 
@@ -42,7 +42,7 @@ contract TestFuzz_Setters_RecipeOrderbook is RecipeOrderbookTestBase {
 
     function testFuzz_RevertIf_NonOwnerSetMinimumFrontendFee(address _nonOwner, uint256 _newMinimumFrontendFee) external prankModifier(_nonOwner) {
         vm.assume(_nonOwner != OWNER_ADDRESS);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _nonOwner));
+        vm.expectRevert("UNAUTHORIZED");
         orderbook.setMinimumFrontendFee(_newMinimumFrontendFee);
     }
 }

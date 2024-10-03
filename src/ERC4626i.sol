@@ -77,14 +77,14 @@ contract ERC4626i is Ownable2Step, ERC20, IERC4626 {
     /// @dev The max amount of reward campaigns a user can be involved in
     uint256 public MAX_REWARDS = 20;
     /// @dev The minimum duration a reward campaign must last
-    uint256 constant MIN_CAMPAIGN_DURATION = 1 weeks;
+    uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
     /// @dev The minimum lifespan of an extended campaign
-    uint256 constant MIN_CAMPAIGN_EXTENSION = 1 weeks;
+    uint256 public constant MIN_CAMPAIGN_EXTENSION = 1 weeks;
 
     /// @dev The address of the underlying vault being incentivized
     IERC4626 public immutable VAULT;
     /// @dev The underlying asset being deposited into the vault
-    ERC20 immutable DEPOSIT_ASSET;
+    ERC20 public immutable DEPOSIT_ASSET;
     /// @dev The address of the canonical points program factory
     PointsFactory public immutable POINTS_FACTORY;
     /// @dev The address of the canonical ERC4626i factory

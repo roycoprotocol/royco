@@ -78,7 +78,7 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.startPrank(AP_ADDRESS);
         // fill 50% of the order
-        orderbook.fillIPOrder(orderId, quantity.mulWadDown(5e17), address(0), DAN_ADDRESS);
+        orderbook.fillIPOrders(orderId, quantity.mulWadDown(5e17), address(0), DAN_ADDRESS);
         vm.stopPrank();
 
         (,,,, uint256 remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -133,7 +133,7 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.startPrank(AP_ADDRESS);
         // fill 50% of the order
-        orderbook.fillIPOrder(orderId, quantity.mulWadDown(5e17), address(0), DAN_ADDRESS);
+        orderbook.fillIPOrders(orderId, quantity.mulWadDown(5e17), address(0), DAN_ADDRESS);
         vm.stopPrank();
 
         (,,,, uint256 remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -188,7 +188,7 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.startPrank(AP_ADDRESS);
         // fill 50% of the order
-        orderbook.fillIPOrder(orderId, quantity.mulWadDown(5e17), address(0), DAN_ADDRESS);
+        orderbook.fillIPOrders(orderId, quantity.mulWadDown(5e17), address(0), DAN_ADDRESS);
         vm.stopPrank();
 
         (,,,, uint256 remainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -292,7 +292,7 @@ contract Test_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.stopPrank();
 
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, quantity, address(0), DAN_ADDRESS);
+        orderbook.fillIPOrders(orderId, quantity, address(0), DAN_ADDRESS);
         vm.stopPrank();
 
         // Should be completely filled and uncancellable

@@ -59,7 +59,6 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     )
         external
         payable
-        override
         returns (uint256)
     {
         if (frontendFee < minimumFrontendFee) {
@@ -95,7 +94,6 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     )
         external
         payable
-        override
         returns (uint256 orderID)
     {
         // Check market exists
@@ -147,7 +145,6 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     )
         external
         payable
-        override
         nonReentrant
         returns (uint256 marketID)
     {
@@ -237,11 +234,35 @@ contract RecipeOrderbook is RecipeOrderbookBase {
 
     /// @param token The token to claim fees for
     /// @param to The address to send fees claimed to
-    function claimFees(address token, address to) external payable override {
+    function claimFees(address token, address to) external payable {
         uint256 amount = feeClaimantToTokenToAmount[msg.sender][token];
         delete feeClaimantToTokenToAmount[msg.sender][token];
         ERC20(token).safeTransfer(to, amount);
         emit FeesClaimed(msg.sender, token, amount);
+    }
+
+    /// @notice Filling multiple IP orders
+    /// @param orderIDs The IDs of the IP orders to fill
+    /// @param fillAmounts The amounts of input tokens to fill the corresponding orders with
+    /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
+    /// @param frontendFeeRecipient The address that will receive the frontend fee
+    function fillIPOrders(
+        uint256[] calldata orderIDs,
+        uint256[] calldata fillAmounts,
+        address fundingVault,
+        address frontendFeeRecipient
+    )
+        external
+        payable
+        nonReentrant
+    {
+        if (orderIDs.length != fillAmounts.length) {
+            revert ArrayLengthMismatch();
+        }
+
+        for (uint256 i = 0; i < orderIDs.length; ++i) {
+            _fillIPOrder(orderIDs[i], fillAmounts[i], fundingVault, frontendFeeRecipient);
+        }
     }
 
     /// @notice Fill an IP order, transferring the IP's incentives to the AP, withdrawing the AP from their funding vault into a fresh weiroll wallet, and
@@ -250,7 +271,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) internal {
+    function _fillIPOrder(uint256 orderID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) internal {
         // Retreive the IPOrder and WeirollMarket structs
         IPOrder storage order = orderIDToIPOrder[orderID];
         WeirollMarket storage market = marketIDToWeirollMarket[order.targetMarketID];
@@ -343,27 +364,17 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         emit IPOfferFulfilled(orderID, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
     }
 
-    /// @notice Filling multiple IP orders
-    /// @param orderIDs The IDs of the IP orders to fill
-    /// @param fillAmounts The amounts of input tokens to fill the corresponding orders with
-    /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
+    /// @dev Fill multiple AP orders
+    /// @param orders The AP orders to fill
+    /// @param fillAmounts The amount of input tokens to fill the corresponding order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillIPOrders(
-        uint256[] calldata orderIDs,
-        uint256[] calldata fillAmounts,
-        address fundingVault,
-        address frontendFeeRecipient
-    )
-        nonReentrant
-        external
-        payable
-    {
-        if (orderIDs.length != fillAmounts.length) {
+    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) external payable nonReentrant {
+        if (orders.length != fillAmounts.length) {
             revert ArrayLengthMismatch();
         }
 
-        for (uint256 i = 0; i < orderIDs.length; ++i) {
-            fillIPOrder(orderIDs[i], fillAmounts[i], fundingVault, frontendFeeRecipient);
+        for (uint256 i = 0; i < orders.length; ++i) {
+            _fillAPOrder(orders[i], fillAmounts[i], frontendFeeRecipient);
         }
     }
 
@@ -372,7 +383,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param order The AP order to fill
     /// @param fillAmount The amount of input tokens to fill the order with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) internal {
+    function _fillAPOrder(APOrder calldata order, uint256 fillAmount, address frontendFeeRecipient) internal {
         if (order.expiry != 0 && block.timestamp > order.expiry) {
             revert OrderExpired();
         }
@@ -469,22 +480,8 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         emit APOfferFulfilled(order.orderID, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
     }
 
-    /// @dev Fill multiple AP orders
-    /// @param orders The AP orders to fill
-    /// @param fillAmounts The amount of input tokens to fill the corresponding order with
-    /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOrders(APOrder[] calldata orders, uint256[] calldata fillAmounts, address frontendFeeRecipient) nonReentrant external payable {
-        if (orders.length != fillAmounts.length) {
-            revert ArrayLengthMismatch();
-        }
-
-        for (uint256 i = 0; i < orders.length; ++i) {
-            fillAPOrder(orders[i], fillAmounts[i], frontendFeeRecipient);
-        }
-    }
-
     /// @notice Cancel an AP order, setting the remaining quantity available to fill to 0
-    function cancelAPOrder(APOrder calldata order) external payable override {
+    function cancelAPOrder(APOrder calldata order) external payable {
         // Check that the cancelling party is the order's owner
         if (order.ap != msg.sender) revert NotOwner();
 
@@ -504,7 +501,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @notice Cancel an IP order, setting the remaining quantity available to fill to 0 and returning the IP's incentives
-    function cancelIPOrder(uint256 orderID) external payable override nonReentrant {
+    function cancelIPOrder(uint256 orderID) external payable nonReentrant {
         IPOrder storage order = orderIDToIPOrder[orderID];
 
         // Check that the cancelling party is the order's owner
@@ -563,7 +560,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @notice For wallets of Forfeitable markets, an AP can call this function to forgo their rewards and unlock their wallet
-    function forfeit(address weirollWallet, bool executeWithdrawal) external payable override isWeirollOwner(weirollWallet) nonReentrant {
+    function forfeit(address weirollWallet, bool executeWithdrawal) external payable isWeirollOwner(weirollWallet) nonReentrant {
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
 
@@ -669,20 +666,13 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @notice Execute the withdrawal script in the weiroll wallet
-    function executeWithdrawalScript(address weirollWallet)
-        external
-        payable
-        override
-        isWeirollOwner(weirollWallet)
-        weirollIsUnlocked(weirollWallet)
-        nonReentrant
-    {
+    function executeWithdrawalScript(address weirollWallet) external payable isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
         _executeWithdrawalScript(weirollWallet);
     }
 
     /// @param weirollWallet The wallet to claim for
     /// @param to The address to send the incentive to
-    function claim(address weirollWallet, address to) external payable override isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
+    function claim(address weirollWallet, address to) external payable isWeirollOwner(weirollWallet) weirollIsUnlocked(weirollWallet) nonReentrant {
         // Get locked reward details to facilitate claim
         LockedRewardParams storage params = weirollWalletToLockedRewardParams[weirollWallet];
 
@@ -771,7 +761,6 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     )
         external
         payable
-        override
         isWeirollOwner(weirollWallet)
         weirollIsUnlocked(weirollWallet)
         nonReentrant
@@ -870,7 +859,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param token The token address where fees are accrued in
     /// @param amount The amount of fees to award
     /// @param ip The incentive provider if awarding points
-    function _accountFee(address recipient, address token, uint256 amount, address ip) internal override {
+    function _accountFee(address recipient, address token, uint256 amount, address ip) internal {
         //check to see the token is actually a points campaign
         if (PointsFactory(POINTS_FACTORY).isPointsProgram(token)) {
             // Points cannot be claimed and are rather directly awarded
@@ -885,7 +874,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     /// @param token The market input token to fund the weiroll wallet with
     /// @param amount The amount of market input token to fund the weiroll wallet with
     /// @param weirollWallet The weiroll wallet to fund with the specified amount of the market input token
-    function _fundWeirollWallet(address fundingVault, address ap, ERC20 token, uint256 amount, address weirollWallet) internal override {
+    function _fundWeirollWallet(address fundingVault, address ap, ERC20 token, uint256 amount, address weirollWallet) internal {
         if (fundingVault == address(0)) {
             // If no fundingVault specified, fund the wallet directly from AP
             token.safeTransferFrom(ap, weirollWallet, amount);
@@ -918,7 +907,6 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         address frontendFeeRecipient
     )
         internal
-        override
     {
         // msg.sender will always be AP
         // Take fees immediately in an Upfront market
@@ -954,7 +942,6 @@ contract RecipeOrderbook is RecipeOrderbookBase {
         RewardStyle rewardStyle
     )
         internal
-        override
     {
         // msg.sender will always be IP
         if (rewardStyle == RewardStyle.Upfront) {
@@ -999,7 +986,7 @@ contract RecipeOrderbook is RecipeOrderbookBase {
     }
 
     /// @notice executes the withdrawal script for the provided weiroll wallet
-    function _executeWithdrawalScript(address weirollWallet) internal override {
+    function _executeWithdrawalScript(address weirollWallet) internal {
         // Instantiate the WeirollWallet from the wallet address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
 

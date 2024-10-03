@@ -106,7 +106,7 @@ contract Test_Cancel_APOrder_RecipeOrderbookBaseBase is RecipeOrderbookTestBase 
         vm.startPrank(IP_ADDRESS);
         mockIncentiveToken.approve(address(orderbook), 100000e18);
 
-        orderbook.fillAPOrder(order, quantity, DAN_ADDRESS);
+        orderbook.fillAPOrders(order, quantity, DAN_ADDRESS);
         vm.stopPrank();
 
         // Should be completely filled and uncancellable

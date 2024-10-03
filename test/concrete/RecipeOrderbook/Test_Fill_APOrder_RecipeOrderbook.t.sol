@@ -66,7 +66,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -133,7 +133,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, type(uint256).max, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, type(uint256).max, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -204,7 +204,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -269,7 +269,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -344,7 +344,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
 
         vm.startPrank(IP_ADDRESS);
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -399,7 +399,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -460,7 +460,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -525,7 +525,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -590,7 +590,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
 
         vm.startPrank(IP_ADDRESS);
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -648,7 +648,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -709,7 +709,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -774,7 +774,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.recordLogs();
 
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -840,7 +840,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
 
         vm.startPrank(IP_ADDRESS);
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         uint256 resultingRemainingQuantity = orderbook.orderHashToRemainingQuantity(orderbook.getOrderHash(order));
@@ -873,7 +873,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Attempt to fill more than available, expecting a revert
         vm.expectRevert(RecipeOrderbookBase.NotEnoughRemainingQuantity.selector);
-        orderbook.fillAPOrder(order, fillAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, fillAmount, FRONTEND_FEE_RECIPIENT);
     }
 
     function test_RevertIf_ZeroQuantityFill_FillAPOrder() external {
@@ -886,7 +886,7 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Attempt to fill with zero quantity, expecting a revert
         vm.expectRevert(RecipeOrderbookBase.CannotFillZeroQuantityOrder.selector);
-        orderbook.fillAPOrder(order, 0, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, 0, FRONTEND_FEE_RECIPIENT);
     }
 
     function test_RevertIf_OrderExpired_FillAPOrder() external {
@@ -902,6 +902,6 @@ contract Test_Fill_APOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Attempt to fill an expired order, expecting a revert
         vm.expectRevert(RecipeOrderbookBase.OrderExpired.selector);
-        orderbook.fillAPOrder(order, orderAmount, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillAPOrders(order, orderAmount, FRONTEND_FEE_RECIPIENT);
     }
 }

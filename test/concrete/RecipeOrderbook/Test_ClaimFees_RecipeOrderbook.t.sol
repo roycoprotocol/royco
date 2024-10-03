@@ -39,7 +39,7 @@ contract Test_ClaimFees_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Fill the order and accumulate fees
         vm.startPrank(BOB_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), CHARLIE_ADDRESS);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), CHARLIE_ADDRESS);
         vm.stopPrank();
 
         // **Claim protocol fees by owner**

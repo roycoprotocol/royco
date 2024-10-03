@@ -40,7 +40,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -85,7 +85,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - first event in logs)
@@ -128,7 +128,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
@@ -160,7 +160,7 @@ contract Test_Claim_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - first event in logs)

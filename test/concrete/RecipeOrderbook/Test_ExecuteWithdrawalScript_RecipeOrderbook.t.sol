@@ -39,7 +39,7 @@ contract Test_ExecuteWithdrawalScript_RecipeOrderbook is RecipeOrderbookTestBase
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
@@ -76,7 +76,7 @@ contract Test_ExecuteWithdrawalScript_RecipeOrderbook is RecipeOrderbookTestBase
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
@@ -108,7 +108,7 @@ contract Test_ExecuteWithdrawalScript_RecipeOrderbook is RecipeOrderbookTestBase
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));

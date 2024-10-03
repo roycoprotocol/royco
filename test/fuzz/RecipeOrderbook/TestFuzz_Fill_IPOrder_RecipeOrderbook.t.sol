@@ -57,7 +57,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(BOB_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -120,7 +120,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(BOB_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -150,7 +150,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect revert due to order expiration
         vm.expectRevert(RecipeOrderbookBase.OrderExpired.selector);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
     }
 
     function testFuzz_RevertIf_NotEnoughRemainingQuantity(uint256 orderAmount, uint256 fillAmount) external {
@@ -165,7 +165,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect revert due to insufficient remaining quantity
         vm.expectRevert(RecipeOrderbookBase.NotEnoughRemainingQuantity.selector);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
     }
 
     function testFuzz_RevertIf_MismatchedBaseAsset(uint256 orderAmount, uint256 fillAmount) external {
@@ -183,7 +183,7 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect revert due to mismatched base asset
         vm.expectRevert(RecipeOrderbookBase.MismatchedBaseAsset.selector);
-        orderbook.fillIPOrder(orderId, fillAmount, incorrectVault, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, incorrectVault, FRONTEND_FEE_RECIPIENT);
     }
 
     function testFuzz_RevertIf_ZeroQuantityFill(uint256 orderAmount) external {
@@ -197,6 +197,6 @@ contract TestFuzz_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Expect revert due to zero quantity fill
         vm.expectRevert(RecipeOrderbookBase.CannotPlaceZeroQuantityOrder.selector);
-        orderbook.fillIPOrder(orderId, 0, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, 0, address(0), FRONTEND_FEE_RECIPIENT);
     }
 }

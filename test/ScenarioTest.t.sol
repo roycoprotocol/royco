@@ -16,13 +16,13 @@ import { PointsFactory } from "src/PointsFactory.sol";
 import { Points } from "src/Points.sol";
 
 import { VaultOrderbook } from "src/VaultOrderbook.sol";
-import "src/RecipeOrderbook.sol";
+import "test/mocks/MockRecipeOrderbook.sol";
 
 import { Test, console } from "forge-std/Test.sol";
 
 contract ScenarioTest is Test {
     VaultOrderbook public vaultOrderbook;
-    RecipeOrderbook public recipeOrderbook;
+    MockRecipeOrderbook public recipeOrderbook;
 
     WeirollWallet public weirollImplementation = new WeirollWallet();
     PointsFactory public pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER);
@@ -57,7 +57,7 @@ contract ScenarioTest is Test {
         fundingVault = new MockERC4626(baseToken);
         fundingVault2 = new MockERC4626(baseToken2);
 
-        recipeOrderbook = new RecipeOrderbook(
+        recipeOrderbook = new MockRecipeOrderbook(
             address(weirollImplementation),
             initialProtocolFee,
             initialMinimumFrontendFee,
@@ -175,7 +175,7 @@ contract ScenarioTest is Test {
 
         // Fill the order
         vm.startPrank(USER01);
-        recipeOrderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeOrderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeOrderbook.orderIDToIPOrder(orderId);

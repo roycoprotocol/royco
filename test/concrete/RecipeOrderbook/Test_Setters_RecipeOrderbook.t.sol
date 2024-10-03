@@ -18,7 +18,7 @@ contract Test_Setters_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function test_RevertIf_NonOwnerSetProtocolFeeClaimant() external prankModifier(ALICE_ADDRESS) {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE_ADDRESS));
+        vm.expectRevert("UNAUTHORIZED");
         orderbook.setProtocolFeeClaimant(BOB_ADDRESS);
     }
 
@@ -30,7 +30,7 @@ contract Test_Setters_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function test_RevertIf_NonOwnerSetProtocolFee() external prankModifier(ALICE_ADDRESS) {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE_ADDRESS));
+        vm.expectRevert("UNAUTHORIZED");
         orderbook.setProtocolFee(0.02e18);
     }
 
@@ -42,7 +42,7 @@ contract Test_Setters_RecipeOrderbook is RecipeOrderbookTestBase {
     }
 
     function test_RevertIf_NonOwnerSetMinimumFrontendFee() external prankModifier(ALICE_ADDRESS) {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE_ADDRESS));
+        vm.expectRevert("UNAUTHORIZED");
         orderbook.setMinimumFrontendFee(0.002e18);
     }
 }

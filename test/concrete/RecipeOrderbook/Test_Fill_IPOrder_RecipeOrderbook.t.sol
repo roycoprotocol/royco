@@ -60,7 +60,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -121,7 +121,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, type(uint256).max, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, type(uint256).max, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -188,7 +188,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -252,7 +252,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -331,7 +331,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -379,7 +379,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -442,7 +442,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -511,7 +511,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -586,7 +586,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -642,7 +642,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -705,7 +705,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -774,7 +774,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -849,7 +849,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
         vm.recordLogs();
         // Fill the order
         vm.startPrank(AP_ADDRESS);
-        orderbook.fillIPOrder(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(mockVault), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = orderbook.orderIDToIPOrder(orderId);
@@ -891,7 +891,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Attempt to fill the expired order, expecting a revert
         vm.expectRevert(RecipeOrderbookBase.OrderExpired.selector);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
     }
 
     function test_RevertIf_NotEnoughRemainingQuantity() external {
@@ -906,7 +906,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Attempt to fill more than available, expecting a revert
         vm.expectRevert(RecipeOrderbookBase.NotEnoughRemainingQuantity.selector);
-        orderbook.fillIPOrder(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
     }
 
     function test_RevertIf_MismatchedBaseAsset() external {
@@ -924,7 +924,7 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Attempt to fill with a mismatched base asset, expecting a revert
         vm.expectRevert(RecipeOrderbookBase.MismatchedBaseAsset.selector);
-        orderbook.fillIPOrder(orderId, fillAmount, incorrectVault, FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, fillAmount, incorrectVault, FRONTEND_FEE_RECIPIENT);
     }
 
     function test_RevertIf_ZeroQuantityFill() external {
@@ -938,6 +938,6 @@ contract Test_Fill_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         // Attempt to fill with a zero quantity, expecting a revert
         vm.expectRevert(RecipeOrderbookBase.CannotPlaceZeroQuantityOrder.selector);
-        orderbook.fillIPOrder(orderId, 0, address(0), FRONTEND_FEE_RECIPIENT);
+        orderbook.fillIPOrders(orderId, 0, address(0), FRONTEND_FEE_RECIPIENT);
     }
 }

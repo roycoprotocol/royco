@@ -43,7 +43,7 @@ contract TestFuzz_Cancel_IPOrder_RecipeOrderbook is RecipeOrderbookTestBase {
 
         vm.startPrank(AP_ADDRESS);
         // fill 50% of the order
-        orderbook.fillIPOrder(orderId, _fillAmount, address(0), DAN_ADDRESS);
+        orderbook.fillIPOrders(orderId, _fillAmount, address(0), DAN_ADDRESS);
         vm.stopPrank();
 
         (,,,, uint256 remainingQuantity) = orderbook.orderIDToIPOrder(orderId);

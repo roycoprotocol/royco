@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../../../src/WeirollWallet.sol";
-import "../../../src/RecipeOrderbook.sol";
+import "test/mocks/MockRecipeOrderbook.sol";
 import "../../../src/PointsFactory.sol";
 
 import { MockERC20 } from "test/mocks/MockERC20.sol";
@@ -24,7 +24,7 @@ contract RecipeOrderbookTestBase is RoycoTestBase, RecipeUtils {
         initialProtocolFee = _initialProtocolFee;
         initialMinimumFrontendFee = _initialMinimumFrontendFee;
 
-        orderbook = new RecipeOrderbook(
+        orderbook = new MockRecipeOrderbook(
             address(weirollImplementation),
             initialProtocolFee,
             initialMinimumFrontendFee,
