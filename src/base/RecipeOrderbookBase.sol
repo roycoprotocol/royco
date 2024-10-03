@@ -265,6 +265,7 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
     }
 
     /// @notice sets the protocol fee recipient, taken on all fills
+    /// @param _protocolFeeClaimant The address allowed to claim protocol fees
     function setProtocolFeeClaimant(address _protocolFeeClaimant) external payable onlyOwner {
         protocolFeeClaimant = _protocolFeeClaimant;
     }
@@ -276,6 +277,7 @@ abstract contract RecipeOrderbookBase is Owned, ReentrancyGuardTransient {
     }
 
     /// @notice sets the minimum frontend fee that a market can set and is paid to whoever fills the order
+    /// @param _minimumFrontendFee The minimum frontend fee when creating a market
     function setMinimumFrontendFee(uint256 _minimumFrontendFee) external payable onlyOwner {
         minimumFrontendFee = _minimumFrontendFee;
     }
