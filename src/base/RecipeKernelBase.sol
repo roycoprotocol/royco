@@ -121,7 +121,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
         address frontendFeeRecipient;
         bool wasIPOffer;
         uint256 offerID; // For IP offer identification
-        uint256 protocolFeeAtFillment; // Used to keep track of protocol fee charged on fill for AP offers.
+        uint256 protocolFeeAtFill; // Used to keep track of protocol fee charged on fill for AP offers.
     }
 
     /// @custom:field marketID The ID of the newly created market
