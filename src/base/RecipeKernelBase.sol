@@ -121,7 +121,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
         address frontendFeeRecipient;
         bool wasIPOffer;
         uint256 offerID; // For IP offer identification
-        uint256 protocolFeeAtFulfillment; // Used to keep track of protocol fee charged on fill for AP offers.
+        uint256 protocolFeeAtFillment; // Used to keep track of protocol fee charged on fill for AP offers.
     }
 
     /// @custom:field marketID The ID of the newly created market
@@ -168,14 +168,14 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     );
 
     /// @param offerID The ID of the IP offer filled
-    /// @param fulfillAmount The amount of the offer that was filled in the market input token
+    /// @param fillAmount The amount of the offer that was filled in the market input token
     /// @param weirollWallet The address of the weiroll wallet containing the AP's funds, created on fill, used to execute the recipes
     /// @param incentiveAmounts The amount of incentives allocated to the AP on fill (claimable as per the market's reward type)
     /// @param protocolFeeAmounts The protocol fee per incentive on fill (claimable as per the market's reward type)
     /// @param frontendFeeAmounts The rewards frontend fee per incentive on fill (claimable as per the market's reward type)
-    event IPOfferFulfilled(
+    event IPOfferFilled(
         uint256 indexed offerID,
-        uint256 fulfillAmount,
+        uint256 fillAmount,
         address weirollWallet,
         uint256[] incentiveAmounts,
         uint256[] protocolFeeAmounts,
@@ -183,14 +183,14 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     );
 
     /// @param offerID The ID of the AP offer filled
-    /// @param fulfillAmount The amount of the offer that was filled in the market input token
+    /// @param fillAmount The amount of the offer that was filled in the market input token
     /// @param weirollWallet The address of the weiroll wallet containing the AP's funds, created on fill, used to execute the recipes
     /// @param incentiveAmounts The amount of incentives allocated to the AP on fill (claimable as per the market's reward type)
     /// @param protocolFeeAmounts The amount taken as the protocol fee per incentive on fill (claimable as per the market's reward type)
     /// @param frontendFeeAmounts The amount taken as the frontend fee per incentive on fill (claimable as per the market's reward type)
-    event APOfferFulfilled(
+    event APOfferFilled(
         uint256 indexed offerID,
-        uint256 fulfillAmount,
+        uint256 fillAmount,
         address weirollWallet,
         uint256[] incentiveAmounts,
         uint256[] protocolFeeAmounts,

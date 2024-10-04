@@ -51,7 +51,7 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         emit ERC20.Transfer(BOB_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(recipeKernel));
-        emit RecipeKernelBase.IPOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeKernelBase.IPOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -114,7 +114,7 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         emit ERC20.Transfer(BOB_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(recipeKernel));
-        emit RecipeKernelBase.IPOfferFulfilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeKernelBase.IPOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
