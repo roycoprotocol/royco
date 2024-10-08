@@ -413,6 +413,9 @@ contract VaultKernelTest is Test {
        offers[2] = offer3;
 
        // Mock the previewRateAfterDeposit function
+        vm.mockCall(
+            address(targetVault2), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
+        );
        vm.mockCall(
            address(targetVault2),
            abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), uint256(quantity)),
@@ -471,6 +474,9 @@ contract VaultKernelTest is Test {
        vm.startPrank(bob);
 
        // Mock the previewRateAfterDeposit function
+        vm.mockCall(
+            address(targetVault), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
+        );
        vm.mockCall(
            address(targetVault),
            abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
@@ -520,6 +526,9 @@ contract VaultKernelTest is Test {
        vm.startPrank(bob);
 
        // Mock the previewRateAfterDeposit function
+        vm.mockCall(
+            address(targetVault), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
+        );
        vm.mockCall(
            address(targetVault),
            abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
@@ -568,7 +577,9 @@ contract VaultKernelTest is Test {
        vm.stopPrank();
 
        vm.startPrank(bob);
-
+        vm.mockCall(
+            address(targetVault), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
+        );
        vm.mockCall(
            address(targetVault),
            abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
@@ -633,16 +644,25 @@ contract VaultKernelTest is Test {
        offers[2] = offer3;
 
        // Mock the previewRateAfterDeposit function
+        vm.mockCall(
+            address(targetVault), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
+        );
        vm.mockCall(
            address(targetVault),
            abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
            abi.encode(tokenRatesRequested[0])
            );
+        vm.mockCall(
+            address(targetVault2), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
+        );
        vm.mockCall(
            address(targetVault2),
            abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),
            abi.encode(tokenRatesRequested[1])
            );
+        vm.mockCall(
+            address(targetVault3), abi.encodeWithSignature("rewardToInterval(address)", address(baseToken)), abi.encode(uint32(1 days), uint32(10 days), uint96(0))
+        );
        vm.mockCall(
            address(targetVault3),
            abi.encodeWithSelector(WrappedVault.previewRateAfterDeposit.selector, address(baseToken), quantity),

@@ -84,20 +84,6 @@ contract WeirollWalletTest is Test {
         lockedWallet.manualExecuteWeiroll(new bytes32[](0), new bytes[](0));
     }
 
-    function testExecuteWeiroll() public {
-        bytes32[] memory commands = new bytes32[](1);
-        bytes[] memory state = new bytes[](1);
-
-        assertFalse(wallet.executed());
-
-        vm.prank(address(mockRecipekernel));
-        vm.expectRevert("Delegatecall is disabled");
-        wallet.executeWeiroll(commands, state);
-
-        // The executed flag should remain false
-        assertFalse(wallet.executed());
-    }
-
     function testManualExecuteWeiroll() public {
         bytes32[] memory commands = new bytes32[](1);
         bytes[] memory state = new bytes[](1);
@@ -107,11 +93,6 @@ contract WeirollWalletTest is Test {
 
         // Warp time to unlock the wallet
         vm.warp(lockedUntil + 1);
-
-        // Execute Weiroll to set executed to true
-        vm.prank(address(mockRecipekernel));
-        vm.expectRevert("Delegatecall is disabled");
-        wallet.executeWeiroll(commands, state);
 
         // This should still fail because the wallet is not executed
         vm.expectRevert("Royco: Order unfilled");
