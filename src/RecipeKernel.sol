@@ -359,7 +359,7 @@ contract RecipeKernel is RecipeKernelBase {
         // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
 
-        emit IPOfferFulfilled(offerID, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
+        emit IPOfferFilled(offerID, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
     }
 
     /// @dev Fill multiple AP offers
@@ -405,7 +405,7 @@ contract RecipeKernel is RecipeKernelBase {
         // Adjust remaining offer quantity by amount filled
         offerHashToRemainingQuantity[offerHash] -= fillAmount;
 
-        // Calculate percentage of AP oder that IP is fulfilling (IP gets this percantage of the offer quantity in a Weiroll wallet specified by the market)
+        // Calculate percentage of AP oder that IP is filling (IP gets this percantage of the offer quantity in a Weiroll wallet specified by the market)
         uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
 
         if (fillPercentage < MIN_FILL_PERCENT) revert InsufficientFillPercent();
@@ -434,7 +434,7 @@ contract RecipeKernel is RecipeKernelBase {
         uint256[] memory frontendFeesPaid = new uint256[](numIncentives);
 
         // Fees at the time of fill
-        uint256 protocolFeeAtFulfillment = protocolFee;
+        uint256 protocolFeeAtFill = protocolFee;
         uint256 marketFrontendFee = market.frontendFee;
 
         for (uint256 i = 0; i < numIncentives; ++i) {
@@ -450,7 +450,7 @@ contract RecipeKernel is RecipeKernelBase {
             incentiveAmountsPaid[i] = incentiveAmount;
 
             // Calculate fees based on fill percentage. These fees will be taken on top of the AP's requested amount.
-            protocolFeesPaid[i] = incentiveAmount.mulWadDown(protocolFeeAtFulfillment);
+            protocolFeesPaid[i] = incentiveAmount.mulWadDown(protocolFeeAtFill);
             frontendFeesPaid[i] = incentiveAmount.mulWadDown(marketFrontendFee);
 
             // Pull incentives from IP and account fees
@@ -465,7 +465,7 @@ contract RecipeKernel is RecipeKernelBase {
             params.amounts = incentiveAmountsPaid;
             params.ip = msg.sender;
             params.frontendFeeRecipient = frontendFeeRecipient;
-            params.protocolFeeAtFulfillment = protocolFeeAtFulfillment;
+            params.protocolFeeAtFill = protocolFeeAtFill;
             // Redundant: Make sure this is set to false in case of a forfeit
             delete params.wasIPOffer;
         }
@@ -477,7 +477,7 @@ contract RecipeKernel is RecipeKernelBase {
         // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
 
-        emit APOfferFulfilled(offer.offerID, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
+        emit APOfferFilled(offer.offerID, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
     }
 
     /// @notice Cancel an AP offer, setting the remaining quantity available to fill to 0
@@ -630,8 +630,8 @@ contract RecipeKernel is RecipeKernelBase {
                 }
             }
         } else {
-            // Get the protocol fee at fulfillment and market frontend fee
-            uint256 protocolFeeAtFulfillment = params.protocolFeeAtFulfillment;
+            // Get the protocol fee at fill and market frontend fee
+            uint256 protocolFeeAtFill = params.protocolFeeAtFill;
             uint256 marketFrontendFee = marketIDToWeirollMarket[wallet.marketId()].frontendFee;
             // Get the ip from locked reward params
             address ip = params.ip;
@@ -642,7 +642,7 @@ contract RecipeKernel is RecipeKernelBase {
                 uint256 amount = params.amounts[i];
 
                 // Calculate fees to take based on percentage of fill
-                uint256 protocolFeeAmount = amount.mulWadDown(protocolFeeAtFulfillment);
+                uint256 protocolFeeAmount = amount.mulWadDown(protocolFeeAtFill);
                 // Take fees
                 _accountFee(protocolFeeClaimant, incentive, protocolFeeAmount, ip);
 
@@ -715,8 +715,8 @@ contract RecipeKernel is RecipeKernelBase {
                 delete params.amounts[i];
             }
         } else {
-            // Get the protocol fee at fulfillment and market frontend fee
-            uint256 protocolFeeAtFulfillment = params.protocolFeeAtFulfillment;
+            // Get the protocol fee at fill and market frontend fee
+            uint256 protocolFeeAtFill = params.protocolFeeAtFill;
             uint256 marketFrontendFee = marketIDToWeirollMarket[wallet.marketId()].frontendFee;
 
             for (uint256 i = 0; i < params.incentives.length; ++i) {
@@ -724,7 +724,7 @@ contract RecipeKernel is RecipeKernelBase {
                 uint256 amount = params.amounts[i];
 
                 // Calculate fees to take based on percentage of fill
-                uint256 protocolFeeAmount = amount.mulWadDown(protocolFeeAtFulfillment);
+                uint256 protocolFeeAmount = amount.mulWadDown(protocolFeeAtFill);
                 uint256 frontendFeeAmount = amount.mulWadDown(marketFrontendFee);
 
                 // Take fees
@@ -779,7 +779,7 @@ contract RecipeKernel is RecipeKernelBase {
             // If it was an ipoffer, get the offer so we can retrieve the fee amounts and fill quantity
             IPOffer storage offer = offerIDToIPOffer[params.offerID];
 
-            // Calculate percentage of offer quantity this offer fulfilled
+            // Calculate percentage of offer quantity this offer filled
             uint256 fillAmount = wallet.amount();
             uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
 
@@ -821,7 +821,7 @@ contract RecipeKernel is RecipeKernelBase {
                     uint256 amount = params.amounts[i];
 
                     // Calculate fees to take based on percentage of fill
-                    uint256 protocolFeeAmount = amount.mulWadDown(params.protocolFeeAtFulfillment);
+                    uint256 protocolFeeAmount = amount.mulWadDown(params.protocolFeeAtFill);
                     uint256 frontendFeeAmount = amount.mulWadDown(marketFrontendFee);
 
                     // Take fees
@@ -893,7 +893,7 @@ contract RecipeKernel is RecipeKernelBase {
      * @dev This function is called internally by `fillIPOffer` to manage the fees and incentives for an Upfront market.
      * @param incentive The address of the incentive.
      * @param incentiveAmount The amount of the incentive token to be transferred.
-     * @param protocolFeeAmount The protocol fee amount taken at fulfillment.
+     * @param protocolFeeAmount The protocol fee amount taken at fill.
      * @param frontendFeeAmount The frontend fee amount taken for this market.
      * @param ip The address of the action provider.
      * @param frontendFeeRecipient The address that will receive the frontend fee.
@@ -926,7 +926,7 @@ contract RecipeKernel is RecipeKernelBase {
      * @dev This function is called internally by `fillAPOffer` to manage the incentives.
      * @param incentive The address of the incentive.
      * @param incentiveAmount The amount of the incentive to be transferred.
-     * @param protocolFeeAmount The protocol fee amount taken at fulfillment.
+     * @param protocolFeeAmount The protocol fee amount taken at fill.
      * @param frontendFeeAmount The frontend fee amount taken for this market.
      * @param ap The address of the action provider.
      * @param frontendFeeRecipient The address that will receive the frontend fee.

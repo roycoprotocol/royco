@@ -65,7 +65,7 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
     event APOfferCancelled(uint256 indexed offerID);
 
     /// @notice emitted when an AP is allocated to a vault
-    event APOfferFulfilled(uint256 indexed offerID, uint256 fulfillAmount);
+    event APOfferFilled(uint256 indexed offerID, uint256 fillAmount);
 
     /// @notice emitted when trying to fill an offer that has expired
     error OfferExpired();
@@ -236,7 +236,7 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
         // Deposit into the target vault
         ERC4626(offer.targetVault).deposit(fillAmount, offer.ap);
 
-        emit APOfferFulfilled(offer.offerID, fillAmount);
+        emit APOfferFilled(offer.offerID, fillAmount);
     }
 
     /// @notice allocate a selection of offers
