@@ -485,9 +485,6 @@ contract RecipeKernel is RecipeKernelBase {
         // Check that the cancelling party is the offer's owner
         if (offer.ap != msg.sender) revert NotOwner();
 
-        // Check that the offer doesn't have an indefinite expiry (cannot be cancelled)
-        if (offer.expiry == 0) revert OfferCannotExpire();
-
         // Check that the offer isn't already filled, hasn't been cancelled already, or never existed
         bytes32 offerHash = getOfferHash(offer);
         if (offerHashToRemainingQuantity[offerHash] == 0) {
@@ -506,9 +503,6 @@ contract RecipeKernel is RecipeKernelBase {
 
         // Check that the cancelling party is the offer's owner
         if (offer.ip != msg.sender) revert NotOwner();
-
-        // Check that the offer doesn't have an indefinite expiry (cannot be cancelled)
-        if (offer.expiry == 0) revert OfferCannotExpire();
 
         // Check that the offer isn't already filled, hasn't been cancelled already, or never existed
         if (offer.remainingQuantity == 0) revert NotEnoughRemainingQuantity();
