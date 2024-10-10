@@ -33,9 +33,6 @@ contract Points is Ownable2Step {
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
-    /// @dev The allowed vaults to call this contract
-
-    address[] public allowedVaults;
     /// @dev Maps a vault to if the vault is allowed to call this contract
     mapping(address => bool) public isAllowedVault;
 
@@ -62,7 +59,6 @@ contract Points is Ownable2Step {
             revert VaultIsDuplicate();
         }
 
-        allowedVaults.push(vault);
         isAllowedVault[vault] = true;
 
         emit AllowedVaultAdded(vault);

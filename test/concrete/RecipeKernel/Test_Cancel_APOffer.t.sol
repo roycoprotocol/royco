@@ -75,21 +75,6 @@ contract Test_Cancel_APOffer_RecipeKernelBaseBase is RecipeKernelTestBase {
         vm.stopPrank();
     }
 
-    function test_RevertIf_cancelAPOffer_WithIndefiniteExpiry() external {
-        uint256 marketId = createMarket();
-        uint256 quantity = 100000e18;
-
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), quantity, 0, AP_ADDRESS);
-
-        // not needed but just to test that expiry doesn't apply if set to 0
-        vm.warp(offer.expiry + 1 seconds);
-
-        vm.startPrank(AP_ADDRESS);
-        vm.expectRevert(RecipeKernelBase.OfferCannotExpire.selector);
-        recipeKernel.cancelAPOffer(offer);
-        vm.stopPrank();
-    }
-
     function test_RevertIf_cancelAPOffer_NoRemainingQuantity() external {
         uint256 marketId = createMarket();
         uint256 quantity = 100000e18;

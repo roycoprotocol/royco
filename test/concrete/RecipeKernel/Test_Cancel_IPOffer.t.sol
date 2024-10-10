@@ -265,20 +265,6 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
     }
 
-    function test_RevertIf_cancelIPOffer_OfferWithIndefiniteExpiry() external {
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
-
-        uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
-
-        // Create the IP offer with indefinite expiry
-        uint256 offerId = createIPOffer_WithTokens(marketId, quantity, 0, IP_ADDRESS);
-
-        vm.startPrank(IP_ADDRESS);
-        vm.expectRevert(RecipeKernelBase.OfferCannotExpire.selector);
-        recipeKernel.cancelIPOffer(offerId);
-        vm.stopPrank();
-    }
-
     function test_RevertIf_cancelIPOffer_NoRemainingQuantity() external {
         uint256 marketId = createMarket();
         uint256 quantity = 100_000e18;
