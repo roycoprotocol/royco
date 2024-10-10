@@ -37,6 +37,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     error VaultNotAuthorizedToRewardPoints();
     error InvalidInterval();
     error IntervalInProgress();
+    error IntervalScheduled();
     error NoIntervalInProgress();
     error RateCannotDecrease();
     error DuplicateRewardToken();
@@ -265,8 +266,11 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         RewardsPerToken storage rewardsPerToken = rewardToRPT[reward];
 
-        // A new rewards program can be set if one is not running
+        // A new rewards program cannot be set if one is running
         if (block.timestamp.toUint32() >= rewardsInterval.start && block.timestamp.toUint32() <= rewardsInterval.end) revert IntervalInProgress();
+
+        // A new rewards program cannot be set if one is scheduled to run in the future
+        if (rewardsInterval.start > block.timestamp) revert IntervalScheduled();
 
         // Update the rewards per token so that we don't lose any rewards
         _updateRewardsPerToken(reward);
@@ -303,7 +307,8 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     /// @param reward The address of the reward for which campaign should be refunded
     function refundRewardsInterval(address reward) payable external onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
-        RewardsInterval storage rewardsInterval = rewardToInterval[reward];
+        RewardsInterval memory rewardsInterval = rewardToInterval[reward];
+        delete rewardToInterval[reward];
         if (block.timestamp >= rewardsInterval.start) revert IntervalInProgress();
 
         uint256 rewardsOwed = (rewardsInterval.rate * (rewardsInterval.end - rewardsInterval.start)) - 1; // Round down
@@ -325,6 +330,9 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
 
         // No changes if the program hasn't started
         if (block.timestamp < rewardsInterval_.start) return rewardsPerTokenOut;
+
+        // No changes if the start value is zero
+        if (rewardsInterval_.start == 0) return rewardsPerTokenOut;
 
         // Stop accumulating at the end of the rewards interval
         uint256 updateTime = block.timestamp < rewardsInterval_.end ? block.timestamp : rewardsInterval_.end;
