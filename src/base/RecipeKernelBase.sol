@@ -259,6 +259,8 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     error OffersPaused();
     /// @notice emitted when trying to claim rewards on an Upfront market
     error AlreadyRewarded();
+    /// @notice emitted when trying to forfeit a wallet where rewards have been paid upfront
+    error CantForfeitUpfrontMarket();
     /// @notice emitted when trying to fill an order with a quantity below the minimum fill percent
     error InsufficientFillPercent();
 

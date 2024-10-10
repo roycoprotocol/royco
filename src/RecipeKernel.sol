@@ -566,6 +566,15 @@ contract RecipeKernel is RecipeKernelBase {
     function forfeit(address weirollWallet, bool executeWithdrawal) external payable isWeirollOwner(weirollWallet) nonReentrant {
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
+       
+        // isForfeitable is literally set as rewardStyle == Upfront, so
+        // this is akin to checking the market is not upfront
+        if (!wallet.isForfeitable()) {
+            revert CantForfeitUpfrontMarket();
+        }
+        
+        // Get locked reward params
+        LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
 
         // Forfeit wallet
         wallet.forfeit();
@@ -575,9 +584,6 @@ contract RecipeKernel is RecipeKernelBase {
             // Execute the withdrawal script if flag set to true
             _executeWithdrawalScript(weirollWallet);
         }
-
-        // Get locked reward params
-        LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
 
         // Check if IP offer
         // If not, the forfeited amount won't be replenished to the offer
