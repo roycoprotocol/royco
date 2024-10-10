@@ -191,7 +191,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
         }
 
         //Check that the AP has enough base asset in the funding vault for the offer
-        if (offer.fundingVault == address(0) && ERC20(ERC4626(offer.targetVault).asset()).balanceOf(offer.ap) < fillAmount) {
+        ERC20 targetAsset = ERC20(ERC4626(offer.targetVault).asset());
+        if (offer.fundingVault == address(0) && targetAsset.balanceOf(offer.ap) < fillAmount) {
             revert NotEnoughBaseAssetToAllocate();
         } else if (offer.fundingVault != address(0) && ERC4626(offer.fundingVault).maxWithdraw(offer.ap) < fillAmount) {
             revert NotEnoughBaseAssetToAllocate();
@@ -203,16 +204,16 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
         // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (offer.fundingVault == address(0)) {
             // Transfer the base asset from the AP to the VaultKernel
-            ERC4626(offer.targetVault).asset().safeTransferFrom(offer.ap, address(this), fillAmount);
+            targetAsset.safeTransferFrom(offer.ap, address(this), fillAmount);
         } else {
             // Get pre-withdraw token balance of VaultKernel
-            uint256 preWithdrawTokenBalance = ERC4626(offer.targetVault).asset().balanceOf(address(this));
+            uint256 preWithdrawTokenBalance = targetAsset.balanceOf(address(this));
 
             // Withdraw from the funding vault to the VaultKernel
             ERC4626(offer.fundingVault).withdraw(fillAmount, address(this), offer.ap);
 
             // Get post-withdraw token balance of VaultKernel
-            uint256 postWithdrawTokenBalance = ERC4626(offer.targetVault).asset().balanceOf(address(this));
+            uint256 postWithdrawTokenBalance = targetAsset.balanceOf(address(this));
 
             // Check that quantity withdrawn from the funding vault is at least the quantity to allocate
             if ((postWithdrawTokenBalance - preWithdrawTokenBalance) < fillAmount) {
@@ -230,8 +231,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
             }
         }
 
-        ERC4626(offer.targetVault).asset().safeApprove(offer.targetVault, 0);
-        ERC4626(offer.targetVault).asset().safeApprove(offer.targetVault, fillAmount);
+        targetAsset.safeApprove(offer.targetVault, 0);
+        targetAsset.safeApprove(offer.targetVault, fillAmount);
 
         // Deposit into the target vault
         ERC4626(offer.targetVault).deposit(fillAmount, offer.ap);
