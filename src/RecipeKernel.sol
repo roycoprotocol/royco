@@ -134,7 +134,7 @@ contract RecipeKernel is RecipeKernelBase {
     /// @param expiry The timestamp after which the offer is considered expired
     /// @param incentivesOffered The addresses of the incentives offered by the IP
     /// @param incentiveAmountsPaid The amount of each incentives paid by the IP (including fees)
-    /// @return marketID ID of the newly created market
+    /// @return offerID ID of the newly created offer
     function createIPOffer(
         uint256 targetMarketID,
         uint256 quantity,
@@ -145,7 +145,7 @@ contract RecipeKernel is RecipeKernelBase {
         external
         payable
         nonReentrant
-        returns (uint256 marketID)
+        returns (uint256 offerID)
     {
         // Check that the target market exists
         if (targetMarketID >= numMarkets) {
