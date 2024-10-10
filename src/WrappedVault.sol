@@ -43,7 +43,6 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     error FrontendFeeBelowMinimum();
     error NoZeroRateAllowed();
     error InvalidReward();
-    error OnlyClaimant();
     error InvalidWithdrawal();
     error InvalidIntervalDuration();
     error NotOwnerOfVaultOrApproved();
@@ -85,7 +84,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     /// @dev The address of the underlying vault being incentivized
     IWrappedVault public immutable VAULT;
     /// @dev The underlying asset being deposited into the vault
-    ERC20 immutable DEPOSIT_ASSET;
+    ERC20 public immutable DEPOSIT_ASSET;
     /// @dev The address of the canonical points program factory
     PointsFactory public immutable POINTS_FACTORY;
     /// @dev The address of the canonical WrappedVault factory
@@ -112,20 +111,20 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     //////////////////////////////////////////////////////////////*/
 
     /// @param _owner The owner of the incentivized vault
-    /// @param name The name of the incentivized vault token
-    /// @param symbol The symbol to use for the incentivized vault token
+    /// @param _name The name of the incentivized vault token
+    /// @param _symbol The symbol to use for the incentivized vault token
     /// @param vault The underlying vault being incentivized
     /// @param initialFrontendFee The initial fee set for the frontend out of WAD
     /// @param pointsFactory The canonical factory responsible for deploying all points programs
     constructor(
         address _owner,
-        string memory name,
-        string memory symbol,
+        string memory _name,
+        string memory _symbol,
         address vault,
         uint256 initialFrontendFee,
         address pointsFactory
     )
-        ERC20(name, symbol, ERC20(vault).decimals())
+        ERC20(_name, _symbol, ERC20(vault).decimals())
         Ownable(_owner)
     {
         ERC4626I_FACTORY = WrappedVaultFactory(msg.sender);
