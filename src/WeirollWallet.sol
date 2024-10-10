@@ -56,7 +56,6 @@ contract WeirollWallet is Clone, VM {
     bool public forfeited;
     address[] public unlockRewardTokens;
     uint256[] public unlockRewardAmounts;
-    address public forfeitRecipient;
 
     /// @notice Forfeit all rewards to get control of the wallet back
     function forfeit() public onlyRecipeKernel {
