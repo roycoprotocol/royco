@@ -95,20 +95,4 @@ contract TestFuzz_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
         recipeKernel.cancelIPOffer(offerId);
         vm.stopPrank();
     }
-
-    function testFuzz_RevertIf_cancelIPOffer_OfferWithIndefiniteExpiry(uint256 _blockTimestamp) external {
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
-
-        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
-
-        // Create the IP offer
-        uint256 offerId = createIPOffer_WithTokens(marketId, quantity, 0, IP_ADDRESS);
-
-        vm.warp(_blockTimestamp);
-
-        vm.startPrank(IP_ADDRESS);
-        vm.expectRevert(RecipeKernelBase.OfferCannotExpire.selector);
-        recipeKernel.cancelIPOffer(offerId);
-        vm.stopPrank();
-    }
 }

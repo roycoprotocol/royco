@@ -94,7 +94,7 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
         (, uint256[] memory amounts,) = recipeKernel.getLockedIncentiveParams(weirollWallet);
 
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(AP_ADDRESS, amounts[0]);
+        emit Points.Award(AP_ADDRESS, amounts[0], IP_ADDRESS);
 
         vm.warp(block.timestamp + 30 days); // make rewards claimable
         vm.startPrank(AP_ADDRESS);

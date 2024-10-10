@@ -9,6 +9,7 @@ import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Points } from "src/Points.sol";
+import { AddressArrayUtils } from "src/libraries/AddressArrayUtils.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 
 /// @title RecipeKernel
@@ -16,6 +17,7 @@ import { PointsFactory } from "src/PointsFactory.sol";
 /// @notice RecipeKernel contract for Incentivizing AP/IPs to participate in "recipe" markets which perform arbitrary actions
 contract RecipeKernel is RecipeKernelBase {
     using ClonesWithImmutableArgs for address;
+    using AddressArrayUtils for address[];
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -111,6 +113,10 @@ contract RecipeKernel is RecipeKernelBase {
         if (incentivesRequested.length != incentiveAmountsRequested.length) {
             revert ArrayLengthMismatch();
         }
+        // Check that the incentives array doesn't contain duplicates
+        if (incentivesRequested.hasDuplicates()) {
+            revert OfferCannotContainDuplicates();
+        }
 
         // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
         if (fundingVault != address(0) && marketIDToWeirollMarket[targetMarketID].inputToken != ERC4626(fundingVault).asset()) {
@@ -134,7 +140,7 @@ contract RecipeKernel is RecipeKernelBase {
     /// @param expiry The timestamp after which the offer is considered expired
     /// @param incentivesOffered The addresses of the incentives offered by the IP
     /// @param incentiveAmountsPaid The amount of each incentives paid by the IP (including fees)
-    /// @return marketID ID of the newly created market
+    /// @return offerID ID of the newly created offer
     function createIPOffer(
         uint256 targetMarketID,
         uint256 quantity,
@@ -145,7 +151,7 @@ contract RecipeKernel is RecipeKernelBase {
         external
         payable
         nonReentrant
-        returns (uint256 marketID)
+        returns (uint256 offerID)
     {
         // Check that the target market exists
         if (targetMarketID >= numMarkets) {
@@ -160,6 +166,11 @@ contract RecipeKernel is RecipeKernelBase {
         if (incentivesOffered.length != incentiveAmountsPaid.length) {
             revert ArrayLengthMismatch();
         }
+        // Check that the incentives array doesn't contain duplicates
+        if (incentivesOffered.hasDuplicates()) {
+            revert OfferCannotContainDuplicates();
+        }
+
         // Check offer isn't empty
         if (quantity < 1e6) {
             revert CannotPlaceZeroQuantityOffer();
@@ -387,15 +398,13 @@ contract RecipeKernel is RecipeKernelBase {
         }
 
         bytes32 offerHash = getOfferHash(offer);
-        {
-            // use a scoping block so solc knows `remaining` doesn't need to be kept around
-            uint256 remaining = offerHashToRemainingQuantity[offerHash];
-            if (fillAmount > remaining) {
-                if (fillAmount != type(uint256).max) {
-                    revert NotEnoughRemainingQuantity();
-                }
-                fillAmount = remaining;
+        
+        uint256 remaining = offerHashToRemainingQuantity[offerHash];
+        if (fillAmount > remaining) {
+            if (fillAmount != type(uint256).max) {
+                revert NotEnoughRemainingQuantity();
             }
+            fillAmount = remaining;
         }
 
         if (fillAmount == 0) {
@@ -408,7 +417,7 @@ contract RecipeKernel is RecipeKernelBase {
         // Calculate percentage of AP oder that IP is filling (IP gets this percantage of the offer quantity in a Weiroll wallet specified by the market)
         uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
 
-        if (fillPercentage < MIN_FILL_PERCENT) revert InsufficientFillPercent();
+        if (fillPercentage < MIN_FILL_PERCENT && fillAmount != remaining) revert InsufficientFillPercent();
 
         // Get Weiroll market
         WeirollMarket storage market = marketIDToWeirollMarket[offer.targetMarketID];
@@ -557,6 +566,15 @@ contract RecipeKernel is RecipeKernelBase {
     function forfeit(address weirollWallet, bool executeWithdrawal) external payable isWeirollOwner(weirollWallet) nonReentrant {
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
+       
+        // isForfeitable is literally set as rewardStyle == Upfront, so
+        // this is akin to checking the market is not upfront
+        if (!wallet.isForfeitable()) {
+            revert CantForfeitUpfrontMarket();
+        }
+        
+        // Get locked reward params
+        LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
 
         // Forfeit wallet
         wallet.forfeit();
@@ -566,9 +584,6 @@ contract RecipeKernel is RecipeKernelBase {
             // Execute the withdrawal script if flag set to true
             _executeWithdrawalScript(weirollWallet);
         }
-
-        // Get locked reward params
-        LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
 
         // Check if IP offer
         // If not, the forfeited amount won't be replenished to the offer
@@ -670,8 +685,14 @@ contract RecipeKernel is RecipeKernelBase {
         // Get locked reward details to facilitate claim
         LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
 
+        if (params.incentives.length == 0) {
+            return;
+        }
+
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
+        
+        if (marketIDToWeirollMarket[wallet.marketId()].rewardStyle == RewardStyle.Upfront) revert AlreadyRewarded();
 
         // Get the frontend fee recipient and ip from locked reward params
         address frontendFeeRecipient = params.frontendFeeRecipient;

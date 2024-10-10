@@ -13,7 +13,7 @@ contract PointsFactory is Ownable2Step {
     /// @notice Mapping of Points Program address => bool (indicator of if Points Program was deployed using this factory)
     mapping(address => bool) public isPointsProgram;
 
-    /// @notice Mapping of Orderbook address => bool (indicator of if the address is of a Royco RecipeKernel)
+    /// @notice Mapping of RecipeKernel address => bool (indicator of if the address is of a Royco RecipeKernel)
     mapping(address => bool) public isRecipeKernel;
 
     /// @notice Emitted when creating a points program using this factory
@@ -44,7 +44,7 @@ contract PointsFactory is Ownable2Step {
         external
         returns (Points points)
     {
-        bytes32 salt = keccak256(abi.encodePacked(_name, _symbol, _decimals, _owner));
+        bytes32 salt = keccak256(abi.encode(_name, _symbol, _decimals, _owner));
         points = new Points{salt: salt}(_name, _symbol, _decimals, _owner);
         isPointsProgram[address(points)] = true;
 

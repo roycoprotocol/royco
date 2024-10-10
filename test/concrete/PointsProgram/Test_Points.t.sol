@@ -74,7 +74,7 @@ contract Test_Points is RoycoTestBase {
     function test_AwardPoints() external prankModifier(address(vault)) {
         // Check if the event was emitted (Points awarded)
         vm.expectEmit(true, true, false, true, address(pointsProgram));
-        emit Points.Award(BOB_ADDRESS, 500e18);
+        emit Points.Award(BOB_ADDRESS, 500e18, address(this));
 
         // Vault should call the award function
         pointsProgram.award(BOB_ADDRESS, 500e18);
@@ -95,7 +95,7 @@ contract Test_Points is RoycoTestBase {
 
         // Check if the event was emitted (Points awarded)
         vm.expectEmit(true, true, false, true, address(pointsProgram));
-        emit Points.Award(BOB_ADDRESS, 300e18);
+        emit Points.Award(BOB_ADDRESS, 300e18, ipAddress);
 
         // IP should call the award function
         pointsProgram.award(BOB_ADDRESS, 300e18, ipAddress);

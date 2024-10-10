@@ -170,13 +170,13 @@ contract Test_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
+        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount, IP_ADDRESS);
 
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
+        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount, IP_ADDRESS);
 
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(AP_ADDRESS, expectedIncentiveAmount);
+        emit Points.Award(AP_ADDRESS, expectedIncentiveAmount, IP_ADDRESS);
 
         vm.expectEmit(true, false, false, true, address(mockLiquidityToken));
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
@@ -306,13 +306,13 @@ contract Test_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount);
+        emit Points.Award(OWNER_ADDRESS, expectedProtocolFeeAmount, IP_ADDRESS);
 
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount);
+        emit Points.Award(FRONTEND_FEE_RECIPIENT, expectedFrontendFeeAmount, IP_ADDRESS);
 
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(AP_ADDRESS, expectedIncentiveAmount);
+        emit Points.Award(AP_ADDRESS, expectedIncentiveAmount, IP_ADDRESS);
 
         // burn shares
         vm.expectEmit(true, true, false, false, address(mockVault));
