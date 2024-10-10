@@ -29,6 +29,7 @@ contract Points is Ownable2Step {
     //////////////////////////////////////////////////////////////*/
     event Award(address indexed to, uint256 indexed amount);
     event AllowedVaultAdded(address indexed vault);
+    event AllowedIPAdded(address indexed ip);
     event VaultRemoved(address indexed vault);
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -67,6 +68,8 @@ contract Points is Ownable2Step {
     /// @param ip The incentive provider address to allow to mint points on RecipeKernel
     function addAllowedIP(address ip) external onlyOwner {
         allowedIPs[ip] = true;
+
+        emit AllowedIPAdded(ip);
     }
 
     error OnlyAllowedVaults();
