@@ -44,7 +44,7 @@ contract PointsFactory is Ownable2Step {
         external
         returns (Points points)
     {
-        bytes32 salt = keccak256(abi.encodePacked(_name, _symbol, _decimals, _owner));
+        bytes32 salt = keccak256(abi.encode(_name, _symbol, _decimals, _owner));
         points = new Points{salt: salt}(_name, _symbol, _decimals, _owner);
         isPointsProgram[address(points)] = true;
 
