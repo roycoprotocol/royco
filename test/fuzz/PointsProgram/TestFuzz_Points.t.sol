@@ -65,7 +65,7 @@ contract TestFuzz_Points is RoycoTestBase {
         vm.stopPrank();
 
         vm.expectEmit(true, true, false, true, address(pointsProgram));
-        emit Points.Award(_to, _amount);
+        emit Points.Award(_to, _amount, _ip);
 
         vm.startPrank(address(recipeKernel));
         pointsProgram.award(_to, _amount, _ip);

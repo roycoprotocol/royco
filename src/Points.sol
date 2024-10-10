@@ -27,7 +27,7 @@ contract Points is Ownable2Step {
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
-    event Award(address indexed to, uint256 indexed amount);
+    event Award(address indexed to, uint256 indexed amount, address indexed awardedBy);
     event AllowedVaultAdded(address indexed vault);
     event AllowedIPAdded(address indexed ip);
     event VaultRemoved(address indexed vault);
@@ -102,13 +102,13 @@ contract Points is Ownable2Step {
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
     function award(address to, uint256 amount) external onlyAllowedVaults {
-        emit Award(to, amount);
+        emit Award(to, amount, msg.sender);
     }
 
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
     /// @param ip The incentive provider attempting to mint the points
     function award(address to, uint256 amount, address ip) external onlyRecipeKernelAllowedIP(ip) {
-        emit Award(to, amount);
+        emit Award(to, amount, ip);
     }
 }
