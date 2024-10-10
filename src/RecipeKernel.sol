@@ -398,15 +398,13 @@ contract RecipeKernel is RecipeKernelBase {
         }
 
         bytes32 offerHash = getOfferHash(offer);
-        {
-            // use a scoping block so solc knows `remaining` doesn't need to be kept around
-            uint256 remaining = offerHashToRemainingQuantity[offerHash];
-            if (fillAmount > remaining) {
-                if (fillAmount != type(uint256).max) {
-                    revert NotEnoughRemainingQuantity();
-                }
-                fillAmount = remaining;
+        
+        uint256 remaining = offerHashToRemainingQuantity[offerHash];
+        if (fillAmount > remaining) {
+            if (fillAmount != type(uint256).max) {
+                revert NotEnoughRemainingQuantity();
             }
+            fillAmount = remaining;
         }
 
         if (fillAmount == 0) {
@@ -419,7 +417,7 @@ contract RecipeKernel is RecipeKernelBase {
         // Calculate percentage of AP oder that IP is filling (IP gets this percantage of the offer quantity in a Weiroll wallet specified by the market)
         uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
 
-        if (fillPercentage < MIN_FILL_PERCENT) revert InsufficientFillPercent();
+        if (fillPercentage < MIN_FILL_PERCENT && fillAmount != remaining) revert InsufficientFillPercent();
 
         // Get Weiroll market
         WeirollMarket storage market = marketIDToWeirollMarket[offer.targetMarketID];
