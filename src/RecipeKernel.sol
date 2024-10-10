@@ -9,6 +9,7 @@ import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Points } from "src/Points.sol";
+import { AddressArrayUtils } from "src/libraries/AddressArrayUtils.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 
 /// @title RecipeKernel
@@ -16,6 +17,7 @@ import { PointsFactory } from "src/PointsFactory.sol";
 /// @notice RecipeKernel contract for Incentivizing AP/IPs to participate in "recipe" markets which perform arbitrary actions
 contract RecipeKernel is RecipeKernelBase {
     using ClonesWithImmutableArgs for address;
+    using AddressArrayUtils for address[];
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -111,6 +113,10 @@ contract RecipeKernel is RecipeKernelBase {
         if (incentivesRequested.length != incentiveAmountsRequested.length) {
             revert ArrayLengthMismatch();
         }
+        // Check that the incentives array doesn't contain duplicates
+        if (incentivesRequested.hasDuplicates()) {
+            revert OfferCannotContainDuplicates();
+        }
 
         // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
         if (fundingVault != address(0) && marketIDToWeirollMarket[targetMarketID].inputToken != ERC4626(fundingVault).asset()) {
@@ -160,6 +166,11 @@ contract RecipeKernel is RecipeKernelBase {
         if (incentivesOffered.length != incentiveAmountsPaid.length) {
             revert ArrayLengthMismatch();
         }
+        // Check that the incentives array doesn't contain duplicates
+        if (incentivesOffered.hasDuplicates()) {
+            revert OfferCannotContainDuplicates();
+        }
+
         // Check offer isn't empty
         if (quantity < 1e6) {
             revert CannotPlaceZeroQuantityOffer();
