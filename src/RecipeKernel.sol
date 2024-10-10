@@ -679,8 +679,14 @@ contract RecipeKernel is RecipeKernelBase {
         // Get locked reward details to facilitate claim
         LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
 
+        if (params.incentives.length == 0) {
+            return;
+        }
+
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
+        
+        if (marketIDToWeirollMarket[wallet.marketId()].rewardStyle == RewardStyle.Upfront) revert AlreadyRewarded();
 
         // Get the frontend fee recipient and ip from locked reward params
         address frontendFeeRecipient = params.frontendFeeRecipient;

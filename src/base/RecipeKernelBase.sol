@@ -257,6 +257,8 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     error NoIncentivesPaidOnFill();
     /// @notice emitted when trying to fill offers while offers are paused
     error OffersPaused();
+    /// @notice emitted when trying to claim rewards on an Upfront market
+    error AlreadyRewarded();
     /// @notice emitted when trying to fill an order with a quantity below the minimum fill percent
     error InsufficientFillPercent();
 
