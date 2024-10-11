@@ -238,7 +238,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
 
         if ((newEnd - newStart) < MIN_CAMPAIGN_EXTENSION) revert InvalidIntervalDuration();
 
-        uint256 remainingRewards = rewardsInterval.end < newStart ? 0 : rewardsInterval.rate * (rewardsInterval.end - newStart.toUint32());
+        uint256 remainingRewards = rewardsInterval.rate * (rewardsInterval.end - newStart.toUint32());
         uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - newStart);
 
         if (rate < rewardsInterval.rate) revert RateCannotDecrease();
