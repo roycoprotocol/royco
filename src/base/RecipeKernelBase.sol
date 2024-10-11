@@ -221,8 +221,6 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
 
     /// @notice emitted when trying to fill an offer that has expired
     error OfferExpired();
-    /// @notice emitted when trying to cancel an offer that has an indefinite expiry
-    error OfferCannotExpire();
     /// @notice emitted when creating an offer with duplicate incentives
     error OfferCannotContainDuplicates();
     /// @notice emitted when trying to fill an offer with more input tokens than the remaining offer quantity
