@@ -234,20 +234,20 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
         // Calculate the new rate
         uint256 rewardsAfterFee = rewardsAdded - frontendFeeTaken - protocolFeeTaken;
 
-        uint256 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp : uint256(rewardsInterval.start);
+        uint32 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp.toUint32() : rewardsInterval.start;
 
         if ((newEnd - newStart) < MIN_CAMPAIGN_EXTENSION) revert InvalidIntervalDuration();
 
-        uint256 remainingRewards = rewardsInterval.rate * (rewardsInterval.end - newStart.toUint32());
+        uint256 remainingRewards = rewardsInterval.rate * (rewardsInterval.end - newStart);
         uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - newStart);
 
         if (rate < rewardsInterval.rate) revert RateCannotDecrease();
 
-        rewardsInterval.start = newStart.toUint32();
+        rewardsInterval.start = newStart;
         rewardsInterval.end = newEnd.toUint32();
         rewardsInterval.rate = rate.toUint96();
 
-        emit RewardsSet(reward, block.timestamp.toUint32(), newEnd.toUint32(), rate, (rewardsAfterFee + remainingRewards), protocolFeeTaken, frontendFeeTaken);
+        emit RewardsSet(reward, newStart, newEnd.toUint32(), rate, (rewardsAfterFee + remainingRewards), protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, rewardsAdded);
     }
