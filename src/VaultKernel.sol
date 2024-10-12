@@ -39,7 +39,7 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
     
     /// @notice whether offer fills are paused
-    bool offersPaused;
+    bool public offersPaused;
 
     /// @notice maps offer hashes to the remaining quantity of the offer
     mapping(bytes32 => uint256) public offerHashToRemainingQuantity;
