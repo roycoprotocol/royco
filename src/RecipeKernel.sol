@@ -9,7 +9,6 @@ import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Points } from "src/Points.sol";
-import { AddressArrayUtils } from "src/libraries/AddressArrayUtils.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 
 /// @title RecipeKernel
@@ -17,7 +16,6 @@ import { PointsFactory } from "src/PointsFactory.sol";
 /// @notice RecipeKernel contract for Incentivizing AP/IPs to participate in "recipe" markets which perform arbitrary actions
 contract RecipeKernel is RecipeKernelBase {
     using ClonesWithImmutableArgs for address;
-    using AddressArrayUtils for address[];
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -113,9 +111,13 @@ contract RecipeKernel is RecipeKernelBase {
         if (incentivesRequested.length != incentiveAmountsRequested.length) {
             revert ArrayLengthMismatch();
         }
-        // Check that the incentives array doesn't contain duplicates
-        if (incentivesRequested.hasDuplicates()) {
-            revert OfferCannotContainDuplicates();
+        address lastIncentive;
+        for (uint256 i; i < incentivesRequested.length; i++) {
+            address incentive = incentivesRequested[i]; 
+            if (uint256(bytes32(bytes20(incentive))) <= uint256(bytes32(bytes20(lastIncentive)))) {
+                revert OfferCannotContainDuplicates();
+            }
+            lastIncentive = incentive;
         }
 
         // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
@@ -166,10 +168,6 @@ contract RecipeKernel is RecipeKernelBase {
         if (incentivesOffered.length != incentiveAmountsPaid.length) {
             revert ArrayLengthMismatch();
         }
-        // Check that the incentives array doesn't contain duplicates
-        if (incentivesOffered.hasDuplicates()) {
-            revert OfferCannotContainDuplicates();
-        }
 
         // Check offer isn't empty
         if (quantity < 1e6) {
@@ -191,9 +189,15 @@ contract RecipeKernel is RecipeKernelBase {
         uint256[] memory frontendFeesToBePaid = new uint256[](incentivesOffered.length);
 
         // Transfer the IP's incentives to the RecipeKernel and set aside fees
+        address lastIncentive;
         for (uint256 i = 0; i < incentivesOffered.length; ++i) {
             // Get the incentive offered and amount
             address incentive = incentivesOffered[i];
+            if (uint256(bytes32(bytes20(incentive))) <= uint256(bytes32(bytes20(lastIncentive)))) {
+                revert OfferCannotContainDuplicates();
+            }
+
+            lastIncentive = incentive;
             uint256 amount = incentiveAmountsPaid[i];
 
             // Get the frontend fee for the target weiroll market
@@ -207,9 +211,9 @@ contract RecipeKernel is RecipeKernelBase {
             // Use a scoping block to avoid stack to deep errors
             {
                 // Set appropriate amounts in offer mappings
-                offer.incentiveAmountsOffered[incentive] += incentiveAmount;
-                offer.incentiveToProtocolFeeAmount[incentive] += protocolFeeAmount;
-                offer.incentiveToFrontendFeeAmount[incentive] += frontendFeeAmount;
+                offer.incentiveAmountsOffered[incentive] = incentiveAmount;
+                offer.incentiveToProtocolFeeAmount[incentive] = protocolFeeAmount;
+                offer.incentiveToFrontendFeeAmount[incentive] = frontendFeeAmount;
 
                 // Track incentive amounts and fees (per incentive) for event emission
                 incentivesAmountsToBePaid[i] = incentiveAmount;

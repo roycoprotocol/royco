@@ -5,11 +5,13 @@ import "src/base/RecipeKernelBase.sol";
 import "src/WrappedVault.sol";
 
 import { MockERC20 } from "../../mocks/MockERC20.sol";
+import { AddressArrayUtils } from "../../utils/AddressArrayUtils.sol";
 import { RecipeKernelTestBase } from "../../utils/RecipeKernel/RecipeKernelTestBase.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 
 contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
     using FixedPointMathLib for uint256;
+    using AddressArrayUtils for address[];
 
     function setUp() external {
         uint256 protocolFee = 0.01e18; // 1% protocol fee
@@ -34,7 +36,11 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
             tokensOffered[i] = tokenAddress;
             incentiveAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100_000e18 + 1e18;
+        }
 
+        tokensOffered.sort();
+
+        for (uint256 i = 0; i < _tokenCount; i++) {
             MockERC20(tokensOffered[i]).mint(_creator, incentiveAmountsOffered[i]);
             MockERC20(tokensOffered[i]).approve(address(recipeKernel), incentiveAmountsOffered[i]);
         }
@@ -141,6 +147,8 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
             incentiveAmountsOffered[i] = _quantity % 1000e18 + 1e6;
         }
 
+        tokensOffered.sort();
+
         _quantity = _quantity % 100_000e18 + 1e6; // Bound quantity
         _expiry = _expiry % 100_000 days + block.timestamp; // Bound expiry time
 
@@ -229,13 +237,6 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
             vm.etch(tokenAddress, address(mockToken).code);
 
             tokensOffered[i] = tokenAddress;
-            incentiveAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100_000e18 + 1e18;
-
-            // Mint and approve tokens for the creator
-            MockERC20(tokensOffered[i]).mint(_creator, incentiveAmountsOffered[i]);
-            vm.startPrank(_creator);
-            MockERC20(tokensOffered[i]).approve(address(recipeKernel), incentiveAmountsOffered[i]);
-            vm.stopPrank();
         }
 
         // Create random Points programs and populate tokensOffered array
@@ -254,6 +255,22 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
             // Add the Points program to the tokensOffered array after ERC20 tokens
             tokensOffered[_tokenCount + i] = address(points);
             incentiveAmountsOffered[_tokenCount + i] = _quantity % 1000e18 + 1e18;
+        }
+
+        tokensOffered.sort();
+        
+        for (uint256 i = 0; i < tokensOffered.length; i++) {
+            if (pointsFactory.isPointsProgram(tokensOffered[i])) {
+                continue;
+            }
+
+            incentiveAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100_000e18 + 1e18;
+
+            // Mint and approve tokens for the creator
+            MockERC20(tokensOffered[i]).mint(_creator, incentiveAmountsOffered[i]);
+            vm.startPrank(_creator);
+            MockERC20(tokensOffered[i]).approve(address(recipeKernel), incentiveAmountsOffered[i]);
+            vm.stopPrank();
         }
 
         _quantity = _quantity % 100_000e18 + 1e6; // Bound quantity
@@ -284,7 +301,10 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         );
 
         // MockERC20 should track calls to `transferFrom` for ERC20 tokens
-        for (uint256 i = 0; i < _tokenCount; i++) {
+        for (uint256 i = 0; i < tokensOffered.length; i++) {
+            if (pointsFactory.isPointsProgram(tokensOffered[i])) {
+                continue;
+            }
             vm.expectCall(
                 tokensOffered[i],
                 abi.encodeWithSelector(
@@ -310,7 +330,10 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         assertEq(recipeKernel.numAPOffers(), 0); // AP offers should remain 0
 
         // Use the helper function to retrieve values from storage and assert them
-        for (uint256 i = 0; i < _tokenCount; i++) {
+        for (uint256 i = 0; i < tokensOffered.length; i++) {
+            if (pointsFactory.isPointsProgram(tokensOffered[i])) {
+                continue;
+            }
             // Use the helper function to retrieve values from storage
             uint256 frontendFeeStored = recipeKernel.getIncentiveToFrontendFeeAmountForIPOffer(offerId, tokensOffered[i]);
             uint256 protocolFeeAmountStored = recipeKernel.getIncentiveToProtocolFeeAmountForIPOffer(offerId, tokensOffered[i]);
@@ -325,7 +348,10 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
             assertEq(MockERC20(tokensOffered[i]).balanceOf(address(recipeKernel)), protocolFeeAmount[i] + frontendFeeAmount[i] + incentiveAmount[i]);
         }
 
-        for (uint256 i = _tokenCount; i < totalCount; i++) {
+        for (uint256 i = _tokenCount; i < tokensOffered.length; i++) {
+            if (pointsFactory.isPointsProgram(tokensOffered[i])) {
+                continue;
+            }
             // Use the helper function to retrieve values from storage
             uint256 frontendFeeStored = recipeKernel.getIncentiveToFrontendFeeAmountForIPOffer(offerId, tokensOffered[i]);
             uint256 protocolFeeAmountStored = recipeKernel.getIncentiveToProtocolFeeAmountForIPOffer(offerId, tokensOffered[i]);
@@ -383,11 +409,12 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
     function testFuzz_RevertIf_CreateIPOfferWithNonexistentToken(address _tokenAddress) external {
         vm.assume(_tokenAddress.code.length == 0);
+        vm.assume(_tokenAddress != address(0));
         uint256 marketId = createMarket();
 
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = _tokenAddress;
-        uint256[] memory incentiveAmountsOffered = new uint256[](2);
+        uint256[] memory incentiveAmountsOffered = new uint256[](1);
         incentiveAmountsOffered[0] = 1000e18;
 
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.TokenDoesNotExist.selector));
@@ -395,8 +422,8 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
             marketId,
             100_000e18, // Quantity
             1 days, // Expired timestamp
-            new address[](1), // Empty tokens offered array
-            new uint256[](1) // Empty token amounts array
+            tokensOffered, // Empty tokens offered array
+            incentiveAmountsOffered // Empty token amounts array
         );
     }
 

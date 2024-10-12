@@ -4,10 +4,13 @@ pragma solidity ^0.8.0;
 import "src/base/RecipeKernelBase.sol";
 
 import { RecipeKernelTestBase } from "../../utils/RecipeKernel/RecipeKernelTestBase.sol";
+import { AddressArrayUtils } from "../../utils/AddressArrayUtils.sol";
 import { MockERC4626 } from "../../mocks/MockERC4626.sol";
 import { MockERC20 } from "../../mocks/MockERC20.sol";
 
 contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
+    using AddressArrayUtils for address[];
+    
     function setUp() external {
         uint256 protocolFee = 0.01e18; // 1% protocol fee
         uint256 minimumFrontendFee = 0.001e18; // 0.1% minimum frontend fee
@@ -37,6 +40,8 @@ contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
             tokensRequested[i] = address(uint160(uint256(keccak256(abi.encodePacked(expectedMarketId, i)))));
             tokenAmountsRequested[i] = (uint256(keccak256(abi.encodePacked(expectedMarketId, i)))) % 100_000e18 + 1e18;
         }
+
+        tokensRequested.sort();
 
         // Generate a random quantity and valid expiry
         _quantity = _quantity % 100_000e18 + 1e6;
