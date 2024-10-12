@@ -210,7 +210,7 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
 
         for (uint256 i; i < offer.incentivesRatesRequested.length; ++i) {
             (, uint32 end, ) = WrappedVault(offer.targetVault).rewardToInterval(offer.incentivesRequested[i]);
-            if (end - block.timestamp < MIN_CAMPAIGN_DURATION) {
+            if (end < MIN_CAMPAIGN_DURATION + block.timestamp) {
                 revert OfferConditionsNotMet();
             }
             if (offer.incentivesRatesRequested[i] > WrappedVault(offer.targetVault).previewRateAfterDeposit(offer.incentivesRequested[i], fillAmount)) {
