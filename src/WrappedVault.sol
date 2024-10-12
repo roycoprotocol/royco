@@ -85,7 +85,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     /// @dev The address of the underlying vault being incentivized
     IWrappedVault public immutable VAULT;
     /// @dev The underlying asset being deposited into the vault
-    ERC20 public immutable DEPOSIT_ASSET;
+    ERC20 internal immutable DEPOSIT_ASSET;
     /// @dev The address of the canonical points program factory
     PointsFactory public immutable POINTS_FACTORY;
     /// @dev The address of the canonical WrappedVault factory
