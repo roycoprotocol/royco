@@ -49,7 +49,7 @@ contract VaultKernelTest is Test {
    }
 
    function testCreateAPOffer(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-        vm.assume(quantity > 0);
+        vm.assume(quantity > 1e6);
         vm.assume(quantity <= type(uint256).max / quantity);
         vm.assume(timeToExpiry >= block.timestamp);
 
@@ -89,7 +89,7 @@ contract VaultKernelTest is Test {
 
    function testCannotCreateExpiredOffer(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
         vm.assume(block.timestamp + 1 days <= type(uint256).max - timeToExpiry);
-        vm.assume(quantity > 0);
+        vm.assume(quantity > 1e6);
         vm.assume(quantity <= type(uint256).max / quantity);
         vm.assume(timeToExpiry > 1 days);
 
@@ -122,7 +122,7 @@ contract VaultKernelTest is Test {
        vm.stopPrank();
    }
 
-   function testCannotCreateZeroQuantityOffer(uint256 timeToExpiry, uint256 tokenRateRequested) public {
+   function testCannotCreateBelowMinQuantityOffer(uint256 timeToExpiry, uint256 tokenRateRequested) public {
        vm.startPrank(alice);
        baseToken.approve(address(vaultKernel), 100 * 1e18);
 
@@ -131,7 +131,7 @@ contract VaultKernelTest is Test {
        uint256[] memory tokenRatesRequested = new uint256[](1);
        tokenRatesRequested[0] = tokenRateRequested;
 
-       vm.expectRevert(VaultKernel.CannotPlaceZeroQuantityOffer.selector);
+       vm.expectRevert(VaultKernel.CannotPlaceBelowMinQuantityOffer.selector);
        vaultKernel.createAPOffer(address(targetVault), address(0), 0, timeToExpiry, tokensRequested, tokenRatesRequested);
 
        assertEq(vaultKernel.numOffers(), 0);
@@ -140,7 +140,7 @@ contract VaultKernelTest is Test {
    }
 
    function testMismatchedBaseAsset(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-        vm.assume(quantity > 0);
+        vm.assume(quantity > 1e6);
         vm.assume(quantity <= type(uint256).max / quantity);
         vm.assume(timeToExpiry >= block.timestamp);
 
@@ -163,7 +163,7 @@ contract VaultKernelTest is Test {
    }
 
    function testNotEnoughBaseAssetToOffer(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-       vm.assume(quantity > 1);
+       vm.assume(quantity > 1e6);
        vm.assume(quantity <= type(uint256).max / quantity);
        vm.assume(timeToExpiry >= block.timestamp);
 
@@ -196,7 +196,7 @@ contract VaultKernelTest is Test {
    }
 
    function testArrayLengthMismatch(uint256 quantity, uint256 timeToExpiry, uint256 token1RateRequested, uint256 token2RateRequested) public {
-       vm.assume(quantity > 0);
+       vm.assume(quantity > 1e6);
        vm.assume(quantity <= type(uint256).max / quantity);
        vm.assume(timeToExpiry >= block.timestamp);
 
@@ -219,7 +219,7 @@ contract VaultKernelTest is Test {
    }
 
    function testCannotAllocateExpiredOffer(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-       vm.assume(quantity > 0);
+       vm.assume(quantity > 1e6);
        vm.assume(quantity <= type(uint256).max / quantity);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp + 1 days <= type(uint256).max - timeToExpiry);
@@ -255,7 +255,7 @@ contract VaultKernelTest is Test {
    }
 
    function testNotEnoughBaseAssetToAllocate(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-       vm.assume(quantity > 0);
+       vm.assume(quantity > 1e6);
        vm.assume(quantity <= type(uint256).max / quantity);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp <= timeToExpiry);
@@ -298,7 +298,7 @@ contract VaultKernelTest is Test {
    }
 
    function testNotEnoughRemainingQuantity(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-       vm.assume(quantity > 0);
+       vm.assume(quantity > 1e6);
        vm.assume(quantity <= type(uint256).max / quantity/2);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp <= timeToExpiry);
@@ -358,7 +358,7 @@ contract VaultKernelTest is Test {
    }
 
    function testCancelOffer(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-       vm.assume(quantity > 0);
+       vm.assume(quantity > 1e6);
        vm.assume(quantity <= type(uint256).max / quantity/2);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp <= timeToExpiry);
@@ -444,7 +444,7 @@ contract VaultKernelTest is Test {
    }
 
    function testOfferConditionsNotMet(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-       vm.assume(quantity > 0);
+       vm.assume(quantity > 1e6);
        vm.assume(quantity <= type(uint256).max / quantity/2);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp <= timeToExpiry);
@@ -496,7 +496,7 @@ contract VaultKernelTest is Test {
    }
 
    function testAllocateOfferFrom0(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-       vm.assume(quantity > 0);
+       vm.assume(quantity > 1e6);
        vm.assume(quantity <= type(uint256).max / quantity/2);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp <= timeToExpiry);
@@ -548,7 +548,7 @@ contract VaultKernelTest is Test {
 
 
    function testAllocateOfferFromVault(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-       vm.assume(quantity > 0);
+       vm.assume(quantity > 1e6);
        vm.assume(quantity <= type(uint256).max / quantity/2);
        vm.assume(timeToExpiry >= block.timestamp);
        vm.assume(block.timestamp <= timeToExpiry);
@@ -597,7 +597,7 @@ contract VaultKernelTest is Test {
    }
 
    function testAllocateOffers(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
-        vm.assume(quantity > 0);
+        vm.assume(quantity > 1e6);
         vm.assume(quantity <= type(uint256).max / quantity/3);
         vm.assume(timeToExpiry >= block.timestamp);
         vm.assume(block.timestamp <= timeToExpiry);

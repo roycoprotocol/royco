@@ -73,6 +73,9 @@ contract RecipeKernel is RecipeKernelBase {
         return (numMarkets++);
     }
 
+    /// @dev The minimum quantity of tokens for an offer
+    uint256 internal constant MINIMUM_QUANTITY = 1e6;
+
     /// @notice Create a new AP offer. Offer params will be emitted in an event while only the hash of the offer and offer quantity is stored onchain
     /// @dev AP offers are funded via approvals to ensure multiple offers can be placed off of a single input
     /// @dev Setting an expiry of 0 means the offer never expires
@@ -104,7 +107,7 @@ contract RecipeKernel is RecipeKernelBase {
             revert CannotPlaceExpiredOffer();
         }
         // Check offer isn't empty
-        if (quantity < 1e6) {
+        if (quantity < MINIMUM_QUANTITY) {
             revert CannotPlaceZeroQuantityOffer();
         }
         // Check incentive and amounts arrays are the same length
@@ -170,7 +173,7 @@ contract RecipeKernel is RecipeKernelBase {
         }
 
         // Check offer isn't empty
-        if (quantity < 1e6) {
+        if (quantity < MINIMUM_QUANTITY) {
             revert CannotPlaceZeroQuantityOffer();
         }
 

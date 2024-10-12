@@ -40,6 +40,9 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
     
     /// @notice whether offer fills are paused
     bool public offersPaused;
+    
+    /// @dev The minimum quantity of tokens for an offer
+    uint256 internal constant MINIMUM_QUANTITY = 1e6;
 
     /// @notice maps offer hashes to the remaining quantity of the offer
     mapping(bytes32 => uint256) public offerHashToRemainingQuantity;
@@ -79,8 +82,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
     error CannotPlaceExpiredOffer();
     /// @notice emitted when trying to allocate an AP, but the AP's requested incentives are not met
     error OfferConditionsNotMet();
-    /// @notice emitted when trying to create an offer with a quantity of 0
-    error CannotPlaceZeroQuantityOffer();
+    /// @notice emitted when trying to create an offer with a quantity below the minimum
+    error CannotPlaceBelowMinQuantityOffer();
     /// @notice emitted when the AP does not have sufficient assets in the funding vault, or in their wallet to place an AP offer
     error NotEnoughBaseAssetToOffer();
     /// @notice emitted when the AP does not have sufficient assets in the funding vault, or in their wallet to allocate an offer
@@ -128,8 +131,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
             revert CannotPlaceExpiredOffer();
         }
         // Check offer isn't empty
-        if (quantity == 0) {
-            revert CannotPlaceZeroQuantityOffer();
+        if (quantity < MINIMUM_QUANTITY) {
+            revert CannotPlaceBelowMinQuantityOffer();
         }
         // Check incentive and price arrays are the same length
         if (incentivesRequested.length != incentivesRatesRequested.length) {
