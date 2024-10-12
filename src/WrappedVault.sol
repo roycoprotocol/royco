@@ -528,12 +528,12 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
             if (expectedShares > allowed) revert NotOwnerOfVaultOrApproved();
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - expectedShares;
         }
+        
+        _burn(owner, expectedShares);
 
         shares = VAULT.withdraw(assets, receiver, address(this));
 
         if (shares != expectedShares) revert InvalidWithdrawal();
-
-        _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
@@ -546,10 +546,10 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
             if (shares > allowed) revert NotOwnerOfVaultOrApproved();
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
+        
+        _burn(owner, shares);
 
         assets = VAULT.redeem(shares, receiver, address(this));
-
-        _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
