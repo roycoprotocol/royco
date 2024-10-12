@@ -1,0 +1,16 @@
+{
+  "name": "royco",
+  "version": "1.0.0",
+  "description": "The Incentivized Action Market (IAM) Protocol.",
+    "scripts": {
+      "build": "forge build",
+      "test": "forge test -vvv",
+      "coverage": "forge coverage",
+      "hint": "solhint 'src/*.sol'",
+      "deploy:test": "forge script script/Deploy.s.sol -vvv --rpc-url=https://sepolia.gateway.tenderly.co",
+      "sizes": "forge --version && forge build --sizes --optimize --optimizer-runs 200 --skip test --force"
+  },
+  "devDependencies": {
+    "solhint": "^5.0.3"
+  }
+}
