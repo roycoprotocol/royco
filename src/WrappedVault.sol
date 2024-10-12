@@ -34,6 +34,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     event FrontendFeeUpdated(uint256 frontendFee);
 
     error MaxRewardsReached();
+    error TooFewShares();
     error VaultNotAuthorizedToRewardPoints();
     error InvalidInterval();
     error IntervalInProgress();
@@ -499,6 +500,21 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     /// @inheritdoc IWrappedVault
     function totalAssets() public view returns (uint256) {
         return VAULT.convertToAssets(ERC20(address(VAULT)).balanceOf(address(this)));
+    }
+
+    /// @notice safeDeposit allows a user to specify a minimum amount of shares out to avoid any 
+    /// slippage in the deposit
+    /// @param assets The amount of assets to deposit
+    /// @param receiver The address to mint the shares to
+    /// @param minShares The minimum amount of shares to mint
+    function safeDeposit(uint256 assets, address receiver, uint256 minShares) public returns (uint256 shares) {
+        DEPOSIT_ASSET.safeTransferFrom(msg.sender, address(this), assets);
+
+        shares = VAULT.deposit(assets, address(this));
+        if (shares < minShares) revert TooFewShares();
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @inheritdoc IWrappedVault
