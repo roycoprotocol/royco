@@ -103,7 +103,7 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
         offersPaused = _offersPaused;
     }
 
-    constructor() Ownable(msg.sender) { }
+    constructor(address _owner) Ownable(_owner) { }
 
     /// @dev Setting an expiry of 0 means the offer never expires
     /// @param targetVault The address of the vault where the liquidity will be deposited

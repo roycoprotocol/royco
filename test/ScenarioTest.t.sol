@@ -65,7 +65,7 @@ contract ScenarioTest is Test {
             address(pointsFactory)
         );
 
-        vaultKernel = new VaultKernel();
+        vaultKernel = new VaultKernel(address(this));
     }
 
     function testBasicVaultKernelAllocate() public {

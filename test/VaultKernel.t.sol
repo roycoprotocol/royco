@@ -16,7 +16,7 @@ import { VaultKernel } from "src/VaultKernel.sol";
 import { Test, console } from "forge-std/Test.sol";
 
 contract VaultKernelTest is Test {
-   VaultKernel public vaultKernel = new VaultKernel();
+   VaultKernel public vaultKernel = new VaultKernel(address(this));
    MockERC20 public baseToken;
    MockERC20 public baseToken2;
    MockERC4626 public targetVault;
