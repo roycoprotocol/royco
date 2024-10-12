@@ -541,7 +541,6 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
         assets = VAULT.redeem(shares, receiver, address(this));
 
         _burn(owner, shares);
-        DEPOSIT_ASSET.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
