@@ -53,5 +53,5 @@ jobs:
       - name: Sizes
         run: yarn sizes
 
-      # - name: Test Deploy
-      #   run: yarn deploy:test
+      - name: Test Deploy
+        run: yarn deploy:test
