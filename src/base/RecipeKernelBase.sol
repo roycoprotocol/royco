@@ -333,23 +333,12 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     }
 
     /// @notice Calculates the hash of an AP offer
-    function getOfferHash(APOffer memory offer) public pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                offer.offerID,
-                offer.targetMarketHash,
-                offer.ap,
-                offer.fundingVault,
-                offer.quantity,
-                offer.expiry,
-                offer.incentivesRequested,
-                offer.incentiveAmountsRequested
-            )
-        );
+    function getAPOfferHash(APOffer memory offer) public pure returns (bytes32) {
+        return keccak256(abi.encode(offer));
     }
 
     /// @notice Calculates the hash of an IP offer
-    function getOfferHash(
+    function getIPOfferHash(
         uint256 offerID,
         bytes32 targetMarketHash,
         address ip,

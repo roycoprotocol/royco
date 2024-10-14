@@ -140,7 +140,7 @@ contract RecipeKernel is RecipeKernelBase {
         // Map the offer hash to the offer quantity
         APOffer memory offer =
             APOffer(numAPOffers, targetMarketHash, msg.sender, fundingVault, quantity, expiry, incentivesRequested, incentiveAmountsRequested);
-        offerHash = getOfferHash(offer);
+        offerHash = getAPOfferHash(offer);
         offerHashToRemainingQuantity[offerHash] = quantity;
 
         /// @dev APOffer events are stored in events and do not exist onchain outside of the offerHashToRemainingQuantity mapping
@@ -247,7 +247,7 @@ contract RecipeKernel is RecipeKernelBase {
         }
 
         // Set the offer hash
-        offerHash = getOfferHash(numIPOffers, targetMarketHash, msg.sender, expiry, quantity, incentivesOffered, incentiveAmountsOffered);
+        offerHash = getIPOfferHash(numIPOffers, targetMarketHash, msg.sender, expiry, quantity, incentivesOffered, incentiveAmountsOffered);
         // Create and store the offer
         IPOffer storage offer = offerHashToIPOffer[offerHash];
         offer.offerID = numIPOffers;
@@ -444,7 +444,7 @@ contract RecipeKernel is RecipeKernelBase {
             revert OfferExpired();
         }
 
-        bytes32 offerHash = getOfferHash(offer);
+        bytes32 offerHash = getAPOfferHash(offer);
 
         uint256 remaining = offerHashToRemainingQuantity[offerHash];
         if (fillAmount > remaining) {
@@ -542,7 +542,7 @@ contract RecipeKernel is RecipeKernelBase {
         if (offer.ap != msg.sender) revert NotOwner();
 
         // Check that the offer isn't already filled, hasn't been cancelled already, or never existed
-        bytes32 offerHash = getOfferHash(offer);
+        bytes32 offerHash = getAPOfferHash(offer);
         if (offerHashToRemainingQuantity[offerHash] == 0) {
             revert NotEnoughRemainingQuantity();
         }

@@ -49,4 +49,26 @@ contract MockRecipeKernel is RecipeKernel {
         LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
         return (params.incentives, params.amounts, params.ip);
     }
+
+    /// @notice Calculates the hash of an AP offer
+    function getOfferHash(APOffer memory offer) public pure returns (bytes32) {
+        return keccak256(abi.encode(offer));
+    }
+
+    /// @notice Calculates the hash of an IP offer
+    function getOfferHash(
+        uint256 offerID,
+        bytes32 targetMarketHash,
+        address ip,
+        uint256 expiry,
+        uint256 quantity,
+        address[] calldata incentivesOffered,
+        uint256[] memory incentiveAmountsOffered
+    )
+        public
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(offerID, targetMarketHash, ip, expiry, quantity, incentivesOffered, incentiveAmountsOffered));
+    }
 }
