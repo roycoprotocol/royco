@@ -18,7 +18,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_CreateIPOffer_ForTokens() external prankModifier(ALICE_ADDRESS) {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         // Handle minting incentive token to the IP's address
         address[] memory tokensOffered = new address[](1);
@@ -32,7 +32,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         uint256 expiry = block.timestamp + 1 days; // Offer expires in 1 day
 
         // Calculate expected fees
-        (,, uint256 frontendFee,,,) = recipeKernel.marketIDToWeirollMarket(marketId);
+        (,,, uint256 frontendFee,,,) = recipeKernel.marketHashToWeirollMarket(marketHash);
         uint256 incentiveAmount = incentiveAmountsOffered[0].divWadDown(1e18 + recipeKernel.protocolFee() + frontendFee);
         uint256 protocolFeeAmount = incentiveAmount.mulWadDown(recipeKernel.protocolFee());
         uint256 frontendFeeAmount = incentiveAmount.mulWadDown(frontendFee);
@@ -42,7 +42,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         emit RecipeKernelBase.IPOfferCreated(
             0, // Expected offer ID (starts at 0)
             bytes32(0),
-            marketId, // Market ID
+            marketHash, // Market ID
             quantity, // Total quantity
             tokensOffered, // Tokens offered
             incentiveAmountsOffered, // Amounts offered
@@ -59,7 +59,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
         // Create the IP offer
         bytes32 offerHash = recipeKernel.createIPOffer(
-            marketId, // Referencing the created market
+            marketHash, // Referencing the created market
             quantity, // Total input token amount
             expiry, // Expiry time
             tokensOffered, // Incentive tokens offered
@@ -85,7 +85,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_CreateIPOffer_ForPointsProgram() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         Points points = pointsFactory.createPointsProgram("POINTS", "PTS", 18, BOB_ADDRESS);
         vm.startPrank(BOB_ADDRESS);
@@ -102,7 +102,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         uint256 expiry = block.timestamp + 1 days; // Offer expires in 1 day
 
         // Calculate expected fees
-        (,, uint256 frontendFee,,,) = recipeKernel.marketIDToWeirollMarket(marketId);
+        (,,, uint256 frontendFee,,,) = recipeKernel.marketHashToWeirollMarket(marketHash);
         uint256 incentiveAmount = incentiveAmountsOffered[0].divWadDown(1e18 + recipeKernel.protocolFee() + frontendFee);
         uint256 protocolFeeAmount = incentiveAmount.mulWadDown(recipeKernel.protocolFee());
         uint256 frontendFeeAmount = incentiveAmount.mulWadDown(frontendFee);
@@ -111,7 +111,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         emit RecipeKernelBase.IPOfferCreated(
             0, // Expected offer ID (starts at 0)
             bytes32(0),
-            marketId, // Market ID
+            marketHash, // Market ID
             quantity, // Total quantity
             tokensOffered, // Tokens offered
             incentiveAmountsOffered, // Amounts offered
@@ -123,7 +123,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.startPrank(ALICE_ADDRESS);
         // Create the IP offer
         bytes32 offerHash = recipeKernel.createIPOffer(
-            marketId, // Referencing the created market
+            marketHash, // Referencing the created market
             quantity, // Total input token amount
             expiry, // Expiry time
             tokensOffered, // Incentive tokens offered
@@ -159,10 +159,10 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
     function test_RevertIf_CreateIPOfferWithExpiredOffer() external {
         vm.warp(1_231_006_505); // set block timestamp
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.CannotPlaceExpiredOffer.selector));
         recipeKernel.createIPOffer(
-            marketId,
+            marketHash,
             100_000e18, // Quantity
             block.timestamp - 1 seconds, // Expired timestamp
             new address[](1), // Empty tokens offered array
@@ -171,10 +171,10 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_CreateIPOfferWithZeroQuantity() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.CannotPlaceZeroQuantityOffer.selector));
         recipeKernel.createIPOffer(
-            marketId,
+            marketHash,
             0, // Zero quantity
             block.timestamp + 1 days, // Expiry time
             new address[](1), // Empty tokens offered array
@@ -183,7 +183,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_CreateIPOfferWithMismatchedTokenArrays() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(mockIncentiveToken);
@@ -192,7 +192,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.ArrayLengthMismatch.selector));
         recipeKernel.createIPOffer(
-            marketId,
+            marketHash,
             100_000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             tokensOffered, // Mismatched arrays

@@ -24,6 +24,9 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     /// @notice The minimum percent you can fill an AP offer with, to prevent griefing attacks
     uint256 public constant MIN_FILL_PERCENT = 0.25e18; // == 25%
 
+    /// @dev The minimum quantity of tokens for an offer
+    uint256 internal constant MINIMUM_QUANTITY = 1e6;
+
     /// @notice The number of AP offers that have been created
     uint256 public numAPOffers;
     /// @notice The number of IP offers that have been created
@@ -42,7 +45,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     uint256 public minimumFrontendFee; // 1e18 == 100% fee
 
     /// @notice Holds all WeirollMarket structs
-    mapping(uint256 => WeirollMarket) public marketIDToWeirollMarket;
+    mapping(bytes32 => WeirollMarket) public marketHashToWeirollMarket;
 
     /// @notice Holds all IPOffer structs
     mapping(bytes32 => IPOffer) public offerHashToIPOffer;
@@ -62,12 +65,14 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
         bytes[] weirollState;
     }
 
+    /// @custom:field marketID The ID of the Weiroll Market
     /// @custom:field inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
     /// @custom:field lockupTime The time in seconds that the user's weiroll wallet will be locked up for after deposit
     /// @custom:field frontendFee The fee that the frontend will take from IP incentives, 1e18 == 100% fee
     /// @custom:field depositRecipe The weiroll recipe that will be executed after the inputToken is transferred to the wallet
     /// @custom:field withdrawRecipe The weiroll recipe that may be executed after lockupTime has passed to unwind a user's position
     struct WeirollMarket {
+        uint256 marketID;
         ERC20 inputToken;
         uint256 lockupTime;
         uint256 frontendFee;
@@ -77,7 +82,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     }
 
     /// @custom:field offerID Set to numAPOffers (zero-indexed) - ordered separately for AP and IP offers
-    /// @custom:field targetMarketID The ID of the weiroll market which will be executed on fill
+    /// @custom:field targetMarketHash The hash of the weiroll market which the IP offer is for
     /// @custom:field ip The address of the incentive provider
     /// @custom:field expiry The timestamp after which the offer is considered expired
     /// @custom:field quantity The total quantity of the market's input token requested by the IP
@@ -87,7 +92,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     /// @custom:field incentiveToFrontendFeeAmount Mapping of incentive to the amount of the incentive allocated to frontend fee recipients
     struct IPOffer {
         uint256 offerID;
-        uint256 targetMarketID;
+        bytes32 targetMarketHash;
         address ip;
         uint256 expiry;
         uint256 quantity;
@@ -99,7 +104,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     }
 
     /// @custom:field offerID Set to numAPOffers (zero-indexed) - ordered separately for AP and IP offers
-    /// @custom:field targetMarketID The ID of the weiroll market which will be executed on fill
+    /// @custom:field targetMarketHash The hash of the weiroll market which the AP offer is for
     /// @custom:field ap The address of the action provider
     /// @custom:field fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @custom:field expiry The timestamp after which the offer is considered expired
@@ -108,7 +113,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     /// @custom:field incentiveAmountsRequested The desired incentives per input token
     struct APOffer {
         uint256 offerID;
-        uint256 targetMarketID;
+        bytes32 targetMarketHash;
         address ap;
         address fundingVault;
         uint256 quantity;
@@ -131,14 +136,17 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     }
 
     /// @custom:field marketID The ID of the newly created market
+    /// @custom:field marketHash The hash of the newly created market
     /// @custom:field inputToken The token that will be deposited into the user's weiroll wallet for use in the recipe
     /// @custom:field lockupTime The time in seconds that the user's weiroll wallet will be locked up for after deposit
     /// @custom:field frontendFee The fee paid to the frontend out of IP incentives
     /// @custom:field rewardStyle Whether the rewards are paid at the beginning, locked until the end, or forfeitable until the end
-    event MarketCreated(uint256 indexed marketID, address indexed inputToken, uint256 lockupTime, uint256 frontendFee, RewardStyle rewardStyle);
+    event MarketCreated(
+        uint256 indexed marketID, bytes32 indexed marketHash, address indexed inputToken, uint256 lockupTime, uint256 frontendFee, RewardStyle rewardStyle
+    );
 
     /// @param offerID Set to numAPOffers (zero-indexed) - ordered separately for AP and IP offers
-    /// @param marketID The ID of the weiroll market which will be executed on fill
+    /// @param marketHash The hash of the weiroll market which the AP offer is for
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param quantity The total amount of input tokens to be deposited
     /// @param incentiveAddresses The requested rewards
@@ -146,7 +154,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     /// @param expiry The timestamp after which the offer is considered expired
     event APOfferCreated(
         uint256 indexed offerID,
-        uint256 indexed marketID,
+        bytes32 indexed marketHash,
         address fundingVault,
         uint256 quantity,
         address[] incentiveAddresses,
@@ -156,7 +164,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
 
     /// @param offerID Set to numIPOffers (zero-indexed) - ordered separately for AP and IP offers
     /// @param offerHash Set to the hash of the offer (used to identify IP offers)
-    /// @param marketID The ID of the weiroll market which will be executed on fill
+    /// @param marketHash The hash of the weiroll market which the IP offer is for
     /// @param quantity The total amount of input tokens to be deposited
     /// @param incentivesOffered The offered rewards
     /// @param incentiveAmounts The offered rewards per input token
@@ -166,7 +174,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     event IPOfferCreated(
         uint256 indexed offerID,
         bytes32 indexed offerHash,
-        uint256 indexed marketID,
+        bytes32 indexed marketHash,
         uint256 quantity,
         address[] incentivesOffered,
         uint256[] incentiveAmounts,
@@ -227,6 +235,8 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     /// @param weirollWallet The address of the weiroll wallet that executed the withdrawal recipe
     event WeirollWalletExecutedWithdrawal(address indexed weirollWallet);
 
+    /// @notice emitted when trying to create a market with address(0) as the input token
+    error InvalidMarketInputToken();
     /// @notice emitted when trying to fill an offer that has expired
     error OfferExpired();
     /// @notice emitted when creating an offer with duplicate incentives
@@ -317,12 +327,17 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
         minimumFrontendFee = _minimumFrontendFee;
     }
 
+    /// @notice Calculates the hash of a Weiroll Market
+    function getMarketHash(WeirollMarket memory market) public pure returns (bytes32) {
+        return keccak256(abi.encode(market));
+    }
+
     /// @notice Calculates the hash of an AP offer
     function getOfferHash(APOffer memory offer) public pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
                 offer.offerID,
-                offer.targetMarketID,
+                offer.targetMarketHash,
                 offer.ap,
                 offer.fundingVault,
                 offer.quantity,
@@ -336,7 +351,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     /// @notice Calculates the hash of an IP offer
     function getOfferHash(
         uint256 offerID,
-        uint256 targetMarketID,
+        bytes32 targetMarketHash,
         address ip,
         uint256 expiry,
         uint256 quantity,
@@ -347,6 +362,6 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(offerID, targetMarketID, ip, expiry, quantity, incentivesOffered, incentiveAmountsOffered));
+        return keccak256(abi.encodePacked(offerID, targetMarketHash, ip, expiry, quantity, incentivesOffered, incentiveAmountsOffered));
     }
 }

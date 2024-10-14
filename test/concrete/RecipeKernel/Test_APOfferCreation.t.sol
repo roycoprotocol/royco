@@ -13,7 +13,7 @@ contract Test_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_CreateAPOffer() external prankModifier(ALICE_ADDRESS) {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
@@ -27,7 +27,7 @@ contract Test_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.expectEmit(true, true, true, false, address(recipeKernel));
         emit RecipeKernelBase.APOfferCreated(
             0, // Expected offer ID (starts at 0)
-            marketId, // Market ID
+            marketHash, // Market ID
             address(0), // No funding vault
             quantity,
             tokensRequested, // Tokens requested
@@ -37,7 +37,7 @@ contract Test_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
         // Create the AP offer
         bytes32 offerHash = recipeKernel.createAPOffer(
-            marketId, // Referencing the created market
+            marketHash, // Referencing the created market
             address(0), // No funding vault
             quantity, // Total input token amount
             expiry, // Expiry time
@@ -65,10 +65,10 @@ contract Test_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
     function test_RevertIf_CreateAPOfferWithExpiredOffer() external {
         vm.warp(1_231_006_505); // set block timestamp
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.CannotPlaceExpiredOffer.selector));
         recipeKernel.createAPOffer(
-            marketId,
+            marketHash,
             address(0),
             100_000e18,
             block.timestamp - 1 seconds, // Expired timestamp
@@ -78,10 +78,10 @@ contract Test_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_CreateAPOfferWithZeroQuantity() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.CannotPlaceZeroQuantityOffer.selector));
         recipeKernel.createAPOffer(
-            marketId,
+            marketHash,
             address(0),
             0, // Zero quantity
             block.timestamp + 1 days,
@@ -91,17 +91,17 @@ contract Test_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_CreateAPOfferWithMismatchedTokenArrays() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         address[] memory tokensRequested = new address[](1);
         uint256[] memory tokenAmountsRequested = new uint256[](2);
 
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.ArrayLengthMismatch.selector));
-        recipeKernel.createAPOffer(marketId, address(0), 100_000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
+        recipeKernel.createAPOffer(marketHash, address(0), 100_000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
     }
 
     function test_RevertIf_CreateAPOfferWithMismatchedBaseAsset() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
@@ -112,7 +112,7 @@ contract Test_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.MismatchedBaseAsset.selector));
         recipeKernel.createAPOffer(
-            marketId,
+            marketHash,
             address(incentiveVault), // Funding vault with mismatched base asset
             100_000e18,
             block.timestamp + 1 days,

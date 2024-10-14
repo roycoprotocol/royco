@@ -152,7 +152,7 @@ contract ScenarioTest is Test {
 
     function testBasicRecipeKernelAllocate() public {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(baseToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(baseToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
@@ -168,7 +168,7 @@ contract ScenarioTest is Test {
         baseToken2.approve(address(recipeKernel), 1000e18);
 
         bytes32 offerHash = recipeKernel.createIPOffer(
-            marketId, // Referencing the created market
+            marketHash, // Referencing the created market
             offerAmount, // Total input token amount
             block.timestamp + 30 days, // Expiry time
             tokensOffered, // Incentive tokens offered

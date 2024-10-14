@@ -24,12 +24,12 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_cancelIPOffer_WithTokens() external {
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
 
         // Create the IP offer
-        bytes32 offerHash = createIPOffer_WithTokens(marketId, quantity, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, quantity, IP_ADDRESS);
         (,,,,, uint256 initialRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(initialRemainingQuantity, quantity);
 
@@ -49,8 +49,8 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Check if offer was deleted from mapping on upfront
-        (,uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
-        assertEq(_targetMarketID, 0);
+        (,bytes32 _targetmarketHash, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
+        assertEq(_targetmarketHash, bytes32(0));
         assertEq(_ip, address(0));
         assertEq(_expiry, 0);
         assertEq(_quantity, 0);
@@ -61,12 +61,12 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_cancelIPOffer_WithTokens_PartiallyFilled() external {
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
 
         // Create the IP offer
-        bytes32 offerHash = createIPOffer_WithTokens(marketId, quantity, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, quantity, IP_ADDRESS);
         (,,,,, uint256 initialRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(initialRemainingQuantity, quantity);
 
@@ -104,8 +104,8 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Check if offer was deleted from mapping
-        (,uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
-        assertEq(_targetMarketID, 0);
+        (,bytes32 _targetmarketHash, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
+        assertEq(_targetmarketHash, bytes32(0));
         assertEq(_ip, address(0));
         assertEq(_expiry, 0);
         assertEq(_quantity, 0);
@@ -116,12 +116,12 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_cancelIPOffer_WithTokens_Arrear_PartiallyFilled() external {
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
         uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
 
         // Create the IP offer
-        bytes32 offerHash = createIPOffer_WithTokens(marketId, quantity, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, quantity, IP_ADDRESS);
         (,,,,, uint256 initialRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(initialRemainingQuantity, quantity);
 
@@ -159,8 +159,8 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Check if offer was deleted from mapping
-        (,uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
-        assertEq(_targetMarketID, 0);
+        (,bytes32 _targetmarketHash, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
+        assertEq(_targetmarketHash, bytes32(0));
         assertEq(_ip, address(0));
         assertGt(_expiry, 0);
         assertEq(_quantity, quantity);
@@ -171,12 +171,12 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_cancelIPOffer_WithTokens_Forfeitable_PartiallyFilled() external {
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
 
         // Create the IP offer
-        bytes32 offerHash = createIPOffer_WithTokens(marketId, quantity, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, quantity, IP_ADDRESS);
         (,,,,, uint256 initialRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(initialRemainingQuantity, quantity);
 
@@ -214,8 +214,8 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Check if offer was deleted from mapping
-        (,uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
-        assertEq(_targetMarketID, 0);
+        (,bytes32 _targetmarketHash, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
+        assertEq(_targetmarketHash, bytes32(0));
         assertEq(_ip, address(0));
         assertGt(_expiry, 0);
         assertEq(_quantity, quantity);
@@ -226,12 +226,12 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_cancelIPOffer_WithPoints() external {
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
 
         // Create the IP offer
-        (bytes32 offerHash,) = createIPOffer_WithPoints(marketId, quantity, IP_ADDRESS);
+        (bytes32 offerHash,) = createIPOffer_WithPoints(marketHash, quantity, IP_ADDRESS);
         (,,,,, uint256 initialRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(initialRemainingQuantity, quantity);
 
@@ -243,8 +243,8 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Check if offer was deleted from mapping
-        (,uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
-        assertEq(_targetMarketID, 0);
+        (,bytes32 _targetmarketHash, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
+        assertEq(_targetmarketHash, bytes32(0));
         assertEq(_ip, address(0));
         assertEq(_expiry, 0);
         assertEq(_quantity, 0);
@@ -252,12 +252,12 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_cancelIPOffer_NotOwner() external {
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
 
         // Create the IP offer
-        bytes32 offerHash = createIPOffer_WithTokens(marketId, quantity, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, quantity, IP_ADDRESS);
 
         vm.startPrank(AP_ADDRESS);
         vm.expectRevert(RecipeKernelBase.NotOwner.selector);
@@ -266,10 +266,10 @@ contract Test_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_cancelIPOffer_NoRemainingQuantity() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
         uint256 quantity = 100_000e18;
         // Create a fillable IP offer
-        bytes32 offerHash = createIPOffer_WithTokens(marketId, quantity, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, quantity, IP_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(AP_ADDRESS, quantity);

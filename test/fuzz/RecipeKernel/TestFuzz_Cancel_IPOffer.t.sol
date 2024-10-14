@@ -28,10 +28,10 @@ contract TestFuzz_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.assume(_fillAmount > 0);
         vm.assume(_fillAmount <= quantity);
 
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         // Create the IP offer
-        bytes32 offerHash = createIPOffer_WithTokens(marketId, quantity, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, quantity, IP_ADDRESS);
         (,,,,, uint256 initialRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(initialRemainingQuantity, quantity);
 
@@ -69,8 +69,8 @@ contract TestFuzz_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Check if offer was deleted from mapping
-        (,uint256 _targetMarketID, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
-        assertEq(_targetMarketID, 0);
+        (, bytes32 _targetmarketHash, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
+        assertEq(_targetmarketHash, bytes32(0));
         assertEq(_ip, address(0));
         assertEq(_expiry, 0);
         assertEq(_quantity, 0);
@@ -83,12 +83,12 @@ contract TestFuzz_Cancel_IPOffer_RecipeKernel is RecipeKernelTestBase {
     function test_RevertIf_cancelIPOffer_NotOwner(address _nonOwner) external {
         vm.assume(_nonOwner != IP_ADDRESS);
 
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the IP offer
-        bytes32 offerHash = createIPOffer_WithTokens(marketId, quantity, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, quantity, IP_ADDRESS);
 
         vm.startPrank(_nonOwner);
         vm.expectRevert(RecipeKernelBase.NotOwner.selector);

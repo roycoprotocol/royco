@@ -37,28 +37,28 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         vm.stopPrank();
     }
 
-    function createMarket() public returns (uint256 marketId) {
+    function createMarket() public returns (bytes32 marketHash) {
         // Generate random market parameters within valid constraints
         uint256 lockupTime = 1 hours + (uint256(keccak256(abi.encodePacked(block.timestamp))) % 29 days); // Lockup time between 1 hour and 30 days
         uint256 frontendFee = (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 1e17) + initialMinimumFrontendFee;
         // Generate random reward style (valid values 0, 1, 2)
         RewardStyle rewardStyle = RewardStyle(uint8(uint256(keccak256(abi.encodePacked(block.timestamp))) % 3));
         // Create market
-        marketId = recipeKernel.createMarket(address(mockLiquidityToken), lockupTime, frontendFee, NULL_RECIPE, NULL_RECIPE, rewardStyle);
+        marketHash = recipeKernel.createMarket(address(mockLiquidityToken), lockupTime, frontendFee, NULL_RECIPE, NULL_RECIPE, rewardStyle);
     }
 
-    function createMarket(RecipeKernelBase.Recipe memory _depositRecipe, RecipeKernelBase.Recipe memory _withdrawRecipe) public returns (uint256 marketId) {
+    function createMarket(RecipeKernelBase.Recipe memory _depositRecipe, RecipeKernelBase.Recipe memory _withdrawRecipe) public returns (bytes32 marketHash) {
         // Generate random market parameters within valid constraints
         uint256 lockupTime = 1 hours + (uint256(keccak256(abi.encodePacked(block.timestamp))) % 29 days); // Lockup time between 1 hour and 30 days
         uint256 frontendFee = (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 1e17) + initialMinimumFrontendFee;
         // Generate random reward style (valid values 0, 1, 2)
         RewardStyle rewardStyle = RewardStyle(uint8(uint256(keccak256(abi.encodePacked(block.timestamp))) % 3));
         // Create market
-        marketId = recipeKernel.createMarket(address(mockLiquidityToken), lockupTime, frontendFee, _depositRecipe, _withdrawRecipe, rewardStyle);
+        marketHash = recipeKernel.createMarket(address(mockLiquidityToken), lockupTime, frontendFee, _depositRecipe, _withdrawRecipe, rewardStyle);
     }
 
     function createIPOffer_WithTokens(
-        uint256 _targetMarketID,
+        bytes32 _targetMarketHash,
         uint256 _quantity,
         address _ipAddress
     )
@@ -75,7 +75,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         mockIncentiveToken.approve(address(recipeKernel), 1000e18);
 
         offerHash = recipeKernel.createIPOffer(
-            _targetMarketID, // Referencing the created market
+            _targetMarketHash, // Referencing the created market
             _quantity, // Total input token amount
             block.timestamp + 30 days, // Expiry time
             tokensOffered, // Incentive tokens offered
@@ -84,7 +84,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
     }
 
     function createIPOffer_WithTokens(
-        uint256 _targetMarketID,
+        bytes32 _targetMarketHash,
         uint256 _quantity,
         uint256 _expiry,
         address _ipAddress
@@ -102,7 +102,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         mockIncentiveToken.approve(address(recipeKernel), 1000e18);
 
         offerHash = recipeKernel.createIPOffer(
-            _targetMarketID, // Referencing the created market
+            _targetMarketHash, // Referencing the created market
             _quantity, // Total input token amount
             _expiry, // Expiry time
             tokensOffered, // Incentive tokens offered
@@ -111,7 +111,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
     }
 
     function createAPOffer_ForTokens(
-        uint256 _targetMarketID,
+        bytes32 _targetMarketHash,
         address _fundingVault,
         uint256 _quantity,
         address _apAddress
@@ -126,7 +126,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         tokenAmountsRequested[0] = 1000e18;
 
         offerHash = recipeKernel.createAPOffer(
-            _targetMarketID, // Referencing the created market
+            _targetMarketHash, // Referencing the created market
             _fundingVault, // Address of funding vault
             _quantity, // Total input token amount
             30 days, // Expiry time
@@ -134,11 +134,11 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        offer = RecipeKernelBase.APOffer(recipeKernel.numAPOffers()-1, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        offer = RecipeKernelBase.APOffer(recipeKernel.numAPOffers()-1, _targetMarketHash, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
     }
 
     function createAPOffer_ForTokens(
-        uint256 _targetMarketID,
+        bytes32 _targetMarketHash,
         address _fundingVault,
         uint256 _quantity,
         uint256 _expiry,
@@ -154,7 +154,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         tokenAmountsRequested[0] = 1000e18;
 
         offerHash = recipeKernel.createAPOffer(
-            _targetMarketID, // Referencing the created market
+            _targetMarketHash, // Referencing the created market
             _fundingVault, // Address of funding vault
             _quantity, // Total input token amount
             _expiry, // Expiry time
@@ -162,11 +162,11 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        offer = RecipeKernelBase.APOffer(recipeKernel.numAPOffers()-1, _targetMarketID, _apAddress, _fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
+        offer = RecipeKernelBase.APOffer(recipeKernel.numAPOffers()-1, _targetMarketHash, _apAddress, _fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
     }
 
     function createAPOffer_ForPoints(
-        uint256 _targetMarketID,
+        bytes32 _targetMarketHash,
         address _fundingVault,
         uint256 _quantity,
         address _apAddress,
@@ -195,7 +195,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
 
         vm.startPrank(_apAddress);
         offerHash = recipeKernel.createAPOffer(
-            _targetMarketID, // Referencing the created market
+            _targetMarketHash, // Referencing the created market
             _fundingVault, // Address of funding vault
             _quantity, // Total input token amount
             30 days, // Expiry time
@@ -203,11 +203,11 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
         vm.stopPrank();
-        offer = RecipeKernelBase.APOffer(recipeKernel.numAPOffers()-1, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        offer = RecipeKernelBase.APOffer(recipeKernel.numAPOffers()-1, _targetMarketHash, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
     }
 
     function createIPOffer_WithPoints(
-        uint256 _targetMarketID,
+        bytes32 _targetMarketHash,
         uint256 _quantity,
         address _ipAddress
     )
@@ -232,7 +232,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         incentiveAmountsOffered[0] = 1000e18;
 
         offerHash = recipeKernel.createIPOffer(
-            _targetMarketID, // Referencing the created market
+            _targetMarketHash, // Referencing the created market
             _quantity, // Total input token amount
             block.timestamp + 30 days, // Expiry time
             tokensOffered, // Incentive tokens offered

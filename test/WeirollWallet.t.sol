@@ -15,7 +15,7 @@ contract WeirollWalletTest is Test {
     address public owner;
     uint256 public constant AMOUNT = 1 ether;
     uint256 public lockedUntil;
-    uint256 public marketId;
+    bytes32 public marketHash;
 
     receive() external payable { }
 
@@ -24,8 +24,8 @@ contract WeirollWalletTest is Test {
         mockRecipekernel = new MockRecipekernel();
         owner = address(this);
         lockedUntil = block.timestamp + 1 days;
-        marketId = 0;
-        wallet = createWallet(owner, address(mockRecipekernel), AMOUNT, lockedUntil, true, marketId);
+        marketHash = bytes32(hex"14beef");
+        wallet = createWallet(owner, address(mockRecipekernel), AMOUNT, lockedUntil, true, marketHash);
     }
 
     function createWallet(
@@ -34,13 +34,13 @@ contract WeirollWalletTest is Test {
         uint256 _amount,
         uint256 _lockedUntil,
         bool _isForfeitable,
-        uint256 _marketId
+        bytes32 _marketHash
     )
         public
         returns (WeirollWallet)
     {
         return
-            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(_owner, _recipeKernel, _amount, _lockedUntil, _isForfeitable, _marketId))));
+            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(_owner, _recipeKernel, _amount, _lockedUntil, _isForfeitable, _marketHash))));
     }
 
     function testWalletInitialization() public view {
@@ -49,7 +49,7 @@ contract WeirollWalletTest is Test {
         assertEq(wallet.amount(), AMOUNT);
         assertEq(wallet.lockedUntil(), lockedUntil);
         assertTrue(wallet.isForfeitable());
-        assertEq(wallet.marketId(), marketId);
+        assertEq(wallet.marketHash(), marketHash);
         assertFalse(wallet.executed());
         assertFalse(wallet.forfeited());
     }
@@ -68,7 +68,7 @@ contract WeirollWalletTest is Test {
 
     function testNotLockedModifier() public {
         uint256 shortLockTime = block.timestamp + 1 hours;
-        WeirollWallet lockedWallet = createWallet(owner, address(mockRecipekernel), AMOUNT, shortLockTime, true, marketId);
+        WeirollWallet lockedWallet = createWallet(owner, address(mockRecipekernel), AMOUNT, shortLockTime, true, marketHash);
 
         vm.expectRevert(WeirollWallet.WalletLocked.selector);
         lockedWallet.manualExecuteWeiroll(new bytes32[](0), new bytes[](0));
@@ -136,7 +136,7 @@ contract WeirollWalletTest is Test {
         assertTrue(wallet.forfeited());
 
         // Test non-forfeitable wallet
-        WeirollWallet nonForfeitableWallet = createWallet(owner, address(mockRecipekernel), AMOUNT, lockedUntil, false, marketId);
+        WeirollWallet nonForfeitableWallet = createWallet(owner, address(mockRecipekernel), AMOUNT, lockedUntil, false, marketHash);
         vm.expectRevert(WeirollWallet.WalletNotForfeitable.selector);
         MockRecipekernel(mockRecipekernel).forfeitWallet(nonForfeitableWallet);
     }

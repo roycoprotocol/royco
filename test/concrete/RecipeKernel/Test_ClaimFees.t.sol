@@ -19,13 +19,13 @@ contract Test_ClaimFees_RecipeKernel is RecipeKernelTestBase {
 
     function test_ClaimFeesAfterFillingIPOffer() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP offer
-        bytes32 offerHash = createIPOffer_WithTokens(marketId, offerAmount, ALICE_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, offerAmount, ALICE_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(BOB_ADDRESS, fillAmount);

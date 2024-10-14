@@ -21,12 +21,12 @@ contract Test_Cancel_APOffer_RecipeKernelBaseBase is RecipeKernelTestBase {
     }
 
     function test_cancelAPOffer_WithTokens() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the AP offer
-        (bytes32 offerHash, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
+        (bytes32 offerHash, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), quantity, AP_ADDRESS);
 
         uint256 initialQuantity = recipeKernel.offerHashToRemainingQuantity(recipeKernel.getOfferHash(offer));
         assertEq(initialQuantity, quantity);
@@ -43,11 +43,11 @@ contract Test_Cancel_APOffer_RecipeKernelBaseBase is RecipeKernelTestBase {
     }
 
     function test_cancelAPOffer_WithPoints() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
         uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the AP offer
-        (bytes32 offerHash, RecipeKernelBase.APOffer memory offer,) = createAPOffer_ForPoints(marketId, address(0), quantity, AP_ADDRESS, IP_ADDRESS);
+        (bytes32 offerHash, RecipeKernelBase.APOffer memory offer,) = createAPOffer_ForPoints(marketHash, address(0), quantity, AP_ADDRESS, IP_ADDRESS);
 
         uint256 initialQuantity = recipeKernel.offerHashToRemainingQuantity(recipeKernel.getOfferHash(offer));
         assertEq(initialQuantity, quantity);
@@ -64,10 +64,10 @@ contract Test_Cancel_APOffer_RecipeKernelBaseBase is RecipeKernelTestBase {
     }
 
     function test_RevertIf_cancelAPOffer_NotOwner() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
         uint256 quantity = 100000e18;
 
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), quantity, AP_ADDRESS);
 
         vm.startPrank(IP_ADDRESS);
         vm.expectRevert(RecipeKernelBase.NotOwner.selector);
@@ -76,10 +76,10 @@ contract Test_Cancel_APOffer_RecipeKernelBaseBase is RecipeKernelTestBase {
     }
 
     function test_RevertIf_cancelAPOffer_NoRemainingQuantity() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
         uint256 quantity = 100000e18;
 
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), quantity, AP_ADDRESS);
 
         mockLiquidityToken.mint(AP_ADDRESS, quantity);
         vm.startPrank(AP_ADDRESS);

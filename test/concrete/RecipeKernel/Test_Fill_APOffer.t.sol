@@ -29,12 +29,12 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_DirectFill_Upfront_APOffer_ForTokens() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), offerAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -96,12 +96,12 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_DirectFullFill_Upfront_APOffer_ForTokens() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 100_000e18; // Fill amount
 
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), offerAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -163,13 +163,13 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_DirectFill_Upfront_APOffer_ForPoints() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketId, address(0), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(0), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -225,12 +225,12 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_VaultFill_Upfront_APOffer_ForTokens() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(mockVault), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(mockVault), offerAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -299,13 +299,13 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_VaultFill_Upfront_IPOffer_ForPoints() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketId, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -365,12 +365,12 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_DirectFill_Forfeitable_APOffer_ForTokens() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), offerAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -429,13 +429,13 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_DirectFill_Forfeitable_APOffer_ForPoints() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketId, address(0), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(0), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -484,12 +484,12 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_VaultFill_Forfeitable_APOffer_ForTokens() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(mockVault), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(mockVault), offerAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -555,13 +555,13 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_VaultFill_Forfeitable_IPOffer_ForPoints() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketId, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -614,12 +614,12 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_DirectFill_Arrear_APOffer_ForTokens() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), offerAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -678,13 +678,13 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_DirectFill_Arrear_APOffer_ForPoints() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketId, address(0), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(0), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -733,12 +733,12 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_VaultFill_Arrear_APOffer_ForTokens() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(mockVault), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(mockVault), offerAmount, AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -804,13 +804,13 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
 
     function test_VaultFill_Arrear_IPOffer_ForPoints() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Arrear);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketId, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeKernel.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -863,13 +863,13 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_NotEnoughRemainingQuantity_FillAPOffer() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         uint256 offerAmount = 100_000e18;
         uint256 fillAmount = 100_001e18; // Fill amount exceeds the offer amount
 
         // Create a fillable AP offer
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), offerAmount, AP_ADDRESS);
 
         // Attempt to fill more than available, expecting a revert
         vm.expectRevert(RecipeKernelBase.NotEnoughRemainingQuantity.selector);
@@ -877,12 +877,12 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_ZeroQuantityFill_FillAPOffer() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         uint256 offerAmount = 100_000e18;
 
         // Create a fillable AP offer
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), offerAmount, AP_ADDRESS);
 
         // Attempt to fill with zero quantity, expecting a revert
         vm.expectRevert(RecipeKernelBase.CannotFillZeroQuantityOffer.selector);
@@ -890,12 +890,12 @@ contract Test_Fill_APOffer_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_OfferExpired_FillAPOffer() external {
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         uint256 offerAmount = 100_000e18;
 
         // Create a fillable AP offer with a short expiry time
-        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), offerAmount, AP_ADDRESS);
+        (, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), offerAmount, AP_ADDRESS);
 
         // Simulate the passage of time beyond the expiry
         vm.warp(block.timestamp + 31 days);

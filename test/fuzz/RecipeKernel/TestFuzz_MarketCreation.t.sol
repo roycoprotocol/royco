@@ -24,6 +24,7 @@ contract TestFuzz_MarketCreation_RecipeKernel is RecipeKernelTestBase {
     )
         external
     {
+        vm.assume(_inputTokenAddress != address(0));
         // Manually bound the inputs using modulo to limit the ranges (was hitting fuzzing reject limit)
         _frontendFee = initialMinimumFrontendFee + (_frontendFee % (1e18 - (initialMinimumFrontendFee + initialProtocolFee))); // Frontend fee + protocol fee
             // between min fee and 100%
@@ -46,25 +47,25 @@ contract TestFuzz_MarketCreation_RecipeKernel is RecipeKernelTestBase {
         uint256 expectedMarketId = recipeKernel.numMarkets();
 
         // Check for MarketCreated event
-        vm.expectEmit(true, true, false, true, address(recipeKernel));
-        emit RecipeKernelBase.MarketCreated(expectedMarketId, _inputTokenAddress, _lockupTime, _frontendFee, rewardStyle);
+        vm.expectEmit(true, false, false, true, address(recipeKernel));
+        emit RecipeKernelBase.MarketCreated(expectedMarketId, bytes32(0), _inputTokenAddress, _lockupTime, _frontendFee, rewardStyle);
 
         // Call createMarket with the fuzzed inputs
-        uint256 marketId = recipeKernel.createMarket(_inputTokenAddress, _lockupTime, _frontendFee, depositRecipe, withdrawRecipe, rewardStyle);
+        bytes32 marketHash = recipeKernel.createMarket(_inputTokenAddress, _lockupTime, _frontendFee, depositRecipe, withdrawRecipe, rewardStyle);
 
         // Assert basic recipeKernel market state
-        assertEq(marketId, expectedMarketId);
         assertEq(recipeKernel.numMarkets(), expectedMarketId + 1);
 
         // Check that the market was added correctly
         (
+            ,
             ERC20 resultingInputToken,
             uint256 resultingLockupTime,
             uint256 resultingFrontendFee,
             RecipeKernelBase.Recipe memory resultingDepositRecipe,
             RecipeKernelBase.Recipe memory resultingWithdrawRecipe,
             RewardStyle resultingRewardStyle
-        ) = recipeKernel.marketIDToWeirollMarket(marketId);
+        ) = recipeKernel.marketHashToWeirollMarket(marketHash);
 
         // Ensure the resulting market matches the inputs
         assertEq(address(resultingInputToken), _inputTokenAddress);
@@ -96,7 +97,8 @@ contract TestFuzz_MarketCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function testFuzz_RevertIf_CreateMarketWithInvalidTotalFee(uint256 _frontendFee) external {
-        _frontendFee = _frontendFee % (type(uint256).max - recipeKernel.protocolFee()); // Bound the fee to prevent overflow and not catch the expected reversion
+        _frontendFee = _frontendFee % (type(uint256).max - recipeKernel.protocolFee()); // Bound the fee to prevent overflow and not catch the expected
+            // reversion
         vm.assume((recipeKernel.protocolFee() + _frontendFee) > 1e18); // Ensures total fee > 100% so we expect a reversion
 
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.TotalFeeTooHigh.selector));

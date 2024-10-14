@@ -22,20 +22,20 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
     function testFuzz_CreateIPOffer_ForToken(address _creator, uint256 _quantity, uint256 _expiry, uint256 _tokenCount) external prankModifier(_creator) {
         vm.assume(_creator != address(recipeKernel));
         _tokenCount = _tokenCount % 5 + 1; // Limit token count between 1 and 5
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
         address[] memory incentivesOffered = new address[](_tokenCount);
         uint256[] memory incentiveAmountsOffered = new uint256[](_tokenCount);
 
         // Generate random token addresses and amounts
         for (uint256 i = 0; i < _tokenCount; i++) {
-            address tokenAddress = address(uint160(uint256(keccak256(abi.encodePacked(marketId, i)))));
+            address tokenAddress = address(uint160(uint256(keccak256(abi.encodePacked(marketHash, i)))));
 
             // Inject mock ERC20 bytecode into the token addresses
             MockERC20 mockToken = new MockERC20("Mock Token", "MKT");
             vm.etch(tokenAddress, address(mockToken).code);
 
             incentivesOffered[i] = tokenAddress;
-            incentiveAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100_000e18 + 1e18;
+            incentiveAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketHash, i)))) % 100_000e18 + 1e18;
         }
 
         incentivesOffered.sort();
@@ -54,7 +54,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         uint256[] memory incentiveAmount = new uint256[](_tokenCount);
         for (uint256 i = 0; i < _tokenCount; i++) {
             // Calculate expected fees
-            (,, uint256 frontendFee,,,) = recipeKernel.marketIDToWeirollMarket(marketId);
+            (,,, uint256 frontendFee,,,) = recipeKernel.marketHashToWeirollMarket(marketHash);
             incentiveAmount[i] = incentiveAmountsOffered[i].divWadDown(1e18 + recipeKernel.protocolFee() + frontendFee);
             protocolFeeAmount[i] = incentiveAmount[i].mulWadDown(recipeKernel.protocolFee());
             frontendFeeAmount[i] = incentiveAmount[i].mulWadDown(frontendFee);
@@ -63,8 +63,8 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.expectEmit(true, true, true, false, address(recipeKernel));
         emit RecipeKernelBase.IPOfferCreated(
             0, // Expected offer ID (starts at 0)
-            recipeKernel.getOfferHash(0, marketId, _creator, _expiry, _quantity, incentivesOffered, incentiveAmount),
-            marketId, // Market ID
+            recipeKernel.getOfferHash(0, marketHash, _creator, _expiry, _quantity, incentivesOffered, incentiveAmount),
+            marketHash, // Market ID
             _quantity, // Total quantity
             incentivesOffered, // Tokens offered
             incentiveAmountsOffered, // Amounts offered
@@ -85,7 +85,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
         // Create the IP offer
         bytes32 offerHash = recipeKernel.createIPOffer(
-            marketId, // Referencing the created market
+            marketHash, // Referencing the created market
             _quantity, // Total input token amount
             _expiry, // Expiry time
             incentivesOffered, // Incentive tokens offered
@@ -125,7 +125,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.assume(_creator != address(recipeKernel));
         vm.assume(_pointsOwner != address(0));
         _programCount = _programCount % 5 + 1; // Limit program count between 1 and 5
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         address[] memory incentivesOffered = new address[](_programCount);
         uint256[] memory incentiveAmountsOffered = new uint256[](_programCount);
@@ -159,7 +159,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         uint256[] memory incentiveAmount = new uint256[](_programCount);
 
         for (uint256 i = 0; i < _programCount; i++) {
-            (,, uint256 frontendFee,,,) = recipeKernel.marketIDToWeirollMarket(marketId);
+            (,,, uint256 frontendFee,,,) = recipeKernel.marketHashToWeirollMarket(marketHash);
             incentiveAmount[i] = incentiveAmountsOffered[i].divWadDown(1e18 + recipeKernel.protocolFee() + frontendFee);
             protocolFeeAmount[i] = incentiveAmount[i].mulWadDown(recipeKernel.protocolFee());
             frontendFeeAmount[i] = incentiveAmount[i].mulWadDown(frontendFee);
@@ -168,8 +168,8 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.expectEmit(true, true, true, false, address(recipeKernel));
         emit RecipeKernelBase.IPOfferCreated(
             0, // Expected offer ID (starts at 0)
-            recipeKernel.getOfferHash(0, marketId, _creator, _expiry, _quantity, incentivesOffered, incentiveAmount),
-            marketId, // Market ID
+            recipeKernel.getOfferHash(0, marketHash, _creator, _expiry, _quantity, incentivesOffered, incentiveAmount),
+            marketHash, // Market ID
             _quantity, // Total quantity
             incentivesOffered, // Tokens offered
             incentiveAmountsOffered, // Amounts offered
@@ -181,7 +181,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.startPrank(_creator);
         // Create the IP offer
         bytes32 offerHash = recipeKernel.createIPOffer(
-            marketId, // Referencing the created market
+            marketHash, // Referencing the created market
             _quantity, // Total input token amount
             _expiry, // Expiry time
             incentivesOffered, // Incentive tokens offered
@@ -223,14 +223,14 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         _tokenCount = _tokenCount % 3 + 1; // Limit token count between 1 and 3
         _programCount = _programCount % 3 + 1; // Limit program count between 1 and 3
         uint256 totalCount = _tokenCount + _programCount; // Total offered assets
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         address[] memory incentivesOffered = new address[](totalCount);
         uint256[] memory incentiveAmountsOffered = new uint256[](totalCount);
 
         // Create random ERC20 tokens and populate incentivesOffered array
         for (uint256 i = 0; i < _tokenCount; i++) {
-            address tokenAddress = address(uint160(uint256(keccak256(abi.encodePacked(marketId, i)))));
+            address tokenAddress = address(uint160(uint256(keccak256(abi.encodePacked(marketHash, i)))));
 
             // Inject mock ERC20 bytecode into the token addresses
             string memory name = string(abi.encodePacked("Mock_", i));
@@ -266,7 +266,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
                 continue;
             }
 
-            incentiveAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketId, i)))) % 100_000e18 + 1e18;
+            incentiveAmountsOffered[i] = (uint256(keccak256(abi.encodePacked(marketHash, i)))) % 100_000e18 + 1e18;
 
             // Mint and approve tokens for the creator
             MockERC20(incentivesOffered[i]).mint(_creator, incentiveAmountsOffered[i]);
@@ -284,7 +284,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         uint256[] memory incentiveAmount = new uint256[](totalCount);
 
         for (uint256 i = 0; i < totalCount; i++) {
-            (,, uint256 frontendFee,,,) = recipeKernel.marketIDToWeirollMarket(marketId);
+            (,,, uint256 frontendFee,,,) = recipeKernel.marketHashToWeirollMarket(marketHash);
             incentiveAmount[i] = incentiveAmountsOffered[i].divWadDown(1e18 + recipeKernel.protocolFee() + frontendFee);
             protocolFeeAmount[i] = incentiveAmount[i].mulWadDown(recipeKernel.protocolFee());
             frontendFeeAmount[i] = incentiveAmount[i].mulWadDown(frontendFee);
@@ -293,8 +293,8 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.expectEmit(true, true, true, false, address(recipeKernel));
         emit RecipeKernelBase.IPOfferCreated(
             0, // Expected offer ID (starts at 0)
-            recipeKernel.getOfferHash(0, marketId, _creator, _expiry, _quantity, incentivesOffered, incentiveAmount),
-            marketId, // Market ID
+            recipeKernel.getOfferHash(0, marketHash, _creator, _expiry, _quantity, incentivesOffered, incentiveAmount),
+            marketHash, // Market ID
             _quantity, // Total quantity
             incentivesOffered, // Tokens offered
             incentiveAmountsOffered, // Amounts offered
@@ -319,7 +319,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.startPrank(_creator);
         // Create the IP offer
         bytes32 offerHash = recipeKernel.createIPOffer(
-            marketId, // Referencing the created market
+            marketHash, // Referencing the created market
             _quantity, // Total input token amount
             _expiry, // Expiry time
             incentivesOffered, // Incentive tokens offered
@@ -367,10 +367,10 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         }
     }
 
-    function testFuzz_RevertIf_CreateIPOfferWithNonExistentMarket(uint256 _marketId) external {
+    function testFuzz_RevertIf_CreateIPOfferWithNonExistentMarket(bytes32 _marketHash) external {
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.MarketDoesNotExist.selector));
         recipeKernel.createIPOffer(
-            _marketId, // Non-existent market ID
+            _marketHash, // Non-existent market ID
             100_000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             new address[](1), // Empty tokens offered array
@@ -381,11 +381,11 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
     function testFuzz_RevertIf_CreateIPOfferWithZeroQuantity(uint256 _quantity) external {
         _quantity = _quantity % 1e6;
 
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.CannotPlaceZeroQuantityOffer.selector));
         recipeKernel.createIPOffer(
-            marketId,
+            marketHash,
             _quantity, // Zero quantity
             block.timestamp + 1 days, // Expiry time
             new address[](1), // Empty tokens offered array
@@ -398,11 +398,11 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.assume(_expiry < _blockTimestamp);
         vm.warp(_blockTimestamp); // set block timestamp
 
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.CannotPlaceExpiredOffer.selector));
         recipeKernel.createIPOffer(
-            marketId,
+            marketHash,
             100_000e18, // Quantity
             _expiry, // Expired timestamp
             new address[](1), // Empty tokens offered array
@@ -413,7 +413,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
     function testFuzz_RevertIf_CreateIPOfferWithNonexistentToken(address _tokenAddress) external {
         vm.assume(_tokenAddress.code.length == 0);
         vm.assume(_tokenAddress != address(0));
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         address[] memory incentivesOffered = new address[](1);
         incentivesOffered[0] = _tokenAddress;
@@ -422,7 +422,7 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.TokenDoesNotExist.selector));
         recipeKernel.createIPOffer(
-            marketId,
+            marketHash,
             100_000e18, // Quantity
             1 days, // Expired timestamp
             incentivesOffered, // Empty tokens offered array
@@ -433,14 +433,14 @@ contract TestFuzz_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
     function testFuzz_RevertIf_CreateIPOfferWithMismatchedTokenArrays(uint8 _incentivesOfferedLen, uint8 _incentiveAmountsOfferedLen) external {
         vm.assume(_incentivesOfferedLen != _incentiveAmountsOfferedLen);
 
-        uint256 marketId = createMarket();
+        bytes32 marketHash = createMarket();
 
         address[] memory incentivesOffered = new address[](_incentivesOfferedLen);
         uint256[] memory incentiveAmountsOffered = new uint256[](_incentiveAmountsOfferedLen);
 
         vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.ArrayLengthMismatch.selector));
         recipeKernel.createIPOffer(
-            marketId,
+            marketHash,
             100_000e18, // Quantity
             block.timestamp + 1 days, // Expiry time
             incentivesOffered, // Mismatched arrays
