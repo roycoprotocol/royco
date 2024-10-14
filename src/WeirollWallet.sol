@@ -17,7 +17,7 @@ contract WeirollWallet is Clone, VM {
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
 
-    // Emit when owner executes a an arbitrary script (not a market script)
+    // Emit when owner executes an arbitrary script (not a market script)
     event WeirollWalletExecutedManually();
 
     error NotOwner();
@@ -75,7 +75,7 @@ contract WeirollWallet is Clone, VM {
         return _getArgAddress(0);
     }
 
-    /// @notice The address of the recipeMarketHub exchange contract
+    /// @notice The address of the RecipeMarketHub contract
     function recipeMarketHub() public pure returns (address) {
         return _getArgAddress(20);
     }
