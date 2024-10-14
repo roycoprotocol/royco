@@ -614,10 +614,9 @@ contract RecipeKernel is RecipeKernelBase {
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
 
-        // isForfeitable is literally set as rewardStyle == Upfront, so
-        // this is akin to checking the market is not upfront
+        // Check that the wallet is forfeitable
         if (!wallet.isForfeitable()) {
-            revert CantForfeitUpfrontMarket();
+            revert WalletNotForfeitable();
         }
 
         // Get locked reward params
