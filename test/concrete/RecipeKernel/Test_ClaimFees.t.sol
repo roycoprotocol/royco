@@ -19,13 +19,13 @@ contract Test_ClaimFees_RecipeKernel is RecipeKernelTestBase {
 
     function test_ClaimFeesAfterFillingIPOffer() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP offer
-        uint256 offerId = createIPOffer_WithTokens(marketId, offerAmount, ALICE_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, offerAmount, ALICE_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(BOB_ADDRESS, fillAmount);
@@ -35,11 +35,11 @@ contract Test_ClaimFees_RecipeKernel is RecipeKernelTestBase {
 
         // Calculate expected frontend and protocol fees
         (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, ) =
-            calculateIPOfferExpectedIncentiveAndFrontendFee(offerId, offerAmount, fillAmount, address(mockIncentiveToken));
+            calculateIPOfferExpectedIncentiveAndFrontendFee(offerHash, offerAmount, fillAmount, address(mockIncentiveToken));
 
         // Fill the offer and accumulate fees
         vm.startPrank(BOB_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), CHARLIE_ADDRESS);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), CHARLIE_ADDRESS);
         vm.stopPrank();
 
         // **Claim protocol fees by owner**

@@ -22,13 +22,13 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
 
     function test_Claim_TokenIncentives() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 offerAmount = 100000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP offer
-        uint256 offerId = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketHash, offerAmount, IP_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
@@ -40,10 +40,10 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(AP_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
@@ -67,7 +67,7 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
 
     function test_Claim_PointIncentives() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 offerAmount = 100000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
@@ -79,13 +79,13 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Create a fillable IP offer
-        (uint256 offerId, Points points) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
+        (bytes32 offerHash, Points points) = createIPOffer_WithPoints(marketHash, offerAmount, IP_ADDRESS);
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(AP_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - first event in logs)
@@ -94,7 +94,7 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
         (, uint256[] memory amounts,) = recipeKernel.getLockedIncentiveParams(weirollWallet);
 
         vm.expectEmit(true, true, false, true, address(points));
-        emit Points.Award(AP_ADDRESS, amounts[0]);
+        emit Points.Award(AP_ADDRESS, amounts[0], IP_ADDRESS);
 
         vm.warp(block.timestamp + 30 days); // make rewards claimable
         vm.startPrank(AP_ADDRESS);
@@ -110,7 +110,7 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
 
     function test_RevertIf_Claim_NonOwner() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 offerAmount = 100000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
@@ -122,13 +122,13 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Create a fillable IP offer
-        (uint256 offerId,) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
+        (bytes32 offerHash,) = createIPOffer_WithPoints(marketHash, offerAmount, IP_ADDRESS);
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(AP_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
@@ -142,7 +142,7 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
 
     function test_RevertIf_Claim_LockedIncentives() external {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
+        bytes32 marketHash = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Forfeitable);
 
         uint256 offerAmount = 100000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
@@ -154,13 +154,13 @@ contract Test_Claim_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Create a fillable IP offer
-        (uint256 offerId,) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
+        (bytes32 offerHash,) = createIPOffer_WithPoints(marketHash, offerAmount, IP_ADDRESS);
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(AP_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - first event in logs)

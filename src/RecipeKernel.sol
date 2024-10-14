@@ -47,7 +47,7 @@ contract RecipeKernel is RecipeKernelBase {
     /// @param depositRecipe The weiroll script that will be executed after the inputToken is transferred to the wallet
     /// @param withdrawRecipe The weiroll script that may be executed after lockupTime has passed to unwind a user's position
     /// @custom:field rewardStyle Whether the rewards are paid at the beginning, locked until the end, or forfeitable until the end
-    /// @return marketID ID of the newly created market
+    /// @return marketHash The hash of the newly created market
     function createMarket(
         address inputToken,
         uint256 lockupTime,
@@ -58,33 +58,42 @@ contract RecipeKernel is RecipeKernelBase {
     )
         external
         payable
-        returns (uint256)
+        returns (bytes32 marketHash)
     {
+        // Check that the input token is not the zero address
+        if (inputToken == address(0)) {
+            revert InvalidMarketInputToken();
+        }
+        // Check that the frontend fee is at least the global minimum
         if (frontendFee < minimumFrontendFee) {
             revert FrontendFeeTooLow();
-        } else if ((frontendFee + protocolFee) > 1e18) {
-            // Sum of fees is too high
+        }
+        // Check that the sum of fees isn't too high
+        if ((frontendFee + protocolFee) > 1e18) {
             revert TotalFeeTooHigh();
         }
 
-        marketIDToWeirollMarket[numMarkets] = WeirollMarket(ERC20(inputToken), lockupTime, frontendFee, depositRecipe, withdrawRecipe, rewardStyle);
+        WeirollMarket memory market = WeirollMarket(numMarkets, ERC20(inputToken), lockupTime, frontendFee, depositRecipe, withdrawRecipe, rewardStyle);
+        marketHash = getMarketHash(market);
+        marketHashToWeirollMarket[marketHash] = market;
 
-        emit MarketCreated(numMarkets, inputToken, lockupTime, frontendFee, rewardStyle);
-        return (numMarkets++);
+        emit MarketCreated(numMarkets, marketHash, inputToken, lockupTime, frontendFee, rewardStyle);
+
+        numMarkets++;
     }
 
     /// @notice Create a new AP offer. Offer params will be emitted in an event while only the hash of the offer and offer quantity is stored onchain
     /// @dev AP offers are funded via approvals to ensure multiple offers can be placed off of a single input
     /// @dev Setting an expiry of 0 means the offer never expires
-    /// @param targetMarketID The ID of the weiroll market which will be executed on fill
+    /// @param targetMarketHash The hash of the weiroll market to create the AP offer for
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from, if set to 0, the AP will deposit the base asset directly
     /// @param quantity The total amount of input tokens to be deposited
     /// @param expiry The timestamp after which the offer is considered expired
     /// @param incentivesRequested The addresses of the incentives requested by the AP to satisfy the offer
     /// @param incentiveAmountsRequested The amount of each incentive requested by the AP to satisfy the offer
-    /// @return offerID ID of the newly created offer
+    /// @return offerHash The hash of the AP offer created
     function createAPOffer(
-        uint256 targetMarketID,
+        bytes32 targetMarketHash,
         address fundingVault,
         uint256 quantity,
         uint256 expiry,
@@ -93,10 +102,13 @@ contract RecipeKernel is RecipeKernelBase {
     )
         external
         payable
-        returns (uint256 offerID)
+        returns (bytes32 offerHash)
     {
-        // Check market exists
-        if (targetMarketID >= numMarkets) {
+        // Retrieve the target market
+        WeirollMarket storage targetMarket = marketHashToWeirollMarket[targetMarketHash];
+
+        // Check that the market exists
+        if (address(targetMarket.inputToken) == address(0)) {
             revert MarketDoesNotExist();
         }
         // Check offer isn't expired (expiries of 0 live forever)
@@ -104,39 +116,50 @@ contract RecipeKernel is RecipeKernelBase {
             revert CannotPlaceExpiredOffer();
         }
         // Check offer isn't empty
-        if (quantity < 1e6) {
+        if (quantity < MINIMUM_QUANTITY) {
             revert CannotPlaceZeroQuantityOffer();
         }
         // Check incentive and amounts arrays are the same length
         if (incentivesRequested.length != incentiveAmountsRequested.length) {
             revert ArrayLengthMismatch();
         }
+        address lastIncentive;
+        for (uint256 i; i < incentivesRequested.length; i++) {
+            address incentive = incentivesRequested[i];
+            if (uint256(bytes32(bytes20(incentive))) <= uint256(bytes32(bytes20(lastIncentive)))) {
+                revert OfferCannotContainDuplicates();
+            }
+            lastIncentive = incentive;
+        }
 
         // NOTE: The cool use of short-circuit means this call can't revert if fundingVault doesn't support asset()
-        if (fundingVault != address(0) && marketIDToWeirollMarket[targetMarketID].inputToken != ERC4626(fundingVault).asset()) {
+        if (fundingVault != address(0) && targetMarket.inputToken != ERC4626(fundingVault).asset()) {
             revert MismatchedBaseAsset();
         }
 
         // Map the offer hash to the offer quantity
-        APOffer memory offer = APOffer(numAPOffers, targetMarketID, msg.sender, fundingVault, quantity, expiry, incentivesRequested, incentiveAmountsRequested);
-        offerHashToRemainingQuantity[getOfferHash(offer)] = quantity;
+        APOffer memory offer =
+            APOffer(numAPOffers, targetMarketHash, msg.sender, fundingVault, quantity, expiry, incentivesRequested, incentiveAmountsRequested);
+        offerHash = getOfferHash(offer);
+        offerHashToRemainingQuantity[offerHash] = quantity;
 
         /// @dev APOffer events are stored in events and do not exist onchain outside of the offerHashToRemainingQuantity mapping
-        emit APOfferCreated(numAPOffers, targetMarketID, fundingVault, quantity, incentivesRequested, incentiveAmountsRequested, expiry);
+        emit APOfferCreated(numAPOffers, targetMarketHash, fundingVault, quantity, incentivesRequested, incentiveAmountsRequested, expiry);
 
-        return (numAPOffers++);
+        // Increment the number of AP offers created
+        numAPOffers++;
     }
 
     /// @notice Create a new IP offer, transferring the IP's incentives to the RecipeKernel and putting all the offer params in contract storage
     /// @dev IP must approve all incentives to be spent by the RecipeKernel before calling this function
-    /// @param targetMarketID The ID of the weiroll market which will be executed on fill
+    /// @param targetMarketHash The hash of the weiroll market to create the IP offer for
     /// @param quantity The total amount of input tokens to be deposited
     /// @param expiry The timestamp after which the offer is considered expired
     /// @param incentivesOffered The addresses of the incentives offered by the IP
     /// @param incentiveAmountsPaid The amount of each incentives paid by the IP (including fees)
-    /// @return marketID ID of the newly created market
+    /// @return offerHash The hash of the IP offer created
     function createIPOffer(
-        uint256 targetMarketID,
+        bytes32 targetMarketHash,
         uint256 quantity,
         uint256 expiry,
         address[] calldata incentivesOffered,
@@ -145,10 +168,13 @@ contract RecipeKernel is RecipeKernelBase {
         external
         payable
         nonReentrant
-        returns (uint256 marketID)
+        returns (bytes32 offerHash)
     {
-        // Check that the target market exists
-        if (targetMarketID >= numMarkets) {
+        // Retrieve the target market
+        WeirollMarket storage targetMarket = marketHashToWeirollMarket[targetMarketHash];
+
+        // Check that the market exists
+        if (address(targetMarket.inputToken) == address(0)) {
             revert MarketDoesNotExist();
         }
         // Check that the offer isn't expired
@@ -160,33 +186,34 @@ contract RecipeKernel is RecipeKernelBase {
         if (incentivesOffered.length != incentiveAmountsPaid.length) {
             revert ArrayLengthMismatch();
         }
+
         // Check offer isn't empty
-        if (quantity < 1e6) {
+        if (quantity < MINIMUM_QUANTITY) {
             revert CannotPlaceZeroQuantityOffer();
         }
 
-        // Create the offer
-        IPOffer storage offer = offerIDToIPOffer[numIPOffers];
-        offer.targetMarketID = targetMarketID;
-        offer.ip = msg.sender;
-        offer.quantity = quantity;
-        offer.remainingQuantity = quantity;
-        offer.expiry = expiry;
-        offer.incentivesOffered = incentivesOffered;
-
-        // To keep track of incentive amounts and fees (per incentive) for event emission
-        uint256[] memory incentivesAmountsToBePaid = new uint256[](incentivesOffered.length);
+        // To keep track of incentives allocated to the AP and fees (per incentive)
+        uint256[] memory incentiveAmountsOffered = new uint256[](incentivesOffered.length);
         uint256[] memory protocolFeesToBePaid = new uint256[](incentivesOffered.length);
         uint256[] memory frontendFeesToBePaid = new uint256[](incentivesOffered.length);
 
         // Transfer the IP's incentives to the RecipeKernel and set aside fees
+        address lastIncentive;
         for (uint256 i = 0; i < incentivesOffered.length; ++i) {
-            // Get the incentive offered and amount
+            // Get the incentive offered
             address incentive = incentivesOffered[i];
+
+            // Check that the sorted incentive array has no duplicates
+            if (uint256(bytes32(bytes20(incentive))) <= uint256(bytes32(bytes20(lastIncentive)))) {
+                revert OfferCannotContainDuplicates();
+            }
+            lastIncentive = incentive;
+
+            // Total amount IP is paying in this incentive including fees
             uint256 amount = incentiveAmountsPaid[i];
 
             // Get the frontend fee for the target weiroll market
-            uint256 frontendFee = marketIDToWeirollMarket[targetMarketID].frontendFee;
+            uint256 frontendFee = targetMarket.frontendFee;
 
             // Calculate incentive and fee breakdown
             uint256 incentiveAmount = amount.divWadDown(1e18 + protocolFee + frontendFee);
@@ -195,13 +222,8 @@ contract RecipeKernel is RecipeKernelBase {
 
             // Use a scoping block to avoid stack to deep errors
             {
-                // Set appropriate amounts in offer mappings
-                offer.incentiveAmountsOffered[incentive] += incentiveAmount;
-                offer.incentiveToProtocolFeeAmount[incentive] += protocolFeeAmount;
-                offer.incentiveToFrontendFeeAmount[incentive] += frontendFeeAmount;
-
-                // Track incentive amounts and fees (per incentive) for event emission
-                incentivesAmountsToBePaid[i] = incentiveAmount;
+                // Track incentive amounts and fees (per incentive)
+                incentiveAmountsOffered[i] = incentiveAmount;
                 protocolFeesToBePaid[i] = protocolFeeAmount;
                 frontendFeesToBePaid[i] = frontendFeeAmount;
             }
@@ -216,17 +238,42 @@ contract RecipeKernel is RecipeKernelBase {
                     revert InvalidPointsProgram();
                 }
             } else {
-                // SafeTransferFrom does not check if a incentive address has any code, so we need to check it manually to prevent incentive deployment frontrunning
+                // SafeTransferFrom does not check if a incentive address has any code, so we need to check it manually to prevent incentive deployment
+                // frontrunning
                 if (incentive.code.length == 0) revert TokenDoesNotExist();
                 // Transfer frontend fee + protocol fee + incentiveAmount of the incentive to RecipeKernel
                 ERC20(incentive).safeTransferFrom(msg.sender, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
             }
         }
 
-        // Emit IP offer creation event
-        emit IPOfferCreated(numIPOffers, targetMarketID, quantity, incentivesOffered, incentivesAmountsToBePaid, protocolFeesToBePaid, frontendFeesToBePaid, expiry);
+        // Set the offer hash
+        offerHash = getOfferHash(numIPOffers, targetMarketHash, msg.sender, expiry, quantity, incentivesOffered, incentiveAmountsOffered);
+        // Create and store the offer
+        IPOffer storage offer = offerHashToIPOffer[offerHash];
+        offer.offerID = numIPOffers;
+        offer.targetMarketHash = targetMarketHash;
+        offer.ip = msg.sender;
+        offer.quantity = quantity;
+        offer.remainingQuantity = quantity;
+        offer.expiry = expiry;
+        offer.incentivesOffered = incentivesOffered;
 
-        return (numIPOffers++);
+        // Set incentives and fees in the offer mapping
+        for (uint256 i = 0; i < incentivesOffered.length; ++i) {
+            address incentive = incentivesOffered[i];
+
+            offer.incentiveAmountsOffered[incentive] = incentiveAmountsOffered[i];
+            offer.incentiveToProtocolFeeAmount[incentive] = protocolFeesToBePaid[i];
+            offer.incentiveToFrontendFeeAmount[incentive] = frontendFeesToBePaid[i];
+        }
+
+        // Emit IP offer creation event
+        emit IPOfferCreated(
+            numIPOffers, offerHash, targetMarketHash, quantity, incentivesOffered, incentiveAmountsOffered, protocolFeesToBePaid, frontendFeesToBePaid, expiry
+        );
+
+        // Increment the number of IP offers created
+        numIPOffers++;
     }
 
     /// @param incentiveToken The incentive token to claim fees for
@@ -239,12 +286,12 @@ contract RecipeKernel is RecipeKernelBase {
     }
 
     /// @notice Filling multiple IP offers
-    /// @param offerIDs The IDs of the IP offers to fill
+    /// @param ipOfferHashes The hashes of the IP offers to fill
     /// @param fillAmounts The amounts of input tokens to fill the corresponding offers with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
     /// @param frontendFeeRecipient The address that will receive the frontend fee
     function fillIPOffers(
-        uint256[] calldata offerIDs,
+        bytes32[] calldata ipOfferHashes,
         uint256[] calldata fillAmounts,
         address fundingVault,
         address frontendFeeRecipient
@@ -254,25 +301,25 @@ contract RecipeKernel is RecipeKernelBase {
         nonReentrant
         offersNotPaused
     {
-        if (offerIDs.length != fillAmounts.length) {
+        if (ipOfferHashes.length != fillAmounts.length) {
             revert ArrayLengthMismatch();
         }
 
-        for (uint256 i = 0; i < offerIDs.length; ++i) {
-            _fillIPOffer(offerIDs[i], fillAmounts[i], fundingVault, frontendFeeRecipient);
+        for (uint256 i = 0; i < ipOfferHashes.length; ++i) {
+            _fillIPOffer(ipOfferHashes[i], fillAmounts[i], fundingVault, frontendFeeRecipient);
         }
     }
 
     /// @notice Fill an IP offer, transferring the IP's incentives to the AP, withdrawing the AP from their funding vault into a fresh weiroll wallet, and
     /// executing the weiroll recipe
-    /// @param offerID The ID of the IP offer to fill
+    /// @param offerHash The hash of the IP offer to fill
     /// @param fillAmount The amount of input tokens to fill the offer with
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from (vault not used if set to address(0))
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function _fillIPOffer(uint256 offerID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) internal {
+    function _fillIPOffer(bytes32 offerHash, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) internal {
         // Retreive the IPOffer and WeirollMarket structs
-        IPOffer storage offer = offerIDToIPOffer[offerID];
-        WeirollMarket storage market = marketIDToWeirollMarket[offer.targetMarketID];
+        IPOffer storage offer = offerHashToIPOffer[offerHash];
+        WeirollMarket storage market = marketHashToWeirollMarket[offer.targetMarketHash];
 
         // Check that the offer isn't expired
         if (offer.expiry != 0 && block.timestamp > offer.expiry) {
@@ -306,7 +353,9 @@ contract RecipeKernel is RecipeKernelBase {
             // Create weiroll wallet to lock assets for recipe execution(s)
             wallet = WeirollWallet(
                 payable(
-                    WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable, offer.targetMarketID))
+                    WEIROLL_WALLET_IMPLEMENTATION.clone(
+                        abi.encodePacked(msg.sender, address(this), fillAmount, unlockTime, forfeitable, offer.targetMarketHash)
+                    )
                 )
             );
         }
@@ -349,7 +398,7 @@ contract RecipeKernel is RecipeKernelBase {
             params.ip = offer.ip;
             params.frontendFeeRecipient = frontendFeeRecipient;
             params.wasIPOffer = true;
-            params.offerID = offerID;
+            params.offerHash = offerHash;
         }
 
         // Fund the weiroll wallet with the specified amount of the market's input token
@@ -359,14 +408,23 @@ contract RecipeKernel is RecipeKernelBase {
         // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
 
-        emit IPOfferFilled(offerID, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
+        emit IPOfferFilled(offerHash, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
     }
 
     /// @dev Fill multiple AP offers
     /// @param offers The AP offers to fill
     /// @param fillAmounts The amount of input tokens to fill the corresponding offer with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
-    function fillAPOffers(APOffer[] calldata offers, uint256[] calldata fillAmounts, address frontendFeeRecipient) external payable nonReentrant offersNotPaused {
+    function fillAPOffers(
+        APOffer[] calldata offers,
+        uint256[] calldata fillAmounts,
+        address frontendFeeRecipient
+    )
+        external
+        payable
+        nonReentrant
+        offersNotPaused
+    {
         if (offers.length != fillAmounts.length) {
             revert ArrayLengthMismatch();
         }
@@ -387,15 +445,13 @@ contract RecipeKernel is RecipeKernelBase {
         }
 
         bytes32 offerHash = getOfferHash(offer);
-        {
-            // use a scoping block so solc knows `remaining` doesn't need to be kept around
-            uint256 remaining = offerHashToRemainingQuantity[offerHash];
-            if (fillAmount > remaining) {
-                if (fillAmount != type(uint256).max) {
-                    revert NotEnoughRemainingQuantity();
-                }
-                fillAmount = remaining;
+
+        uint256 remaining = offerHashToRemainingQuantity[offerHash];
+        if (fillAmount > remaining) {
+            if (fillAmount != type(uint256).max) {
+                revert NotEnoughRemainingQuantity();
             }
+            fillAmount = remaining;
         }
 
         if (fillAmount == 0) {
@@ -408,10 +464,10 @@ contract RecipeKernel is RecipeKernelBase {
         // Calculate percentage of AP oder that IP is filling (IP gets this percantage of the offer quantity in a Weiroll wallet specified by the market)
         uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
 
-        if (fillPercentage < MIN_FILL_PERCENT) revert InsufficientFillPercent();
+        if (fillPercentage < MIN_FILL_PERCENT && fillAmount != remaining) revert InsufficientFillPercent();
 
         // Get Weiroll market
-        WeirollMarket storage market = marketIDToWeirollMarket[offer.targetMarketID];
+        WeirollMarket storage market = marketHashToWeirollMarket[offer.targetMarketHash];
 
         WeirollWallet wallet;
         {
@@ -420,7 +476,7 @@ contract RecipeKernel is RecipeKernelBase {
             bool forfeitable = market.rewardStyle == RewardStyle.Forfeitable;
             wallet = WeirollWallet(
                 payable(
-                    WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(offer.ap, address(this), fillAmount, unlockTime, forfeitable, offer.targetMarketID))
+                    WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(offer.ap, address(this), fillAmount, unlockTime, forfeitable, offer.targetMarketHash))
                 )
             );
         }
@@ -491,15 +547,15 @@ contract RecipeKernel is RecipeKernelBase {
             revert NotEnoughRemainingQuantity();
         }
 
-        // Zero out the remaining quantity
+        // Set remaining quantity to 0 - effectively cancelling the offer
         delete offerHashToRemainingQuantity[offerHash];
 
         emit APOfferCancelled(offer.offerID);
     }
 
     /// @notice Cancel an IP offer, setting the remaining quantity available to fill to 0 and returning the IP's incentives
-    function cancelIPOffer(uint256 offerID) external payable nonReentrant {
-        IPOffer storage offer = offerIDToIPOffer[offerID];
+    function cancelIPOffer(bytes32 offerHash) external payable nonReentrant {
+        IPOffer storage offer = offerHashToIPOffer[offerHash];
 
         // Check that the cancelling party is the offer's owner
         if (offer.ip != msg.sender) revert NotOwner();
@@ -507,7 +563,7 @@ contract RecipeKernel is RecipeKernelBase {
         // Check that the offer isn't already filled, hasn't been cancelled already, or never existed
         if (offer.remainingQuantity == 0) revert NotEnoughRemainingQuantity();
 
-        RewardStyle marketRewardStyle = marketIDToWeirollMarket[offer.targetMarketID].rewardStyle;
+        RewardStyle marketRewardStyle = marketHashToWeirollMarket[offer.targetMarketHash].rewardStyle;
         // Check the percentage of the offer not filled to calculate incentives to return
         uint256 percentNotFilled = offer.remainingQuantity.divWadDown(offer.quantity);
 
@@ -542,21 +598,29 @@ contract RecipeKernel is RecipeKernelBase {
             // Need quantity to take the fees on forfeit and claim - don't delete
             // Need expiry to check offer expiry status on forfeit - don't delete
             // Delete the rest of the fields to indicate the offer was cancelled on forfeit
-            delete offerIDToIPOffer[offerID].targetMarketID;
-            delete offerIDToIPOffer[offerID].ip;
-            delete offerIDToIPOffer[offerID].remainingQuantity;
+            delete offerHashToIPOffer[offerHash].targetMarketHash;
+            delete offerHashToIPOffer[offerHash].ip;
+            delete offerHashToIPOffer[offerHash].remainingQuantity;
         } else {
             // Delete cancelled offer completely from mapping if the market's RewardStyle is Upfront
-            delete offerIDToIPOffer[offerID];
+            delete offerHashToIPOffer[offerHash];
         }
 
-        emit IPOfferCancelled(offerID);
+        emit IPOfferCancelled(offerHash);
     }
 
     /// @notice For wallets of Forfeitable markets, an AP can call this function to forgo their rewards and unlock their wallet
     function forfeit(address weirollWallet, bool executeWithdrawal) external payable isWeirollOwner(weirollWallet) nonReentrant {
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
+
+        // Check that the wallet is forfeitable
+        if (!wallet.isForfeitable()) {
+            revert WalletNotForfeitable();
+        }
+
+        // Get locked reward params
+        LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
 
         // Forfeit wallet
         wallet.forfeit();
@@ -567,14 +631,11 @@ contract RecipeKernel is RecipeKernelBase {
             _executeWithdrawalScript(weirollWallet);
         }
 
-        // Get locked reward params
-        LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
-
         // Check if IP offer
         // If not, the forfeited amount won't be replenished to the offer
         if (params.wasIPOffer) {
             // Retrieve IP offer if it was one
-            IPOffer storage offer = offerIDToIPOffer[params.offerID];
+            IPOffer storage offer = offerHashToIPOffer[params.offerHash];
 
             // Get amount filled by AP
             uint256 filledAmount = wallet.amount();
@@ -611,7 +672,7 @@ contract RecipeKernel is RecipeKernelBase {
                     // delete offer.incentiveToFrontendFeeAmount[incentive];
                 }
                 // Can't delete since there might be more forfeitable wallets still locked
-                // delete offerIDToIPOffer[params.offerID];
+                // delete offerHashToIPOffer[params.offerHash];
             } else {
                 // If not cancelled, add the filledAmount back to remaining quantity
                 // Correct incentive amounts are still in this contract
@@ -626,7 +687,7 @@ contract RecipeKernel is RecipeKernelBase {
         } else {
             // Get the protocol fee at fill and market frontend fee
             uint256 protocolFeeAtFill = params.protocolFeeAtFill;
-            uint256 marketFrontendFee = marketIDToWeirollMarket[wallet.marketId()].frontendFee;
+            uint256 marketFrontendFee = marketHashToWeirollMarket[wallet.marketHash()].frontendFee;
             // Get the ip from locked reward params
             address ip = params.ip;
 
@@ -670,8 +731,14 @@ contract RecipeKernel is RecipeKernelBase {
         // Get locked reward details to facilitate claim
         LockedRewardParams storage params = weirollWalletToLockedIncentivesParams[weirollWallet];
 
+        if (params.incentives.length == 0) {
+            return;
+        }
+
         // Instantiate a weiroll wallet for the specified address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
+
+        if (marketHashToWeirollMarket[wallet.marketHash()].rewardStyle == RewardStyle.Upfront) revert AlreadyRewarded();
 
         // Get the frontend fee recipient and ip from locked reward params
         address frontendFeeRecipient = params.frontendFeeRecipient;
@@ -679,7 +746,7 @@ contract RecipeKernel is RecipeKernelBase {
 
         if (params.wasIPOffer) {
             // If it was an ipoffer, get the offer so we can retrieve the fee amounts and fill quantity
-            IPOffer storage offer = offerIDToIPOffer[params.offerID];
+            IPOffer storage offer = offerHashToIPOffer[params.offerHash];
 
             uint256 fillAmount = wallet.amount();
             uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
@@ -711,7 +778,7 @@ contract RecipeKernel is RecipeKernelBase {
         } else {
             // Get the protocol fee at fill and market frontend fee
             uint256 protocolFeeAtFill = params.protocolFeeAtFill;
-            uint256 marketFrontendFee = marketIDToWeirollMarket[wallet.marketId()].frontendFee;
+            uint256 marketFrontendFee = marketHashToWeirollMarket[wallet.marketHash()].frontendFee;
 
             for (uint256 i = 0; i < params.incentives.length; ++i) {
                 address incentive = params.incentives[i];
@@ -771,7 +838,7 @@ contract RecipeKernel is RecipeKernelBase {
 
         if (params.wasIPOffer) {
             // If it was an ipoffer, get the offer so we can retrieve the fee amounts and fill quantity
-            IPOffer storage offer = offerIDToIPOffer[params.offerID];
+            IPOffer storage offer = offerHashToIPOffer[params.offerHash];
 
             // Calculate percentage of offer quantity this offer filled
             uint256 fillAmount = wallet.amount();
@@ -807,7 +874,7 @@ contract RecipeKernel is RecipeKernelBase {
             }
         } else {
             // Get the market frontend fee
-            uint256 marketFrontendFee = marketIDToWeirollMarket[wallet.marketId()].frontendFee;
+            uint256 marketFrontendFee = marketHashToWeirollMarket[wallet.marketHash()].frontendFee;
 
             for (uint256 i = 0; i < params.incentives.length; ++i) {
                 address incentive = params.incentives[i];
@@ -948,7 +1015,8 @@ contract RecipeKernel is RecipeKernelBase {
                 // Award points on fill
                 Points(incentive).award(ap, incentiveAmount, msg.sender);
             } else {
-                // SafeTransferFrom does not check if a incentive address has any code, so we need to check it manually to prevent incentive deployment frontrunning
+                // SafeTransferFrom does not check if a incentive address has any code, so we need to check it manually to prevent incentive deployment
+                // frontrunning
                 if (incentive.code.length == 0) {
                     revert TokenDoesNotExist();
                 }
@@ -969,7 +1037,8 @@ contract RecipeKernel is RecipeKernelBase {
                     revert InvalidPointsProgram();
                 }
             } else {
-                // SafeTransferFrom does not check if a incentive address has any code, so we need to check it manually to prevent incentive deployment frontrunning
+                // SafeTransferFrom does not check if a incentive address has any code, so we need to check it manually to prevent incentive deployment
+                // frontrunning
                 if (incentive.code.length == 0) {
                     revert TokenDoesNotExist();
                 }
@@ -984,11 +1053,8 @@ contract RecipeKernel is RecipeKernelBase {
         // Instantiate the WeirollWallet from the wallet address
         WeirollWallet wallet = WeirollWallet(payable(weirollWallet));
 
-        // Get the marketID associated with the weiroll wallet
-        uint256 weirollMarketId = wallet.marketId();
-
         // Get the market in offer to get the withdrawal recipe
-        WeirollMarket storage market = marketIDToWeirollMarket[weirollMarketId];
+        WeirollMarket storage market = marketHashToWeirollMarket[wallet.marketHash()];
 
         // Execute the withdrawal recipe
         wallet.executeWeiroll(market.withdrawRecipe.weirollCommands, market.withdrawRecipe.weirollState);

@@ -39,7 +39,10 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
     
     /// @notice whether offer fills are paused
-    bool offersPaused;
+    bool public offersPaused;
+    
+    /// @dev The minimum quantity of tokens for an offer
+    uint256 internal constant MINIMUM_QUANTITY = 1e6;
 
     /// @notice maps offer hashes to the remaining quantity of the offer
     mapping(bytes32 => uint256) public offerHashToRemainingQuantity;
@@ -79,8 +82,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
     error CannotPlaceExpiredOffer();
     /// @notice emitted when trying to allocate an AP, but the AP's requested incentives are not met
     error OfferConditionsNotMet();
-    /// @notice emitted when trying to create an offer with a quantity of 0
-    error CannotPlaceZeroQuantityOffer();
+    /// @notice emitted when trying to create an offer with a quantity below the minimum
+    error CannotPlaceBelowMinQuantityOffer();
     /// @notice emitted when the AP does not have sufficient assets in the funding vault, or in their wallet to place an AP offer
     error NotEnoughBaseAssetToOffer();
     /// @notice emitted when the AP does not have sufficient assets in the funding vault, or in their wallet to allocate an offer
@@ -105,7 +108,7 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
         offersPaused = _offersPaused;
     }
 
-    constructor() Ownable(msg.sender) { }
+    constructor(address _owner) Ownable(_owner) { }
 
     /// @dev Setting an expiry of 0 means the offer never expires
     /// @param targetVault The address of the vault where the liquidity will be deposited
@@ -130,8 +133,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
             revert CannotPlaceExpiredOffer();
         }
         // Check offer isn't empty
-        if (quantity == 0) {
-            revert CannotPlaceZeroQuantityOffer();
+        if (quantity < MINIMUM_QUANTITY) {
+            revert CannotPlaceBelowMinQuantityOffer();
         }
         // Check incentive and price arrays are the same length
         if (incentivesRequested.length != incentivesRatesRequested.length) {
@@ -191,7 +194,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
         }
 
         //Check that the AP has enough base asset in the funding vault for the offer
-        if (offer.fundingVault == address(0) && ERC20(ERC4626(offer.targetVault).asset()).balanceOf(offer.ap) < fillAmount) {
+        ERC20 targetAsset = ERC20(ERC4626(offer.targetVault).asset());
+        if (offer.fundingVault == address(0) && targetAsset.balanceOf(offer.ap) < fillAmount) {
             revert NotEnoughBaseAssetToAllocate();
         } else if (offer.fundingVault != address(0) && ERC4626(offer.fundingVault).maxWithdraw(offer.ap) < fillAmount) {
             revert NotEnoughBaseAssetToAllocate();
@@ -203,16 +207,16 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
         // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (offer.fundingVault == address(0)) {
             // Transfer the base asset from the AP to the VaultKernel
-            ERC4626(offer.targetVault).asset().safeTransferFrom(offer.ap, address(this), fillAmount);
+            targetAsset.safeTransferFrom(offer.ap, address(this), fillAmount);
         } else {
             // Get pre-withdraw token balance of VaultKernel
-            uint256 preWithdrawTokenBalance = ERC4626(offer.targetVault).asset().balanceOf(address(this));
-
+            uint256 preWithdrawTokenBalance = targetAsset.balanceOf(address(this));
+            
             // Withdraw from the funding vault to the VaultKernel
             ERC4626(offer.fundingVault).withdraw(fillAmount, address(this), offer.ap);
 
             // Get post-withdraw token balance of VaultKernel
-            uint256 postWithdrawTokenBalance = ERC4626(offer.targetVault).asset().balanceOf(address(this));
+            uint256 postWithdrawTokenBalance = targetAsset.balanceOf(address(this));
 
             // Check that quantity withdrawn from the funding vault is at least the quantity to allocate
             if ((postWithdrawTokenBalance - preWithdrawTokenBalance) < fillAmount) {
@@ -221,8 +225,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
         }
 
         for (uint256 i; i < offer.incentivesRatesRequested.length; ++i) {
-            (uint32 start, uint32 end, ) = WrappedVault(offer.targetVault).rewardToInterval(offer.incentivesRequested[i]);
-            if (end - start < MIN_CAMPAIGN_DURATION) {
+            (, uint32 end, ) = WrappedVault(offer.targetVault).rewardToInterval(offer.incentivesRequested[i]);
+            if (end < MIN_CAMPAIGN_DURATION + block.timestamp) {
                 revert OfferConditionsNotMet();
             }
             if (offer.incentivesRatesRequested[i] > WrappedVault(offer.targetVault).previewRateAfterDeposit(offer.incentivesRequested[i], fillAmount)) {
@@ -230,8 +234,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
             }
         }
 
-        ERC4626(offer.targetVault).asset().safeApprove(offer.targetVault, 0);
-        ERC4626(offer.targetVault).asset().safeApprove(offer.targetVault, fillAmount);
+        targetAsset.safeApprove(offer.targetVault, 0);
+        targetAsset.safeApprove(offer.targetVault, fillAmount);
 
         // Deposit into the target vault
         ERC4626(offer.targetVault).deposit(fillAmount, offer.ap);

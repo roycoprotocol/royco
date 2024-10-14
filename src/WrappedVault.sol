@@ -34,6 +34,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     event FrontendFeeUpdated(uint256 frontendFee);
 
     error MaxRewardsReached();
+    error TooFewShares();
     error VaultNotAuthorizedToRewardPoints();
     error InvalidInterval();
     error IntervalInProgress();
@@ -85,7 +86,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     /// @dev The address of the underlying vault being incentivized
     IWrappedVault public immutable VAULT;
     /// @dev The underlying asset being deposited into the vault
-    ERC20 public immutable DEPOSIT_ASSET;
+    ERC20 internal immutable DEPOSIT_ASSET;
     /// @dev The address of the canonical points program factory
     PointsFactory public immutable POINTS_FACTORY;
     /// @dev The address of the canonical WrappedVault factory
@@ -146,6 +147,10 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     function addRewardsToken(address rewardsToken) payable public onlyOwner {
         // Check if max rewards offered limit has been reached
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
+
+        if (rewardsToken == address(VAULT)) revert InvalidReward();
+
+        if (rewardsToken == address(this)) revert InvalidReward();
 
         // Check if reward has already been added to the incentivized vault
         if (isReward[rewardsToken]) revert DuplicateRewardToken();
@@ -234,20 +239,20 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
         // Calculate the new rate
         uint256 rewardsAfterFee = rewardsAdded - frontendFeeTaken - protocolFeeTaken;
 
-        uint256 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp : uint256(rewardsInterval.start);
+        uint32 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp.toUint32() : rewardsInterval.start;
 
         if ((newEnd - newStart) < MIN_CAMPAIGN_EXTENSION) revert InvalidIntervalDuration();
 
-        uint256 remainingRewards = rewardsInterval.end < newStart ? 0 : rewardsInterval.rate * (rewardsInterval.end - newStart.toUint32());
+        uint256 remainingRewards = rewardsInterval.rate * (rewardsInterval.end - newStart);
         uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - newStart);
 
         if (rate < rewardsInterval.rate) revert RateCannotDecrease();
 
-        rewardsInterval.start = newStart.toUint32();
+        rewardsInterval.start = newStart;
         rewardsInterval.end = newEnd.toUint32();
         rewardsInterval.rate = rate.toUint96();
 
-        emit RewardsSet(reward, block.timestamp.toUint32(), newEnd.toUint32(), rate, (rewardsAfterFee + remainingRewards), protocolFeeTaken, frontendFeeTaken);
+        emit RewardsSet(reward, newStart, newEnd.toUint32(), rate, (rewardsAfterFee + remainingRewards), protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, rewardsAdded);
     }
@@ -343,12 +348,10 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
         rewardsPerTokenOut.lastUpdated = updateTime.toUint32();
 
         // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
-        uint256 totalSupply_ = totalSupply;
-        if (totalSupply_ == 0) return rewardsPerTokenOut;
 
         uint256 elapsedWAD = elapsed * 1e18;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply_))); // The
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply))); // The
             // rewards per token are scaled up for precision
 
         return rewardsPerTokenOut;
@@ -437,6 +440,15 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
         return super.transferFrom(from, to, amount);
     }
 
+    /// @notice Allows the owner to claim the rewards from the burned shares
+    /// @param to The address to send all rewards owed to the owner to
+    function ownerClaim(address to) payable public onlyOwner {
+        for (uint256 i = 0; i < rewards.length; i++) {
+            address reward = rewards[i];
+            _claim(reward, address(0), to, currentUserRewards(reward, address(0)));
+        }
+    }
+
     /// @notice Claim all rewards for the caller
     /// @param to The address to send the rewards to
     function claim(address to) payable public {
@@ -470,10 +482,10 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     /// @return The rate of rewards, measured in wei of rewards token per wei of assets per second, scaled up by 1e18 to avoid precision loss
     function previewRateAfterDeposit(address reward, uint256 assets) public view returns (uint256) {
         RewardsInterval memory rewardsInterval = rewardToInterval[reward];
-        if (rewardsInterval.start < block.timestamp || block.timestamp > rewardsInterval.end) return 0;
+        if (rewardsInterval.start < block.timestamp || block.timestamp >= rewardsInterval.end) return 0;
         uint256 shares = VAULT.previewDeposit(assets);
 
-        return (rewardsInterval.rate * shares / (totalSupply + shares)) * 1e18 / assets;
+        return (uint256(rewardsInterval.rate) * shares / (totalSupply + shares)) * 1e18 / assets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -488,6 +500,21 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     /// @inheritdoc IWrappedVault
     function totalAssets() public view returns (uint256) {
         return VAULT.convertToAssets(ERC20(address(VAULT)).balanceOf(address(this)));
+    }
+
+    /// @notice safeDeposit allows a user to specify a minimum amount of shares out to avoid any 
+    /// slippage in the deposit
+    /// @param assets The amount of assets to deposit
+    /// @param receiver The address to mint the shares to
+    /// @param minShares The minimum amount of shares to mint
+    function safeDeposit(uint256 assets, address receiver, uint256 minShares) public returns (uint256 shares) {
+        DEPOSIT_ASSET.safeTransferFrom(msg.sender, address(this), assets);
+
+        shares = VAULT.deposit(assets, address(this));
+        if (shares < minShares) revert TooFewShares();
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @inheritdoc IWrappedVault
@@ -519,12 +546,12 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
             if (expectedShares > allowed) revert NotOwnerOfVaultOrApproved();
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - expectedShares;
         }
+        
+        _burn(owner, expectedShares);
 
         shares = VAULT.withdraw(assets, receiver, address(this));
 
         if (shares != expectedShares) revert InvalidWithdrawal();
-
-        _burn(owner, shares);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
@@ -537,11 +564,10 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
             if (shares > allowed) revert NotOwnerOfVaultOrApproved();
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
+        
+        _burn(owner, shares);
 
         assets = VAULT.redeem(shares, receiver, address(this));
-
-        _burn(owner, shares);
-        DEPOSIT_ASSET.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
