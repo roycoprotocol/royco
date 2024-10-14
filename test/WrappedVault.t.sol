@@ -11,7 +11,7 @@ import { WrappedVault } from "src/WrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
-import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
 
 import { PointsFactory } from "src/PointsFactory.sol";
 
@@ -117,7 +117,7 @@ contract WrappedVaultTest is Test {
 
     function testAddRewardTokenUnauthorized(address unauthorized) public {
         vm.assume(unauthorized != address(this));
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(unauthorized)));
+        vm.expectRevert("UNAUTHORIZED");
         vm.prank(unauthorized);
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
     }
@@ -255,7 +255,7 @@ contract WrappedVaultTest is Test {
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, end, totalRewards, DEFAULT_FEE_RECIPIENT);
         
         vm.startPrank(REGULAR_USER);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(REGULAR_USER)));
+        vm.expectRevert("UNAUTHORIZED");
         testIncentivizedVault.refundRewardsInterval(address(rewardToken1));
         vm.stopPrank();
 

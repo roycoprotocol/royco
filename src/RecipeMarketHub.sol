@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { RecipeKernelBase, RewardStyle, WeirollWallet } from "src/base/RecipeKernelBase.sol";
+import { RecipeMarketHubBase, RewardStyle, WeirollWallet } from "src/base/RecipeMarketHubBase.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
-import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
 
-/// @title RecipeKernel
+/// @title RecipeMarketHub
 /// @author CopyPaste, corddry, ShivaanshK
-/// @notice RecipeKernel contract for Incentivizing AP/IPs to participate in "recipe" markets which perform arbitrary actions
-contract RecipeKernel is RecipeKernelBase {
+/// @notice RecipeMarketHub contract for Incentivizing AP/IPs to participate in "recipe" markets which perform arbitrary actions
+contract RecipeMarketHub is RecipeMarketHubBase {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -150,8 +150,8 @@ contract RecipeKernel is RecipeKernelBase {
         numAPOffers++;
     }
 
-    /// @notice Create a new IP offer, transferring the IP's incentives to the RecipeKernel and putting all the offer params in contract storage
-    /// @dev IP must approve all incentives to be spent by the RecipeKernel before calling this function
+    /// @notice Create a new IP offer, transferring the IP's incentives to the RecipeMarketHub and putting all the offer params in contract storage
+    /// @dev IP must approve all incentives to be spent by the RecipeMarketHub before calling this function
     /// @param targetMarketHash The hash of the weiroll market to create the IP offer for
     /// @param quantity The total amount of input tokens to be deposited
     /// @param expiry The timestamp after which the offer is considered expired
@@ -197,7 +197,7 @@ contract RecipeKernel is RecipeKernelBase {
         uint256[] memory protocolFeesToBePaid = new uint256[](incentivesOffered.length);
         uint256[] memory frontendFeesToBePaid = new uint256[](incentivesOffered.length);
 
-        // Transfer the IP's incentives to the RecipeKernel and set aside fees
+        // Transfer the IP's incentives to the RecipeMarketHub and set aside fees
         address lastIncentive;
         for (uint256 i = 0; i < incentivesOffered.length; ++i) {
             // Get the incentive offered
@@ -231,9 +231,9 @@ contract RecipeKernel is RecipeKernelBase {
             // Check if incentive is a points program
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(incentive)) {
                 // If points incentive, make sure:
-                // 1. The points factory used to create the program is the same as this RecipeKernels PF
+                // 1. The points factory used to create the program is the same as this RecipeMarketHubs PF
                 // 2. IP placing the offer can award points
-                // 3. Points factory has this RecipeKernel marked as a valid RO - can be assumed true
+                // 3. Points factory has this RecipeMarketHub marked as a valid RO - can be assumed true
                 if (POINTS_FACTORY != address(Points(incentive).pointsFactory()) || !Points(incentive).allowedIPs(msg.sender)) {
                     revert InvalidPointsProgram();
                 }
@@ -241,7 +241,7 @@ contract RecipeKernel is RecipeKernelBase {
                 // SafeTransferFrom does not check if a incentive address has any code, so we need to check it manually to prevent incentive deployment
                 // frontrunning
                 if (incentive.code.length == 0) revert TokenDoesNotExist();
-                // Transfer frontend fee + protocol fee + incentiveAmount of the incentive to RecipeKernel
+                // Transfer frontend fee + protocol fee + incentiveAmount of the incentive to RecipeMarketHub
                 ERC20(incentive).safeTransferFrom(msg.sender, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
             }
         }
@@ -385,7 +385,9 @@ contract RecipeKernel is RecipeKernelBase {
 
             if (market.rewardStyle == RewardStyle.Upfront) {
                 // Push incentives to AP and account fees on fill in an upfront market
-                _pushIncentivesOnIPFill(incentive, incentiveAmountsPaid[i], protocolFeesPaid[i], frontendFeesPaid[i], offer.ip, frontendFeeRecipient);
+                _pushIncentivesAndAccountFees(
+                    incentive, msg.sender, incentiveAmountsPaid[i], protocolFeesPaid[i], frontendFeesPaid[i], offer.ip, frontendFeeRecipient
+                );
             }
         }
 
@@ -435,7 +437,7 @@ contract RecipeKernel is RecipeKernelBase {
     }
 
     /// @dev Fill an AP offer
-    /// @dev IP must approve all incentives to be spent (both fills + fees!) by the RecipeKernel before calling this function.
+    /// @dev IP must approve all incentives to be spent (both fills + fees!) by the RecipeMarketHub before calling this function.
     /// @param offer The AP offer to fill
     /// @param fillAmount The amount of input tokens to fill the offer with
     /// @param frontendFeeRecipient The address that will receive the frontend fee
@@ -758,16 +760,8 @@ contract RecipeKernel is RecipeKernelBase {
                 uint256 protocolFeeAmount = offer.incentiveToProtocolFeeAmount[incentive].mulWadDown(fillPercentage);
                 uint256 frontendFeeAmount = offer.incentiveToFrontendFeeAmount[incentive].mulWadDown(fillPercentage);
 
-                // Take fees
-                _accountFee(protocolFeeClaimant, incentive, protocolFeeAmount, ip);
-                _accountFee(frontendFeeRecipient, incentive, frontendFeeAmount, ip);
-
-                // Reward incentives to AP upon wallet unlock
-                if (PointsFactory(POINTS_FACTORY).isPointsProgram(incentive)) {
-                    Points(incentive).award(to, params.amounts[i], ip);
-                } else {
-                    ERC20(incentive).safeTransfer(to, params.amounts[i]);
-                }
+                // Reward incentives to AP upon claim and account fees
+                _pushIncentivesAndAccountFees(incentive, to, params.amounts[i], protocolFeeAmount, frontendFeeAmount, ip, frontendFeeRecipient);
 
                 emit WeirollWalletClaimedIncentive(weirollWallet, to, incentive);
 
@@ -788,17 +782,8 @@ contract RecipeKernel is RecipeKernelBase {
                 uint256 protocolFeeAmount = amount.mulWadDown(protocolFeeAtFill);
                 uint256 frontendFeeAmount = amount.mulWadDown(marketFrontendFee);
 
-                // Take fees
-                _accountFee(protocolFeeClaimant, incentive, protocolFeeAmount, ip);
-                _accountFee(params.frontendFeeRecipient, incentive, frontendFeeAmount, ip);
-
-                // Reward incentives to AP upon wallet unlock
-                // Don't need to take fees. Taken from IP upon filling an AP offer
-                if (PointsFactory(POINTS_FACTORY).isPointsProgram(incentive)) {
-                    Points(params.incentives[i]).award(to, amount, ip);
-                } else {
-                    ERC20(params.incentives[i]).safeTransfer(to, amount);
-                }
+                // Reward incentives to AP upon claim and account fees
+                _pushIncentivesAndAccountFees(incentive, to, amount, protocolFeeAmount, frontendFeeAmount, ip, frontendFeeRecipient);
 
                 emit WeirollWalletClaimedIncentive(weirollWallet, to, incentive);
 
@@ -851,16 +836,8 @@ contract RecipeKernel is RecipeKernelBase {
                     uint256 protocolFeeAmount = offer.incentiveToProtocolFeeAmount[incentive].mulWadDown(fillPercentage);
                     uint256 frontendFeeAmount = offer.incentiveToFrontendFeeAmount[incentive].mulWadDown(fillPercentage);
 
-                    // Take fees
-                    _accountFee(protocolFeeClaimant, incentive, protocolFeeAmount, ip);
-                    _accountFee(frontendFeeRecipient, incentive, frontendFeeAmount, ip);
-
-                    // Reward incentives to AP upon wallet unlock
-                    if (PointsFactory(POINTS_FACTORY).isPointsProgram(incentive)) {
-                        Points(incentive).award(to, params.amounts[i], ip);
-                    } else {
-                        ERC20(incentive).safeTransfer(to, params.amounts[i]);
-                    }
+                    // Reward incentives to AP upon claim and account fees
+                    _pushIncentivesAndAccountFees(incentive, to, params.amounts[i], protocolFeeAmount, frontendFeeAmount, ip, frontendFeeRecipient);
 
                     emit WeirollWalletClaimedIncentive(weirollWallet, to, incentiveToken);
 
@@ -885,17 +862,8 @@ contract RecipeKernel is RecipeKernelBase {
                     uint256 protocolFeeAmount = amount.mulWadDown(params.protocolFeeAtFill);
                     uint256 frontendFeeAmount = amount.mulWadDown(marketFrontendFee);
 
-                    // Take fees
-                    _accountFee(protocolFeeClaimant, incentive, protocolFeeAmount, ip);
-                    _accountFee(frontendFeeRecipient, incentive, frontendFeeAmount, ip);
-
-                    // Reward incentives to AP upon wallet unlock
-                    // Don't need to take fees. Taken from IP upon filling an AP offer
-                    if (PointsFactory(POINTS_FACTORY).isPointsProgram(incentive)) {
-                        Points(params.incentives[i]).award(to, amount, ip);
-                    } else {
-                        ERC20(params.incentives[i]).safeTransfer(to, amount);
-                    }
+                    // Reward incentives to AP upon wallet unlock and account fees
+                    _pushIncentivesAndAccountFees(incentive, to, amount, protocolFeeAmount, frontendFeeAmount, ip, frontendFeeRecipient);
 
                     emit WeirollWalletClaimedIncentive(weirollWallet, to, incentiveToken);
 
@@ -950,17 +918,19 @@ contract RecipeKernel is RecipeKernelBase {
     }
 
     /**
-     * @notice Handles the transfer and accounting of fees incentives for an IP offer fill in an Upfront market.
-     * @dev This function is called internally by `fillIPOffer` to manage the fees and incentives for an Upfront market.
+     * @notice Handles the transfer and accounting of fees and incentives.
+     * @dev This function is called internally to account fees and push incentives.
      * @param incentive The address of the incentive.
+     * @param to The address of incentive recipient.
      * @param incentiveAmount The amount of the incentive token to be transferred.
      * @param protocolFeeAmount The protocol fee amount taken at fill.
      * @param frontendFeeAmount The frontend fee amount taken for this market.
      * @param ip The address of the action provider.
      * @param frontendFeeRecipient The address that will receive the frontend fee.
      */
-    function _pushIncentivesOnIPFill(
+    function _pushIncentivesAndAccountFees(
         address incentive,
+        address to,
         uint256 incentiveAmount,
         uint256 protocolFeeAmount,
         uint256 frontendFeeAmount,
@@ -969,16 +939,15 @@ contract RecipeKernel is RecipeKernelBase {
     )
         internal
     {
-        // msg.sender will always be AP
-        // Take fees immediately in an Upfront market
+        // Take fees
         _accountFee(protocolFeeClaimant, incentive, protocolFeeAmount, ip);
         _accountFee(frontendFeeRecipient, incentive, frontendFeeAmount, ip);
 
-        // Give incentives to AP immediately in an Upfront market
+        // Push incentives to AP
         if (PointsFactory(POINTS_FACTORY).isPointsProgram(incentive)) {
-            Points(incentive).award(msg.sender, incentiveAmount, ip);
+            Points(incentive).award(to, incentiveAmount, ip);
         } else {
-            ERC20(incentive).safeTransfer(msg.sender, incentiveAmount);
+            ERC20(incentive).safeTransfer(to, incentiveAmount);
         }
     }
 
@@ -1020,7 +989,7 @@ contract RecipeKernel is RecipeKernelBase {
                 if (incentive.code.length == 0) {
                     revert TokenDoesNotExist();
                 }
-                // Transfer protcol and frontend fees to RecipeKernel for the claimants to withdraw them on-demand
+                // Transfer protcol and frontend fees to RecipeMarketHub for the claimants to withdraw them on-demand
                 ERC20(incentive).safeTransferFrom(msg.sender, address(this), protocolFeeAmount + frontendFeeAmount);
                 // Transfer AP's incentives to them on fill if token
                 ERC20(incentive).safeTransferFrom(msg.sender, ap, incentiveAmount);
@@ -1030,9 +999,9 @@ contract RecipeKernel is RecipeKernelBase {
             // If incentives will be paid out later, only handle the incentive case. Points will be awarded on claim.
             if (PointsFactory(POINTS_FACTORY).isPointsProgram(incentive)) {
                 // If points incentive, make sure:
-                // 1. The points factory used to create the program is the same as this RecipeKernels PF
+                // 1. The points factory used to create the program is the same as this RecipeMarketHubs PF
                 // 2. IP placing the offer can award points
-                // 3. Points factory has this RecipeKernel marked as a valid RO - can be assumed true
+                // 3. Points factory has this RecipeMarketHub marked as a valid RO - can be assumed true
                 if (POINTS_FACTORY != address(Points(incentive).pointsFactory()) || !Points(incentive).allowedIPs(msg.sender)) {
                     revert InvalidPointsProgram();
                 }
@@ -1042,7 +1011,8 @@ contract RecipeKernel is RecipeKernelBase {
                 if (incentive.code.length == 0) {
                     revert TokenDoesNotExist();
                 }
-                // If not a points program, transfer amount requested (based on fill percentage) to the RecipeKernel in addition to protocol and frontend fees.
+                // If not a points program, transfer amount requested (based on fill percentage) to the RecipeMarketHub in addition to protocol and frontend
+                // fees.
                 ERC20(incentive).safeTransferFrom(msg.sender, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
             }
         }

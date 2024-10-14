@@ -10,8 +10,8 @@ import {WrappedVault} from "../src/WrappedVault.sol";
 import {WrappedVaultFactory} from "../src/WrappedVaultFactory.sol";
 import {Points} from "../src/Points.sol";
 import {PointsFactory} from"../src/PointsFactory.sol";
-import {VaultKernel} from "../src/VaultKernel.sol";
-import {RecipeKernel} from "../src/RecipeKernel.sol";
+import {VaultMarketHub} from "../src/VaultMarketHub.sol";
+import {RecipeMarketHub} from "../src/RecipeMarketHub.sol";
 import {WeirollWallet} from "../src/WeirollWallet.sol";
 
 import { MockERC20 } from "test/mocks/MockERC20.sol";
@@ -27,8 +27,8 @@ contract Deploy is Script {
         WrappedVaultFactory erc4626iFactory = new WrappedVaultFactory(deployerAddress, 0.01e18, 0.001e18, address(pointsFactory) );
 
         WeirollWallet wwi = new WeirollWallet();
-        VaultKernel vaultKernel = new VaultKernel(deployerAddress);
-        RecipeKernel recipeKernel = new RecipeKernel(
+        VaultMarketHub vaultMarketHub = new VaultMarketHub(deployerAddress);
+        RecipeMarketHub recipeMarketHub = new RecipeMarketHub(
             address(wwi),
             0.01e18, // 1% protocol fee
             0.001e18, // 0.1% minimum frontend fee

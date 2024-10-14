@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { RecipeKernel } from "src/RecipeKernel.sol";
-import { RecipeKernelBase, RewardStyle, WeirollWallet } from "src/base/RecipeKernelBase.sol";
+import { RecipeMarketHub } from "src/RecipeMarketHub.sol";
+import { RecipeMarketHubBase, RewardStyle, WeirollWallet } from "src/base/RecipeMarketHubBase.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
@@ -12,7 +12,7 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 
-contract MockRecipeKernel is RecipeKernel {
+contract MockRecipeMarketHub is RecipeMarketHub {
     constructor(
         address _weirollWalletImplementation,
         uint256 _protocolFee,
@@ -20,7 +20,7 @@ contract MockRecipeKernel is RecipeKernel {
         address _owner,
         address _pointsFactory
     )
-        RecipeKernel(_weirollWalletImplementation, _protocolFee, _minimumFrontendFee, _owner, _pointsFactory)
+        RecipeMarketHub(_weirollWalletImplementation, _protocolFee, _minimumFrontendFee, _owner, _pointsFactory)
     { }
 
     function fillIPOffers(bytes32 offerHash, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) external {

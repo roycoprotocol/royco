@@ -4,20 +4,18 @@ pragma solidity ^0.8.0;
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { SafeCast } from "src/libraries/SafeCast.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
-import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IWrappedVault } from "src/interfaces/IWrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
-
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
-contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
+contract WrappedVault is Owned, ERC20, IWrappedVault {
     using SafeTransferLib for ERC20;
-
     using SafeCast for uint256;
     using FixedPointMathLib for uint256;
 
@@ -126,11 +124,10 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
         uint256 initialFrontendFee,
         address pointsFactory
     )
+        Owned(_owner)
         ERC20(_name, _symbol, ERC20(vault).decimals())
-        Ownable(_owner)
     {
         ERC4626I_FACTORY = WrappedVaultFactory(msg.sender);
-
         if (initialFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
 
         frontendFee = initialFrontendFee;
@@ -144,7 +141,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     }
 
     /// @param rewardsToken The new reward token / points program to be used as incentives
-    function addRewardsToken(address rewardsToken) payable public onlyOwner {
+    function addRewardsToken(address rewardsToken) public payable onlyOwner {
         // Check if max rewards offered limit has been reached
         if (rewards.length == MAX_REWARDS) revert MaxRewardsReached();
 
@@ -165,14 +162,14 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     }
 
     /// @param newFrontendFee The new front-end fee out of WAD
-    function setFrontendFee(uint256 newFrontendFee) payable public onlyOwner {
+    function setFrontendFee(uint256 newFrontendFee) public payable onlyOwner {
         if (newFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
         frontendFee = newFrontendFee;
         emit FrontendFeeUpdated(newFrontendFee);
     }
 
     /// @param to The address to send all fees owed to msg.sender to
-    function claimFees(address to) payable external {
+    function claimFees(address to) external payable {
         for (uint256 i = 0; i < rewards.length; i++) {
             address reward = rewards[i];
             claimFees(to, reward);
@@ -181,7 +178,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
 
     /// @param to The address to send all fees owed to msg.sender to
     /// @param reward The reward token / points program to claim fees from
-    function claimFees(address to, address reward) payable public {
+    function claimFees(address to, address reward) public payable {
         if (!isReward[reward]) revert InvalidReward();
 
         uint256 owed = rewardToClaimantToFees[reward][msg.sender];
@@ -221,7 +218,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     /// @param rewardsAdded The amount of rewards to add to the campaign
     /// @param newEnd The end date of the rewards campaign
     /// @param frontendFeeRecipient The address to reward for directing IP flow
-    function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) payable public onlyOwner {
+    function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) external payable onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
         if (newEnd <= rewardsInterval.end) revert InvalidInterval();
@@ -263,7 +260,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     /// @param end The end timestamp of the interval
     /// @param totalRewards The amount of rewards to distribute over the interval
     /// @param frontendFeeRecipient The address to reward the frontendFee
-    function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) payable external onlyOwner {
+    function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) external payable onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         if (start >= end || end <= block.timestamp) revert InvalidInterval();
         if ((end - start) < MIN_CAMPAIGN_DURATION) revert InvalidIntervalDuration();
@@ -310,7 +307,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
     }
 
     /// @param reward The address of the reward for which campaign should be refunded
-    function refundRewardsInterval(address reward) payable external onlyOwner {
+    function refundRewardsInterval(address reward) external payable onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         RewardsInterval memory rewardsInterval = rewardToInterval[reward];
         delete rewardToInterval[reward];
@@ -442,7 +439,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
 
     /// @notice Allows the owner to claim the rewards from the burned shares
     /// @param to The address to send all rewards owed to the owner to
-    function ownerClaim(address to) payable public onlyOwner {
+    function ownerClaim(address to) public payable onlyOwner {
         for (uint256 i = 0; i < rewards.length; i++) {
             address reward = rewards[i];
             _claim(reward, address(0), to, currentUserRewards(reward, address(0)));
@@ -451,7 +448,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
 
     /// @notice Claim all rewards for the caller
     /// @param to The address to send the rewards to
-    function claim(address to) payable public {
+    function claim(address to) public payable {
         for (uint256 i = 0; i < rewards.length; i++) {
             address reward = rewards[i];
             _claim(reward, msg.sender, to, currentUserRewards(reward, msg.sender));
@@ -460,7 +457,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
 
     /// @param to The address to send the rewards to
     /// @param reward The reward token / points program to claim rewards from
-    function claim(address to, address reward) payable public {
+    function claim(address to, address reward) public payable {
         if (!isReward[reward]) revert InvalidReward();
         _claim(reward, msg.sender, to, currentUserRewards(reward, msg.sender));
     }
@@ -502,7 +499,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
         return VAULT.convertToAssets(ERC20(address(VAULT)).balanceOf(address(this)));
     }
 
-    /// @notice safeDeposit allows a user to specify a minimum amount of shares out to avoid any 
+    /// @notice safeDeposit allows a user to specify a minimum amount of shares out to avoid any
     /// slippage in the deposit
     /// @param assets The amount of assets to deposit
     /// @param receiver The address to mint the shares to
@@ -546,7 +543,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
             if (expectedShares > allowed) revert NotOwnerOfVaultOrApproved();
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - expectedShares;
         }
-        
+
         _burn(owner, expectedShares);
 
         shares = VAULT.withdraw(assets, receiver, address(this));
@@ -564,7 +561,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
             if (shares > allowed) revert NotOwnerOfVaultOrApproved();
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
-        
+
         _burn(owner, shares);
 
         assets = VAULT.redeem(shares, receiver, address(this));

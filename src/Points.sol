@@ -46,7 +46,7 @@ contract Points is Ownable2Step {
     string public symbol;
     /// @dev We track all points logic using base 1
     uint256 public decimals;
-    /// @dev Track which RecipeKernel IPs are allowed to mint
+    /// @dev Track which RecipeMarketHub IPs are allowed to mint
     mapping(address => bool) public allowedIPs;
 
     /*//////////////////////////////////////////////////////////////
@@ -65,7 +65,7 @@ contract Points is Ownable2Step {
         emit AllowedVaultAdded(vault);
     }
 
-    /// @param ip The incentive provider address to allow to mint points on RecipeKernel
+    /// @param ip The incentive provider address to allow to mint points on RecipeMarketHub
     function addAllowedIP(address ip) external onlyOwner {
         allowedIPs[ip] = true;
 
@@ -73,7 +73,7 @@ contract Points is Ownable2Step {
     }
 
     error OnlyAllowedVaults();
-    error OnlyRecipeKernel();
+    error OnlyRecipeMarketHub();
     error NotAllowedIP();
 
     modifier onlyAllowedVaults() {
@@ -83,11 +83,11 @@ contract Points is Ownable2Step {
         _;
     }
 
-    /// @dev only the RecipeKernel can call this function
+    /// @dev only the RecipeMarketHub can call this function
     /// @param ip The address to check if allowed
-    modifier onlyRecipeKernelAllowedIP(address ip) {
-        if (!pointsFactory.isRecipeKernel(msg.sender)) {
-            revert OnlyRecipeKernel();
+    modifier onlyRecipeMarketHubAllowedIP(address ip) {
+        if (!pointsFactory.isRecipeMarketHub(msg.sender)) {
+            revert OnlyRecipeMarketHub();
         }
         if (!allowedIPs[ip]) {
             revert NotAllowedIP();
@@ -108,7 +108,7 @@ contract Points is Ownable2Step {
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
     /// @param ip The incentive provider attempting to mint the points
-    function award(address to, uint256 amount, address ip) external onlyRecipeKernelAllowedIP(ip) {
+    function award(address to, uint256 amount, address ip) external onlyRecipeMarketHubAllowedIP(ip) {
         emit Award(to, amount, ip);
     }
 }

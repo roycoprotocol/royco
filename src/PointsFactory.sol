@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Points } from "src/Points.sol";
-import { RecipeKernel } from "src/RecipeKernel.sol";
+import { RecipeMarketHub } from "src/RecipeMarketHub.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 
@@ -13,22 +13,22 @@ contract PointsFactory is Ownable2Step {
     /// @notice Mapping of Points Program address => bool (indicator of if Points Program was deployed using this factory)
     mapping(address => bool) public isPointsProgram;
 
-    /// @notice Mapping of RecipeKernel address => bool (indicator of if the address is of a Royco RecipeKernel)
-    mapping(address => bool) public isRecipeKernel;
+    /// @notice Mapping of RecipeMarketHub address => bool (indicator of if the address is of a Royco RecipeMarketHub)
+    mapping(address => bool) public isRecipeMarketHub;
 
     /// @notice Emitted when creating a points program using this factory
     event NewPointsProgram(Points indexed points, string indexed name, string indexed symbol);
 
-    /// @notice Emitted when adding an RecipeKernel to this Points Factory
-    event RecipeKernelAdded(address indexed recipeKernel);
+    /// @notice Emitted when adding an RecipeMarketHub to this Points Factory
+    event RecipeMarketHubAdded(address indexed recipeMarketHub);
 
-    /// @param _owner The owner of the points factory - responsible for adding valid RecipeKernel(s) to the PointsFactory
+    /// @param _owner The owner of the points factory - responsible for adding valid RecipeMarketHub(s) to the PointsFactory
     constructor(address _owner) Ownable(_owner) {}
 
-    /// @param _recipeKernel The RecipeKernel to mark as valid in the Points Factory
-    function addRecipeKernel(address _recipeKernel) external onlyOwner {
-        isRecipeKernel[_recipeKernel] = true;
-        emit RecipeKernelAdded(_recipeKernel);
+    /// @param _recipeMarketHub The RecipeMarketHub to mark as valid in the Points Factory
+    function addRecipeMarketHub(address _recipeMarketHub) external onlyOwner {
+        isRecipeMarketHub[_recipeMarketHub] = true;
+        emit RecipeMarketHubAdded(_recipeMarketHub);
     }
 
     /// @param _name The name for the new points program

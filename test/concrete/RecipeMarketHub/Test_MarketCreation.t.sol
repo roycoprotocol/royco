@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "src/base/RecipeKernelBase.sol";
-import { RecipeKernelTestBase } from "../../utils/RecipeKernel/RecipeKernelTestBase.sol";
+import "src/base/RecipeMarketHubBase.sol";
+import { RecipeMarketHubTestBase } from "../../utils/RecipeMarketHub/RecipeMarketHubTestBase.sol";
 
-contract Test_MarketCreation_RecipeKernel is RecipeKernelTestBase {
+contract Test_MarketCreation_RecipeMarketHub is RecipeMarketHubTestBase {
     function setUp() external {
         uint256 protocolFee = 0.01e18; // 1% protocol fee
         uint256 minimumFrontendFee = 0.001e18; // 0.1% minimum frontend fee
-        setUpRecipeKernelTests(protocolFee, minimumFrontendFee);
+        setUpRecipeMarketHubTests(protocolFee, minimumFrontendFee);
     }
 
     function test_CreateMarket() external {
@@ -19,11 +19,11 @@ contract Test_MarketCreation_RecipeKernel is RecipeKernelTestBase {
         RewardStyle rewardStyle = RewardStyle.Upfront;
 
         // Check for MarketCreated event
-        vm.expectEmit(true, false, false, true, address(recipeKernel));
-        emit RecipeKernelBase.MarketCreated(0, bytes32(0), inputTokenAddress, lockupTime, frontendFee, rewardStyle);
+        vm.expectEmit(true, false, false, true, address(recipeMarketHub));
+        emit RecipeMarketHubBase.MarketCreated(0, bytes32(0), inputTokenAddress, lockupTime, frontendFee, rewardStyle);
 
         // Create market
-        bytes32 marketHash = recipeKernel.createMarket(
+        bytes32 marketHash = recipeMarketHub.createMarket(
             inputTokenAddress,
             lockupTime,
             frontendFee,
@@ -32,16 +32,16 @@ contract Test_MarketCreation_RecipeKernel is RecipeKernelTestBase {
             rewardStyle
         );
 
-        // Check that the newly added market was added correctly to the recipeKernel
+        // Check that the newly added market was added correctly to the recipeMarketHub
         (
             uint256 marketId,
             ERC20 resultingInputToken,
             uint256 resultingLockupTime,
             uint256 resultingFrontendFee,
-            RecipeKernelBase.Recipe memory depositRecipe,
-            RecipeKernelBase.Recipe memory withdrawRecipe,
+            RecipeMarketHubBase.Recipe memory depositRecipe,
+            RecipeMarketHubBase.Recipe memory withdrawRecipe,
             RewardStyle resultingRewardStyle
-        ) = recipeKernel.marketHashToWeirollMarket(marketHash);
+        ) = recipeMarketHub.marketHashToWeirollMarket(marketHash);
         assertEq(marketId, 0);
         assertEq(address(resultingInputToken), inputTokenAddress);
         assertEq(resultingLockupTime, lockupTime);
@@ -54,8 +54,8 @@ contract Test_MarketCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_CreateMarketWithLowFrontendFee() external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.FrontendFeeTooLow.selector));
-        recipeKernel.createMarket(
+        vm.expectRevert(abi.encodeWithSelector(RecipeMarketHubBase.FrontendFeeTooLow.selector));
+        recipeMarketHub.createMarket(
             address(mockLiquidityToken),
             1 days, // Weiroll wallet lockup time
             (initialMinimumFrontendFee - 1), // less than minimum frontend fee
@@ -66,8 +66,8 @@ contract Test_MarketCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_CreateMarketWithInvalidFrontendFee() external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.FrontendFeeTooLow.selector));
-        recipeKernel.createMarket(
+        vm.expectRevert(abi.encodeWithSelector(RecipeMarketHubBase.FrontendFeeTooLow.selector));
+        recipeMarketHub.createMarket(
             address(mockLiquidityToken),
             1 days, // Weiroll wallet lockup time
             (initialMinimumFrontendFee - 1), // less than minimum frontend fee
@@ -78,8 +78,8 @@ contract Test_MarketCreation_RecipeKernel is RecipeKernelTestBase {
     }
 
     function test_RevertIf_CreateMarketWithInvalidTotalFee() external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.TotalFeeTooHigh.selector));
-        recipeKernel.createMarket(
+        vm.expectRevert(abi.encodeWithSelector(RecipeMarketHubBase.TotalFeeTooHigh.selector));
+        recipeMarketHub.createMarket(
             address(mockLiquidityToken),
             1 days, // Weiroll wallet lockup time
             (1e18 + 1), // Resulting total fee > 100%

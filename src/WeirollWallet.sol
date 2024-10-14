@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 import { VM } from "lib/weiroll/contracts/VM.sol";
 import { Clone } from "lib/clones-with-immutable-args/src/Clone.sol";
 
-/// @title OrderFactory
+/// @title WeirollWallet
 /// @author Royco
 /// @notice WeirollWallet implementation contract.
-///   Implements a simple smart contract wallet that can execute Weiroll VM commands
+/// @notice Implements a simple smart contract wallet that can execute Weiroll VM commands
 contract WeirollWallet is Clone, VM {
     /// @notice Let the Weiroll Wallet receive ether directly if needed
     receive() external payable { }
@@ -17,8 +17,11 @@ contract WeirollWallet is Clone, VM {
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
 
+    // Emit when owner executes a an arbitrary script (not a market script)
+    event WeirollWalletExecutedManually();
+
     error NotOwner();
-    error NotRecipeKernel();
+    error NotRecipeMarketHub();
     error WalletLocked();
     error WalletNotForfeitable();
 
@@ -30,10 +33,10 @@ contract WeirollWallet is Clone, VM {
         _;
     }
 
-    /// @notice Only the recipeKernel contract can call the function
-    modifier onlyRecipeKernel() {
-        if (msg.sender != recipeKernel()) {
-            revert NotRecipeKernel();
+    /// @notice Only the recipeMarketHub contract can call the function
+    modifier onlyRecipeMarketHub() {
+        if (msg.sender != recipeMarketHub()) {
+            revert NotRecipeMarketHub();
         }
         _;
     }
@@ -50,13 +53,13 @@ contract WeirollWallet is Clone, VM {
                                STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev Whether or not this order has been executed
+    /// @dev Whether or not this offer has been executed
     bool public executed;
     /// @dev Whether or not the wallet has been forfeited
     bool public forfeited;
 
     /// @notice Forfeit all rewards to get control of the wallet back
-    function forfeit() public onlyRecipeKernel {
+    function forfeit() public onlyRecipeMarketHub {
         if (!isForfeitable() || block.timestamp >= lockedUntil()) {
             // Can't forfeit if:
             // 1. Wallet not created through a forfeitable market
@@ -67,17 +70,17 @@ contract WeirollWallet is Clone, VM {
         forfeited = true;
     }
 
-    /// @notice The address of the order creator (owner)
+    /// @notice The address of the offer creator (owner)
     function owner() public pure returns (address) {
         return _getArgAddress(0);
     }
 
-    /// @notice The address of the recipeKernel exchange contract
-    function recipeKernel() public pure returns (address) {
+    /// @notice The address of the recipeMarketHub exchange contract
+    function recipeMarketHub() public pure returns (address) {
         return _getArgAddress(20);
     }
 
-    /// @notice The amount of tokens deposited into this wallet from the recipeKernel
+    /// @notice The amount of tokens deposited into this wallet from the recipeMarketHub
     function amount() public pure returns (uint256) {
         return _getArgUint256(40);
     }
@@ -102,7 +105,7 @@ contract WeirollWallet is Clone, VM {
     //////////////////////////////////////////////////////////////*/
     /// @notice Execute the Weiroll VM with the given commands.
     /// @param commands The commands to be executed by the Weiroll VM.
-    function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyRecipeKernel returns (bytes[] memory) {
+    function executeWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyRecipeMarketHub returns (bytes[] memory) {
         executed = true;
         // Execute the Weiroll VM.
         return _execute(commands, state);
@@ -112,7 +115,9 @@ contract WeirollWallet is Clone, VM {
     /// @param commands The commands to be executed by the Weiroll VM.
     function manualExecuteWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOwner notLocked returns (bytes[] memory) {
         // Prevent people from approving w/e then rugging during vesting
-        require(executed, "Royco: Order unfilled");
+        require(executed, "Royco: Offer unfilled");
+
+        emit WeirollWalletExecutedManually();
         // Execute the Weiroll VM.
         return _execute(commands, state);
     }
@@ -123,12 +128,15 @@ contract WeirollWallet is Clone, VM {
     /// @param data The data to pass along with the call
     function execute(address to, uint256 value, bytes memory data) public payable onlyOwner notLocked returns (bytes memory) {
         // Prevent people from approving w/e then rugging during vesting
-        require(executed, "Royco: Order unfilled");
+        require(executed, "Royco: Offer unfilled");
+
         // Execute the call.
         (bool success, bytes memory result) = to.call{ value: value }(data);
         if (!success) {
             revert("Generic execute proxy failed");
         }
+
+        emit WeirollWalletExecutedManually();
         return result;
     }
 }

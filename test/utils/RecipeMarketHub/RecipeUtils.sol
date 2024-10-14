@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../..//src/RecipeKernel.sol";
+import "../../..//src/RecipeMarketHub.sol";
 
 contract RecipeUtils {
     // Recipe with no commands and state
-    RecipeKernel.Recipe NULL_RECIPE = RecipeKernelBase.Recipe(new bytes32[](0), new bytes[](0));
+    RecipeMarketHub.Recipe NULL_RECIPE = RecipeMarketHubBase.Recipe(new bytes32[](0), new bytes[](0));
 
     // Helper function to generate a random Recipe
-    function generateRandomRecipe(uint256 commandCount, uint256 stateCount) public view returns (RecipeKernelBase.Recipe memory) {
+    function generateRandomRecipe(uint256 commandCount, uint256 stateCount) public view returns (RecipeMarketHubBase.Recipe memory) {
         bytes32[] memory commands = new bytes32[](commandCount);
         bytes[] memory state = new bytes[](stateCount);
 
@@ -20,7 +20,7 @@ contract RecipeUtils {
             state[i] = generateRandomState();
         }
 
-        return RecipeKernelBase.Recipe(commands, state);
+        return RecipeMarketHubBase.Recipe(commands, state);
     }
 
     // Generate a random command (bytes32) for the weiroll VM

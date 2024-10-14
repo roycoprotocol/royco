@@ -24,7 +24,7 @@ contract TestFuzz_Points is RoycoTestBase {
         ipAddress = CHARLIE_ADDRESS;
 
         vm.startPrank(POINTS_FACTORY_OWNER_ADDRESS);
-        pointsFactory.addRecipeKernel(address(recipeKernel));
+        pointsFactory.addRecipeMarketHub(address(recipeMarketHub));
         vm.stopPrank();
 
         vm.startPrank(owner);
@@ -67,24 +67,24 @@ contract TestFuzz_Points is RoycoTestBase {
         vm.expectEmit(true, true, false, true, address(pointsProgram));
         emit Points.Award(_to, _amount, _ip);
 
-        vm.startPrank(address(recipeKernel));
+        vm.startPrank(address(recipeMarketHub));
         pointsProgram.award(_to, _amount, _ip);
         vm.stopPrank();
     }
 
     // Fuzz test reverting when a non-allowed IP tries to award points
-    function testFuzz_RevertIf_NonAllowedIPAwardsPoints(address _to, uint256 _amount, address _nonAllowedIP) external prankModifier(address(recipeKernel)) {
+    function testFuzz_RevertIf_NonAllowedIPAwardsPoints(address _to, uint256 _amount, address _nonAllowedIP) external prankModifier(address(recipeMarketHub)) {
         vm.assume(_nonAllowedIP != ipAddress);
 
         vm.expectRevert(abi.encodeWithSelector(Points.NotAllowedIP.selector));
         pointsProgram.award(_to, _amount, _nonAllowedIP);
     }
 
-    // Fuzz test reverting when a non-recipeKernel address calls award for IPs
-    function testFuzz_RevertIf_NonRecipekernelCallsAwardForIP(address _to, uint256 _amount, address _nonRecipekernel) external prankModifier(_nonRecipekernel) {
-        vm.assume(_nonRecipekernel != address(recipeKernel));
+    // Fuzz test reverting when a non-recipeMarketHub address calls award for IPs
+    function testFuzz_RevertIf_NonRecipeMarketHubCallsAwardForIP(address _to, uint256 _amount, address _nonRecipeMarketHub) external prankModifier(_nonRecipeMarketHub) {
+        vm.assume(_nonRecipeMarketHub != address(recipeMarketHub));
 
-        vm.expectRevert(abi.encodeWithSelector(Points.OnlyRecipeKernel.selector));
+        vm.expectRevert(abi.encodeWithSelector(Points.OnlyRecipeMarketHub.selector));
         pointsProgram.award(_to, _amount, ipAddress);
     }
 }

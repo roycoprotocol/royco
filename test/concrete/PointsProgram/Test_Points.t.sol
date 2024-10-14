@@ -26,7 +26,7 @@ contract Test_Points is RoycoTestBase {
         ipAddress = CHARLIE_ADDRESS;
 
         vm.startPrank(POINTS_FACTORY_OWNER_ADDRESS);
-        pointsFactory.addRecipeKernel(address(recipeKernel));
+        pointsFactory.addRecipeMarketHub(address(recipeMarketHub));
         vm.stopPrank();
 
         vm.startPrank(programOwner);
@@ -91,7 +91,7 @@ contract Test_Points is RoycoTestBase {
         vm.startPrank(pointsProgram.owner());
         pointsProgram.addAllowedIP(ipAddress);
         vm.stopPrank();
-        vm.startPrank(address(recipeKernel));
+        vm.startPrank(address(recipeMarketHub));
 
         // Check if the event was emitted (Points awarded)
         vm.expectEmit(true, true, false, true, address(pointsProgram));
@@ -103,19 +103,19 @@ contract Test_Points is RoycoTestBase {
 
     function test_RevertIf_NonAllowedIPAwardsPoints() external {
         vm.startPrank(POINTS_FACTORY_OWNER_ADDRESS);
-        pointsFactory.addRecipeKernel(address(recipeKernel));
+        pointsFactory.addRecipeMarketHub(address(recipeMarketHub));
         vm.stopPrank();
 
-        vm.startPrank(address(recipeKernel));
+        vm.startPrank(address(recipeMarketHub));
         // Expect revert if a non-allowed IP tries to award points
         vm.expectRevert(abi.encodeWithSelector(Points.NotAllowedIP.selector));
         pointsProgram.award(BOB_ADDRESS, 300e18, BOB_ADDRESS);
         vm.stopPrank();
     }
 
-    function test_RevertIf_NonOrderbookCallsAwardForIP() external prankModifier(BOB_ADDRESS) {
-        // Expect revert if a non-recipeKernel address calls award for IPs
-        vm.expectRevert(abi.encodeWithSelector(Points.OnlyRecipeKernel.selector));
+    function test_RevertIf_NonMarketHubCallsAwardForIP() external prankModifier(BOB_ADDRESS) {
+        // Expect revert if a non-recipeMarketHub address calls award for IPs
+        vm.expectRevert(abi.encodeWithSelector(Points.OnlyRecipeMarketHub.selector));
         pointsProgram.award(BOB_ADDRESS, 300e18, ipAddress);
     }
 }

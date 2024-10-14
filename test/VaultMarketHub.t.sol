@@ -10,13 +10,13 @@ import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { WrappedVault } from "src/WrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
-import { VaultKernel } from "src/VaultKernel.sol";
+import { VaultMarketHub } from "src/VaultMarketHub.sol";
 
 // import { Test } from "../lib/forge-std/src/Test.sol";
 import { Test, console } from "forge-std/Test.sol";
 
-contract VaultKernelTest is Test {
-   VaultKernel public vaultKernel = new VaultKernel(address(this));
+contract VaultMarketHubTest is Test {
+   VaultMarketHub public vaultMarketHub = new VaultMarketHub(address(this));
    MockERC20 public baseToken;
    MockERC20 public baseToken2;
    MockERC4626 public targetVault;
@@ -45,7 +45,7 @@ contract VaultKernelTest is Test {
    }
 
    function testConstructor() view public {
-       assertEq(vaultKernel.numOffers(), 0);
+       assertEq(vaultMarketHub.numOffers(), 0);
    }
 
    function testCreateAPOffer(uint256 quantity, uint256 timeToExpiry, uint256 tokenRateRequested) public {
@@ -56,7 +56,7 @@ contract VaultKernelTest is Test {
        baseToken.mint(alice, quantity);
 
        vm.startPrank(alice);
-       baseToken.approve(address(vaultKernel), 2*quantity);
+       baseToken.approve(address(vaultMarketHub), 2*quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
@@ -64,25 +64,25 @@ contract VaultKernelTest is Test {
        tokenRatesRequested[0] = tokenRateRequested;
        
        uint256 offer1Id =
-           vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
-       VaultKernel.APOffer memory offer1 =
-           VaultKernel.APOffer(offer1Id, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+           vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer1 =
+           VaultMarketHub.APOffer(offer1Id, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        assertEq(offer1Id, 0);
-       assertEq(vaultKernel.numOffers(), 1);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(vaultKernel.getOfferHash(offer1)), quantity);
+       assertEq(vaultMarketHub.numOffers(), 1);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(vaultMarketHub.getOfferHash(offer1)), quantity);
 
        baseToken.approve(address(fundingVault), quantity);
        fundingVault.deposit(quantity, alice);
 
        uint256 offer2Id =
-           vaultKernel.createAPOffer(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
-       VaultKernel.APOffer memory offer2 =
-           VaultKernel.APOffer(offer2Id, address(targetVault), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
+           vaultMarketHub.createAPOffer(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer2 =
+           VaultMarketHub.APOffer(offer2Id, address(targetVault), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        assertEq(offer2Id, 1);
-       assertEq(vaultKernel.numOffers(), 2);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(vaultKernel.getOfferHash(offer2)), quantity);
+       assertEq(vaultMarketHub.numOffers(), 2);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(vaultMarketHub.getOfferHash(offer2)), quantity);
 
        vm.stopPrank();
    }
@@ -96,7 +96,7 @@ contract VaultKernelTest is Test {
        baseToken.mint(alice, quantity);
 
        vm.startPrank(alice);
-       baseToken.approve(address(vaultKernel), quantity);
+       baseToken.approve(address(vaultMarketHub), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
@@ -105,36 +105,36 @@ contract VaultKernelTest is Test {
 
        vm.warp(timeToExpiry + 1 days);
 
-       vm.expectRevert(VaultKernel.CannotPlaceExpiredOffer.selector);
-       vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       vm.expectRevert(VaultMarketHub.CannotPlaceExpiredOffer.selector);
+       vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       assertEq(vaultKernel.numOffers(), 0);
+       assertEq(vaultMarketHub.numOffers(), 0);
 
        // NOTE - Testcase added to address bug of expiry at timestamp, should not revert
-       uint256 offerId = vaultKernel.createAPOffer(address(targetVault), address(0), quantity, block.timestamp, tokensRequested, tokenRatesRequested);
-       VaultKernel.APOffer memory offer =
-           VaultKernel.APOffer(offerId, address(targetVault), alice, address(0), block.timestamp, tokensRequested, tokenRatesRequested);
+       uint256 offerId = vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, block.timestamp, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer =
+           VaultMarketHub.APOffer(offerId, address(targetVault), alice, address(0), block.timestamp, tokensRequested, tokenRatesRequested);
 
        assertEq(offerId, 0);
-       assertEq(vaultKernel.numOffers(), 1);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(vaultKernel.getOfferHash(offer)), quantity);
+       assertEq(vaultMarketHub.numOffers(), 1);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(vaultMarketHub.getOfferHash(offer)), quantity);
 
        vm.stopPrank();
    }
 
    function testCannotCreateBelowMinQuantityOffer(uint256 timeToExpiry, uint256 tokenRateRequested) public {
        vm.startPrank(alice);
-       baseToken.approve(address(vaultKernel), 100 * 1e18);
+       baseToken.approve(address(vaultMarketHub), 100 * 1e18);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
        tokenRatesRequested[0] = tokenRateRequested;
 
-       vm.expectRevert(VaultKernel.CannotPlaceBelowMinQuantityOffer.selector);
-       vaultKernel.createAPOffer(address(targetVault), address(0), 0, timeToExpiry, tokensRequested, tokenRatesRequested);
+       vm.expectRevert(VaultMarketHub.CannotPlaceBelowMinQuantityOffer.selector);
+       vaultMarketHub.createAPOffer(address(targetVault), address(0), 0, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       assertEq(vaultKernel.numOffers(), 0);
+       assertEq(vaultMarketHub.numOffers(), 0);
 
        vm.stopPrank();
    }
@@ -154,10 +154,10 @@ contract VaultKernelTest is Test {
        uint256[] memory tokenRatesRequested = new uint256[](1);
        tokenRatesRequested[0] = tokenRateRequested;
 
-       vm.expectRevert(VaultKernel.MismatchedBaseAsset.selector);
-       vaultKernel.createAPOffer(address(targetVault), address(fundingVault2), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       vm.expectRevert(VaultMarketHub.MismatchedBaseAsset.selector);
+       vaultMarketHub.createAPOffer(address(targetVault), address(fundingVault2), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       assertEq(vaultKernel.numOffers(), 0);
+       assertEq(vaultMarketHub.numOffers(), 0);
 
        vm.stopPrank();
    }
@@ -171,7 +171,7 @@ contract VaultKernelTest is Test {
 
        vm.startPrank(alice);
 
-       baseToken.approve(address(vaultKernel), quantity);
+       baseToken.approve(address(vaultMarketHub), quantity);
        baseToken.approve(address(fundingVault), quantity);
        fundingVault.deposit(quantity-1, alice);
 
@@ -181,16 +181,16 @@ contract VaultKernelTest is Test {
        tokenRatesRequested[0] = tokenRateRequested;
 
        //Test when funding vault is the user's address, revert occurs
-       vm.expectRevert(VaultKernel.NotEnoughBaseAssetToOffer.selector);
-       vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       vm.expectRevert(VaultMarketHub.NotEnoughBaseAssetToOffer.selector);
+       vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       assertEq(vaultKernel.numOffers(), 0);
+       assertEq(vaultMarketHub.numOffers(), 0);
 
        //Test that when funding vault is an ERC4626 vault, revert occurs
-       vm.expectRevert(VaultKernel.NotEnoughBaseAssetToOffer.selector);
-       vaultKernel.createAPOffer(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       vm.expectRevert(VaultMarketHub.NotEnoughBaseAssetToOffer.selector);
+       vaultMarketHub.createAPOffer(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       assertEq(vaultKernel.numOffers(), 0);
+       assertEq(vaultMarketHub.numOffers(), 0);
 
        vm.stopPrank();
    }
@@ -202,7 +202,7 @@ contract VaultKernelTest is Test {
 
        vm.startPrank(alice);
        baseToken.mint(alice, quantity);
-       baseToken.approve(address(vaultKernel), quantity);
+       baseToken.approve(address(vaultMarketHub), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
@@ -210,10 +210,10 @@ contract VaultKernelTest is Test {
        tokenRatesRequested[0] = token1RateRequested;
        tokenRatesRequested[1] = token2RateRequested;
 
-       vm.expectRevert(VaultKernel.ArrayLengthMismatch.selector);
-       vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       vm.expectRevert(VaultMarketHub.ArrayLengthMismatch.selector);
+       vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       assertEq(vaultKernel.numOffers(), 0);
+       assertEq(vaultMarketHub.numOffers(), 0);
 
        vm.stopPrank();
    }
@@ -227,25 +227,25 @@ contract VaultKernelTest is Test {
        baseToken.mint(alice, quantity);
 
        vm.startPrank(alice);
-       baseToken.approve(address(vaultKernel), quantity);
+       baseToken.approve(address(vaultMarketHub), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
        tokenRatesRequested[0] = tokenRateRequested;
 
-       uint256 offerId = vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
-       VaultKernel.APOffer memory offer =
-           VaultKernel.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       uint256 offerId = vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer =
+           VaultMarketHub.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        vm.warp(timeToExpiry + 1 days);
 
-       vm.expectRevert(VaultKernel.OfferExpired.selector);
-       vaultKernel.allocateOffer(offer);
+       vm.expectRevert(VaultMarketHub.OfferExpired.selector);
+       vaultMarketHub.allocateOffer(offer);
 
        // Verify allocation did not occur
-       bytes32 offerHash = vaultKernel.getOfferHash(offer);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offerHash), quantity);
+       bytes32 offerHash = vaultMarketHub.getOfferHash(offer);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offerHash), quantity);
        assertEq(baseToken.balanceOf(address(alice)), quantity);
        assertEq(targetVault.balanceOf(alice), 0);
 
@@ -264,7 +264,7 @@ contract VaultKernelTest is Test {
 
        vm.startPrank(alice);
 
-       baseToken.approve(address(vaultKernel), quantity);
+       baseToken.approve(address(vaultMarketHub), quantity);
        baseToken.approve(address(fundingVault), quantity);
 
        address[] memory tokensRequested = new address[](1);
@@ -272,27 +272,27 @@ contract VaultKernelTest is Test {
        uint256[] memory tokenRatesRequested = new uint256[](1);
        tokenRatesRequested[0] = tokenRateRequested;
 
-       uint256 offer1Id = vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       uint256 offer1Id = vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
        fundingVault.deposit(quantity, alice);
-       uint256 offer2Id = vaultKernel.createAPOffer(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       uint256 offer2Id = vaultMarketHub.createAPOffer(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultKernel.APOffer memory offer1 =
-           VaultKernel.APOffer(offer1Id, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
-       VaultKernel.APOffer memory offer2 =
-           VaultKernel.APOffer(offer2Id, address(targetVault), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer1 =
+           VaultMarketHub.APOffer(offer1Id, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer2 =
+           VaultMarketHub.APOffer(offer2Id, address(targetVault), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       vm.expectRevert(VaultKernel.NotEnoughBaseAssetToAllocate.selector);
-       vaultKernel.allocateOffer(offer1);
+       vm.expectRevert(VaultMarketHub.NotEnoughBaseAssetToAllocate.selector);
+       vaultMarketHub.allocateOffer(offer1);
 
        fundingVault.withdraw(quantity, alice, alice);
-       vm.expectRevert(VaultKernel.NotEnoughBaseAssetToAllocate.selector);
-       vaultKernel.allocateOffer(offer2);
+       vm.expectRevert(VaultMarketHub.NotEnoughBaseAssetToAllocate.selector);
+       vaultMarketHub.allocateOffer(offer2);
 
        assertEq(baseToken.balanceOf(address(alice)), quantity);
        assertEq(fundingVault.balanceOf(alice), 0);
        assertEq(targetVault.balanceOf(alice), 0);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(vaultKernel.getOfferHash(offer1)), quantity);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(vaultKernel.getOfferHash(offer2)), quantity);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(vaultMarketHub.getOfferHash(offer1)), quantity);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(vaultMarketHub.getOfferHash(offer2)), quantity);
 
        vm.stopPrank();
    }
@@ -306,7 +306,7 @@ contract VaultKernelTest is Test {
        baseToken.mint(alice, 2*quantity);
 
        vm.startPrank(alice);
-       baseToken.approve(address(vaultKernel), quantity);
+       baseToken.approve(address(vaultMarketHub), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
@@ -314,19 +314,19 @@ contract VaultKernelTest is Test {
        tokenRatesRequested[0] = tokenRateRequested;
 
        uint256 offerId =
-           vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+           vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultKernel.APOffer memory offer =
-           VaultKernel.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer =
+           VaultMarketHub.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        // New - Testcase added to attempt to allocate a cancelled offer
 
-       vm.expectRevert(VaultKernel.NotEnoughRemainingQuantity.selector);
-       vaultKernel.allocateOffer(offer, quantity+1);
+       vm.expectRevert(VaultMarketHub.NotEnoughRemainingQuantity.selector);
+       vaultMarketHub.allocateOffer(offer, quantity+1);
 
        assertEq(baseToken.balanceOf(address(alice)), 2*quantity);
        assertEq(targetVault.balanceOf(alice), 0);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(vaultKernel.getOfferHash(offer)), quantity);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(vaultMarketHub.getOfferHash(offer)), quantity);
 
        vm.stopPrank();
    }
@@ -334,26 +334,26 @@ contract VaultKernelTest is Test {
    function testNotOfferCreator() public {
        vm.startPrank(alice);
        baseToken.mint(alice, 1000 * 1e18);
-       baseToken.approve(address(vaultKernel), 100 * 1e18);
+       baseToken.approve(address(vaultMarketHub), 100 * 1e18);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
        tokenRatesRequested[0] = 1e18;
 
-       uint256 offerId = vaultKernel.createAPOffer(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       uint256 offerId = vaultMarketHub.createAPOffer(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-       VaultKernel.APOffer memory offer =
-           VaultKernel.APOffer(offerId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer =
+           VaultMarketHub.APOffer(offerId, address(targetVault), alice, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
        vm.stopPrank();
 
        vm.startPrank(bob);
-       vm.expectRevert(VaultKernel.NotOfferCreator.selector);
-       vaultKernel.cancelOffer(offer);
+       vm.expectRevert(VaultMarketHub.NotOfferCreator.selector);
+       vaultMarketHub.cancelOffer(offer);
 
-       bytes32 offerHash = vaultKernel.getOfferHash(offer);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offerHash), 100 * 1e18);
+       bytes32 offerHash = vaultMarketHub.getOfferHash(offer);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offerHash), 100 * 1e18);
        vm.stopPrank();
    }
 
@@ -366,47 +366,47 @@ contract VaultKernelTest is Test {
        baseToken.mint(alice, 2*quantity);
 
        vm.startPrank(alice);
-       baseToken.approve(address(vaultKernel), 2*quantity);
+       baseToken.approve(address(vaultMarketHub), 2*quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
        uint256[] memory tokenRatesRequested = new uint256[](1);
        tokenRatesRequested[0] = tokenRateRequested;
 
-       uint256 offerId = vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       uint256 offerId = vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultKernel.APOffer memory offer =
-           VaultKernel.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer =
+           VaultMarketHub.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       vaultKernel.cancelOffer(offer);
+       vaultMarketHub.cancelOffer(offer);
 
-       bytes32 offerHash = vaultKernel.getOfferHash(offer);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offerHash), 0);
+       bytes32 offerHash = vaultMarketHub.getOfferHash(offer);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offerHash), 0);
 
        // New - Testcase added to attempt to allocate a cancelled offer
 
-       vm.expectRevert(VaultKernel.OfferDoesNotExist.selector);
-       vaultKernel.allocateOffer(offer);
+       vm.expectRevert(VaultMarketHub.OfferDoesNotExist.selector);
+       vaultMarketHub.allocateOffer(offer);
 
        // Verify allocation did not occur
        assertEq(baseToken.balanceOf(address(alice)), 2*quantity);
        assertEq(targetVault.balanceOf(alice), 0);
 
        // New - Testcase added to attempt to allocate a cancelled offer within a group of multiple valid offers
-       VaultKernel.APOffer[] memory offers = new VaultKernel.APOffer[](3);
+       VaultMarketHub.APOffer[] memory offers = new VaultMarketHub.APOffer[](3);
 
        uint256 offer2Id =
-           vaultKernel.createAPOffer(address(targetVault2), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+           vaultMarketHub.createAPOffer(address(targetVault2), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
        uint256 offer3Id =
-           vaultKernel.createAPOffer(address(targetVault3), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+           vaultMarketHub.createAPOffer(address(targetVault3), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultKernel.APOffer memory offer2 =
-           VaultKernel.APOffer(offer2Id, address(targetVault2), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
-       VaultKernel.APOffer memory offer3 =
-           VaultKernel.APOffer(offer3Id, address(targetVault3), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer2 =
+           VaultMarketHub.APOffer(offer2Id, address(targetVault2), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer3 =
+           VaultMarketHub.APOffer(offer3Id, address(targetVault3), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       bytes32 offer2Hash = vaultKernel.getOfferHash(offer2);
-       bytes32 offer3Hash = vaultKernel.getOfferHash(offer3);
+       bytes32 offer2Hash = vaultMarketHub.getOfferHash(offer2);
+       bytes32 offer3Hash = vaultMarketHub.getOfferHash(offer3);
 
        offers[0] = offer2;
        offers[1] = offer;
@@ -422,21 +422,21 @@ contract VaultKernelTest is Test {
            abi.encode(tokenRateRequested)
            );
 
-       vm.expectRevert(VaultKernel.OfferDoesNotExist.selector);
+       vm.expectRevert(VaultMarketHub.OfferDoesNotExist.selector);
         uint256[] memory fillAmounts = new uint256[](3);
         fillAmounts[0] = type(uint256).max;
         fillAmounts[1] = type(uint256).max;
         fillAmounts[2] = type(uint256).max;
-        vaultKernel.allocateOffers(offers, fillAmounts);
+        vaultMarketHub.allocateOffers(offers, fillAmounts);
 
        //Verify none of the offers allocated
        assertEq(targetVault.balanceOf(alice), 0);
        assertEq(targetVault2.balanceOf(alice), 0);
        assertEq(targetVault3.balanceOf(alice), 0);
 
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offerHash), 0);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offer2Hash), quantity);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offer3Hash), quantity);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offerHash), 0);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offer2Hash), quantity);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offer3Hash), quantity);
 
        assertEq(baseToken.balanceOf(address(alice)), 2*quantity);
 
@@ -454,7 +454,7 @@ contract VaultKernelTest is Test {
 
        vm.startPrank(alice);
 
-       baseToken.approve(address(vaultKernel), quantity);
+       baseToken.approve(address(vaultMarketHub), quantity);
        baseToken.approve(address(targetVault), quantity);
 
        address[] memory tokensRequested = new address[](1);
@@ -463,10 +463,10 @@ contract VaultKernelTest is Test {
        tokenRatesRequested[0] = tokenRateRequested;
 
        // Create an offer
-       uint256 offerId = vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       uint256 offerId = vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultKernel.APOffer memory offer =
-           VaultKernel.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer =
+           VaultMarketHub.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        vm.stopPrank();
 
@@ -483,12 +483,12 @@ contract VaultKernelTest is Test {
            abi.encode(uint256(tokenRateRequested-1))
            );
        // Allocate the offer
-       vm.expectRevert(VaultKernel.OfferConditionsNotMet.selector);
-       vaultKernel.allocateOffer(offer);
+       vm.expectRevert(VaultMarketHub.OfferConditionsNotMet.selector);
+       vaultMarketHub.allocateOffer(offer);
 
        // Verify allocation did not occur
-       bytes32 offerHash = vaultKernel.getOfferHash(offer);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offerHash), quantity);
+       bytes32 offerHash = vaultMarketHub.getOfferHash(offer);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offerHash), quantity);
        assertEq(baseToken.balanceOf(address(alice)), quantity);
        assertEq(targetVault.balanceOf(alice), 0);
 
@@ -506,7 +506,7 @@ contract VaultKernelTest is Test {
 
        vm.startPrank(alice);
 
-       baseToken.approve(address(vaultKernel), quantity);
+       baseToken.approve(address(vaultMarketHub), quantity);
        baseToken.approve(address(targetVault), quantity);
 
        address[] memory tokensRequested = new address[](1);
@@ -515,10 +515,10 @@ contract VaultKernelTest is Test {
        tokenRatesRequested[0] = tokenRateRequested;
 
        // Create an offer
-       uint256 offerId = vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       uint256 offerId = vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultKernel.APOffer memory offer =
-           VaultKernel.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer =
+           VaultMarketHub.APOffer(offerId, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        vm.stopPrank();
 
@@ -535,11 +535,11 @@ contract VaultKernelTest is Test {
            abi.encode(tokenRateRequested)
            );
        // Allocate the offer
-       vaultKernel.allocateOffer(offer);
+       vaultMarketHub.allocateOffer(offer);
 
        // Verify allocation
-       bytes32 offerHash = vaultKernel.getOfferHash(offer);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offerHash), 0);
+       bytes32 offerHash = vaultMarketHub.getOfferHash(offer);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offerHash), 0);
        assertEq(baseToken.balanceOf(address(targetVault)), quantity);
        assertEq(targetVault.balanceOf(alice), quantity);
 
@@ -558,10 +558,10 @@ contract VaultKernelTest is Test {
 
        vm.startPrank(alice);
 
-       baseToken.approve(address(vaultKernel), quantity);
+       baseToken.approve(address(vaultMarketHub), quantity);
        baseToken.approve(address(targetVault), quantity);
        baseToken.approve(address(fundingVault), quantity);
-       ERC20(fundingVault).approve(address(vaultKernel), quantity);
+       ERC20(fundingVault).approve(address(vaultMarketHub), quantity);
 
        address[] memory tokensRequested = new address[](1);
        tokensRequested[0] = address(baseToken);
@@ -569,10 +569,10 @@ contract VaultKernelTest is Test {
        tokenRatesRequested[0] = tokenRateRequested;
        fundingVault.deposit(quantity, alice);
 
-       uint256 offerId = vaultKernel.createAPOffer(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+       uint256 offerId = vaultMarketHub.createAPOffer(address(targetVault), address(fundingVault), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultKernel.APOffer memory offer =
-           VaultKernel.APOffer(offerId, address(targetVault), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer =
+           VaultMarketHub.APOffer(offerId, address(targetVault), alice, address(fundingVault), timeToExpiry, tokensRequested, tokenRatesRequested);
 
        vm.stopPrank();
 
@@ -586,10 +586,10 @@ contract VaultKernelTest is Test {
            abi.encode(tokenRateRequested)
            );
 
-       vaultKernel.allocateOffer(offer);
+       vaultMarketHub.allocateOffer(offer);
 
-       bytes32 offerHash = vaultKernel.getOfferHash(offer);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offerHash), 0);
+       bytes32 offerHash = vaultMarketHub.getOfferHash(offer);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offerHash), 0);
        assertEq(targetVault.balanceOf(alice), quantity);
        assertEq(fundingVault.balanceOf(alice), 0);
 
@@ -606,7 +606,7 @@ contract VaultKernelTest is Test {
         baseToken.mint(alice, 3*quantity);
 
        vm.startPrank(alice);
-        baseToken.approve(address(vaultKernel), quantity*3);
+        baseToken.approve(address(vaultMarketHub), quantity*3);
         baseToken.approve(address(targetVault), quantity*3);
 
        address[] memory tokensRequested = new address[](3);
@@ -620,24 +620,24 @@ contract VaultKernelTest is Test {
 
 
        uint256 offer1Id =
-           vaultKernel.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+           vaultMarketHub.createAPOffer(address(targetVault), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
        uint256 offer2Id =
-           vaultKernel.createAPOffer(address(targetVault2), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+           vaultMarketHub.createAPOffer(address(targetVault2), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
        uint256 offer3Id =
-           vaultKernel.createAPOffer(address(targetVault3), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
+           vaultMarketHub.createAPOffer(address(targetVault3), address(0), quantity, timeToExpiry, tokensRequested, tokenRatesRequested);
 
-       VaultKernel.APOffer memory offer1 =
-           VaultKernel.APOffer(offer1Id, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
-       VaultKernel.APOffer memory offer2 =
-           VaultKernel.APOffer(offer2Id, address(targetVault2), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
-       VaultKernel.APOffer memory offer3 =
-           VaultKernel.APOffer(offer3Id, address(targetVault3), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer1 =
+           VaultMarketHub.APOffer(offer1Id, address(targetVault), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer2 =
+           VaultMarketHub.APOffer(offer2Id, address(targetVault2), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
+       VaultMarketHub.APOffer memory offer3 =
+           VaultMarketHub.APOffer(offer3Id, address(targetVault3), alice, address(0), timeToExpiry, tokensRequested, tokenRatesRequested);
       
-       VaultKernel.APOffer[] memory offers = new VaultKernel.APOffer[](3);
+       VaultMarketHub.APOffer[] memory offers = new VaultMarketHub.APOffer[](3);
 
-       bytes32 offer1Hash = vaultKernel.getOfferHash(offer1);
-       bytes32 offer2Hash = vaultKernel.getOfferHash(offer2);
-       bytes32 offer3Hash = vaultKernel.getOfferHash(offer3);
+       bytes32 offer1Hash = vaultMarketHub.getOfferHash(offer1);
+       bytes32 offer2Hash = vaultMarketHub.getOfferHash(offer2);
+       bytes32 offer3Hash = vaultMarketHub.getOfferHash(offer3);
 
        offers[0] = offer1;
        offers[1] = offer2;
@@ -673,16 +673,16 @@ contract VaultKernelTest is Test {
         fillAmounts[0] = type(uint256).max;
         fillAmounts[1] = type(uint256).max;
         fillAmounts[2] = type(uint256).max;
-        vaultKernel.allocateOffers(offers, fillAmounts);
+        vaultMarketHub.allocateOffers(offers, fillAmounts);
 
        //Verify all of the offers allocated
        assertEq(targetVault.balanceOf(alice), quantity);
        assertEq(targetVault2.balanceOf(alice), quantity);
        assertEq(targetVault3.balanceOf(alice), quantity);
 
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offer1Hash), 0);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offer2Hash), 0);
-       assertEq(vaultKernel.offerHashToRemainingQuantity(offer3Hash), 0);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offer1Hash), 0);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offer2Hash), 0);
+       assertEq(vaultMarketHub.offerHashToRemainingQuantity(offer3Hash), 0);
 
        assertEq(baseToken.balanceOf(address(alice)), 0);
 

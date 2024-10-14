@@ -12,9 +12,9 @@ enum RewardStyle {
     Forfeitable
 }
 
-/// @title RecipeKernelBase
-/// @notice Base contract for the RecipeKernel
-abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
+/// @title RecipeMarketHubBase
+/// @notice Base contract for the RecipeMarketHub
+abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     /// @notice The address of the WeirollWallet implementation contract for use with ClonesWithImmutableArgs
     address public immutable WEIROLL_WALLET_IMPLEMENTATION;
 
@@ -22,7 +22,7 @@ abstract contract RecipeKernelBase is Owned, ReentrancyGuardTransient {
     address public immutable POINTS_FACTORY;
 
     /// @notice The minimum percent you can fill an AP offer with, to prevent griefing attacks
-    uint256 public constant MIN_FILL_PERCENT = 0.25e18; // == 25%
+    uint256 public constant MIN_FILL_PERCENT = 0.10e18; // == 10%
 
     /// @dev The minimum quantity of tokens for an offer
     uint256 internal constant MINIMUM_QUANTITY = 1e6;

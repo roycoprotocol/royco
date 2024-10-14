@@ -9,21 +9,21 @@ contract TestFuzz_PointFactory is RoycoTestBase {
         setupBaseEnvironment();
     }
 
-    function testFuzz_AddRecipeKernel(address _recipeKernel) external prankModifier(POINTS_FACTORY_OWNER_ADDRESS) {
+    function testFuzz_AddRecipeMarketHub(address _recipeMarketHub) external prankModifier(POINTS_FACTORY_OWNER_ADDRESS) {
         // Expect the NewPointsProgram event to be emitted
         vm.expectEmit(true, false, false, true, address(pointsFactory));
         // Emit the expected event
-        emit PointsFactory.RecipeKernelAdded(address(_recipeKernel));
+        emit PointsFactory.RecipeMarketHubAdded(address(_recipeMarketHub));
 
-        assertFalse(pointsFactory.isRecipeKernel(address(_recipeKernel)));
-        pointsFactory.addRecipeKernel(address(_recipeKernel));
-        assertTrue(pointsFactory.isRecipeKernel(address(_recipeKernel)));
+        assertFalse(pointsFactory.isRecipeMarketHub(address(_recipeMarketHub)));
+        pointsFactory.addRecipeMarketHub(address(_recipeMarketHub));
+        assertTrue(pointsFactory.isRecipeMarketHub(address(_recipeMarketHub)));
     }
 
-    function testFuzz_RevertIf_NonOwnerAddsRecipeKernel(address _nonOwner) external prankModifier(_nonOwner) {
+    function testFuzz_RevertIf_NonOwnerAddsRecipeMarketHub(address _nonOwner) external prankModifier(_nonOwner) {
         vm.assume(POINTS_FACTORY_OWNER_ADDRESS != _nonOwner);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, _nonOwner));
-        pointsFactory.addRecipeKernel(address(recipeKernel));
+        pointsFactory.addRecipeMarketHub(address(recipeMarketHub));
     }
 
     function testFuzz_CreatePointsProgram(string memory _programName, string memory _programSymbol, uint256 _decimals, address _programOwner) external {

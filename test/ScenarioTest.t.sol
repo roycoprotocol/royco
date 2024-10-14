@@ -15,14 +15,14 @@ import { WeirollWallet } from "src/WeirollWallet.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 import { Points } from "src/Points.sol";
 
-import { VaultKernel } from "src/VaultKernel.sol";
-import "test/mocks/MockRecipeKernel.sol";
+import { VaultMarketHub } from "src/VaultMarketHub.sol";
+import "test/mocks/MockRecipeMarketHub.sol";
 
 import { Test, console } from "forge-std/Test.sol";
 
 contract ScenarioTest is Test {
-    VaultKernel public vaultKernel;
-    MockRecipeKernel public recipeKernel;
+    VaultMarketHub public vaultMarketHub;
+    MockRecipeMarketHub public recipeMarketHub;
 
     WeirollWallet public weirollImplementation = new WeirollWallet();
     PointsFactory public pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER);
@@ -45,7 +45,7 @@ contract ScenarioTest is Test {
     uint256 initialProtocolFee = 0.05e18;
     uint256 initialMinimumFrontendFee = 0.025e18;
 
-    RecipeKernel.Recipe NULL_RECIPE = RecipeKernelBase.Recipe(new bytes32[](0), new bytes[](0));
+    RecipeMarketHub.Recipe NULL_RECIPE = RecipeMarketHubBase.Recipe(new bytes32[](0), new bytes[](0));
 
     function setUp() public {
         baseToken = new MockERC20("Base Token", "BT");
@@ -57,7 +57,7 @@ contract ScenarioTest is Test {
         fundingVault = new MockERC4626(baseToken);
         fundingVault2 = new MockERC4626(baseToken2);
 
-        recipeKernel = new MockRecipeKernel(
+        recipeMarketHub = new MockRecipeMarketHub(
             address(weirollImplementation),
             initialProtocolFee,
             initialMinimumFrontendFee,
@@ -65,13 +65,13 @@ contract ScenarioTest is Test {
             address(pointsFactory)
         );
 
-        vaultKernel = new VaultKernel(address(this));
+        vaultMarketHub = new VaultMarketHub(address(this));
     }
 
-    function testBasicVaultKernelAllocate() public {
+    function testBasicVaultMarketHubAllocate() public {
         vm.startPrank(USER01);
         baseToken.mint(USER01, 1000 * 1e18);
-        baseToken.approve(address(vaultKernel), 300 * 1e18);
+        baseToken.approve(address(vaultMarketHub), 300 * 1e18);
         baseToken.approve(address(fundingVault), 100 * 1e18);
 
         address[] memory tokensRequested = new address[](1);
@@ -80,18 +80,18 @@ contract ScenarioTest is Test {
         tokenRatesRequested[0] = 1e18;
 
         uint256 offer1Id =
-            vaultKernel.createAPOffer(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            vaultMarketHub.createAPOffer(address(targetVault), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         uint256 offer2Id =
-            vaultKernel.createAPOffer(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            vaultMarketHub.createAPOffer(address(targetVault2), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
         uint256 offer3Id =
-            vaultKernel.createAPOffer(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+            vaultMarketHub.createAPOffer(address(targetVault3), address(0), 100 * 1e18, block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
-        VaultKernel.APOffer memory offer1 =
-            VaultKernel.APOffer(offer1Id, address(targetVault), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        VaultKernel.APOffer memory offer2 =
-            VaultKernel.APOffer(offer2Id, address(targetVault2), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
-        VaultKernel.APOffer memory offer3 =
-            VaultKernel.APOffer(offer3Id, address(targetVault3), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        VaultMarketHub.APOffer memory offer1 =
+            VaultMarketHub.APOffer(offer1Id, address(targetVault), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        VaultMarketHub.APOffer memory offer2 =
+            VaultMarketHub.APOffer(offer2Id, address(targetVault2), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
+        VaultMarketHub.APOffer memory offer3 =
+            VaultMarketHub.APOffer(offer3Id, address(targetVault3), USER01, address(0), block.timestamp + 1 days, tokensRequested, tokenRatesRequested);
 
         uint256[][] memory moreCampaignIds = new uint256[][](3);
         moreCampaignIds[0] = new uint256[](1);
@@ -100,11 +100,11 @@ contract ScenarioTest is Test {
         moreCampaignIds[1][0] = 1;
         moreCampaignIds[2] = new uint256[](1);
         moreCampaignIds[2][0] = 2;
-        VaultKernel.APOffer[] memory offers = new VaultKernel.APOffer[](3);
+        VaultMarketHub.APOffer[] memory offers = new VaultMarketHub.APOffer[](3);
 
-        bytes32 offer1Hash = vaultKernel.getOfferHash(offer1);
-        bytes32 offer2Hash = vaultKernel.getOfferHash(offer2);
-        bytes32 offer3Hash = vaultKernel.getOfferHash(offer3);
+        bytes32 offer1Hash = vaultMarketHub.getOfferHash(offer1);
+        bytes32 offer2Hash = vaultMarketHub.getOfferHash(offer2);
+        bytes32 offer3Hash = vaultMarketHub.getOfferHash(offer3);
 
         offers[0] = offer1;
         offers[1] = offer2;
@@ -134,25 +134,25 @@ contract ScenarioTest is Test {
         fillAmounts[0] = type(uint256).max;
         fillAmounts[1] = type(uint256).max;
         fillAmounts[2] = type(uint256).max;
-        vaultKernel.allocateOffers(offers, fillAmounts);
+        vaultMarketHub.allocateOffers(offers, fillAmounts);
 
         //Verify none of the offers allocated
         assertEq(targetVault.balanceOf(USER01), 100 * 1e18);
         assertEq(targetVault2.balanceOf(USER01), 100 * 1e18);
         assertEq(targetVault3.balanceOf(USER01), 100 * 1e18);
 
-        assertEq(vaultKernel.offerHashToRemainingQuantity(offer1Hash), 0);
-        assertEq(vaultKernel.offerHashToRemainingQuantity(offer2Hash), 0);
-        assertEq(vaultKernel.offerHashToRemainingQuantity(offer3Hash), 0);
+        assertEq(vaultMarketHub.offerHashToRemainingQuantity(offer1Hash), 0);
+        assertEq(vaultMarketHub.offerHashToRemainingQuantity(offer2Hash), 0);
+        assertEq(vaultMarketHub.offerHashToRemainingQuantity(offer3Hash), 0);
 
         assertEq(baseToken.balanceOf(address(USER01)), 1000 * 1e18 - 300 * 1e18);
 
         vm.stopPrank();
     }
 
-    function testBasicRecipeKernelAllocate() public {
-        uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        bytes32 marketHash = recipeKernel.createMarket(address(baseToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+    function testBasicRecipeMarketHubAllocate() public {
+        uint256 frontendFee = recipeMarketHub.minimumFrontendFee();
+        bytes32 marketHash = recipeMarketHub.createMarket(address(baseToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
@@ -165,9 +165,9 @@ contract ScenarioTest is Test {
         incentiveAmountsOffered[0] = 1000e18;
 
         baseToken2.mint(USER02, 1000e18);
-        baseToken2.approve(address(recipeKernel), 1000e18);
+        baseToken2.approve(address(recipeMarketHub), 1000e18);
 
-        bytes32 offerHash = recipeKernel.createIPOffer(
+        bytes32 offerHash = recipeMarketHub.createIPOffer(
             marketHash, // Referencing the created market
             offerAmount, // Total input token amount
             block.timestamp + 30 days, // Expiry time
@@ -179,15 +179,15 @@ contract ScenarioTest is Test {
         // Mint liquidity tokens to the AP to fill the offer
         baseToken.mint(USER01, fillAmount);
         vm.startPrank(USER01);
-        baseToken.approve(address(recipeKernel), fillAmount);
+        baseToken.approve(address(recipeMarketHub), fillAmount);
         vm.stopPrank();
 
         // Fill the offer
         vm.startPrank(USER01);
-        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeMarketHub.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeMarketHub.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
     }
 }

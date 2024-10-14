@@ -8,10 +8,10 @@ import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import { ReentrancyGuardTransient } from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
-/// @title VaultKernel
+/// @title VaultMarketHub
 /// @author CopyPaste, corddry, ShivaanshK
-/// @notice VaultKernel contract for Incentivizing AP/IPs to participate incentivized ERC4626 markets
-contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
+/// @notice VaultMarketHub contract for Incentivizing AP/IPs to participate incentivized ERC4626 markets
+contract VaultMarketHub is Ownable2Step, ReentrancyGuardTransient {
     using SafeTransferLib for ERC20;
 
     /// @custom:field offerID Set to numOffers - 1 on offer creation (zero-indexed)
@@ -206,16 +206,16 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
 
         // if the fundingVault is set to 0, fund the fill directly via the base asset
         if (offer.fundingVault == address(0)) {
-            // Transfer the base asset from the AP to the VaultKernel
+            // Transfer the base asset from the AP to the VaultMarketHub
             targetAsset.safeTransferFrom(offer.ap, address(this), fillAmount);
         } else {
-            // Get pre-withdraw token balance of VaultKernel
+            // Get pre-withdraw token balance of VaultMarketHub
             uint256 preWithdrawTokenBalance = targetAsset.balanceOf(address(this));
             
-            // Withdraw from the funding vault to the VaultKernel
+            // Withdraw from the funding vault to the VaultMarketHub
             ERC4626(offer.fundingVault).withdraw(fillAmount, address(this), offer.ap);
 
-            // Get post-withdraw token balance of VaultKernel
+            // Get post-withdraw token balance of VaultMarketHub
             uint256 postWithdrawTokenBalance = targetAsset.balanceOf(address(this));
 
             // Check that quantity withdrawn from the funding vault is at least the quantity to allocate

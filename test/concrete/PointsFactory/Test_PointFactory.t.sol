@@ -9,19 +9,19 @@ contract Test_PointFactory is RoycoTestBase {
         setupBaseEnvironment();
     }
 
-    function test_AddOrderbook() external prankModifier(POINTS_FACTORY_OWNER_ADDRESS) {
-        assertFalse(pointsFactory.isRecipeKernel(address(0xbeef)));
+    function test_AddMarketHub() external prankModifier(POINTS_FACTORY_OWNER_ADDRESS) {
+        assertFalse(pointsFactory.isRecipeMarketHub(address(0xbeef)));
         // Expect the NewPointsProgram event to be emitted
         vm.expectEmit(true, false, false, true, address(pointsFactory));
         // Emit the expected event
-        emit PointsFactory.RecipeKernelAdded(address(0xbeef));
-        pointsFactory.addRecipeKernel(address(0xbeef));
-        assertTrue(pointsFactory.isRecipeKernel(address(0xbeef)));
+        emit PointsFactory.RecipeMarketHubAdded(address(0xbeef));
+        pointsFactory.addRecipeMarketHub(address(0xbeef));
+        assertTrue(pointsFactory.isRecipeMarketHub(address(0xbeef)));
     }
 
-    function test_RevertIf_NonOwnerAddsOrderbook() external prankModifier(ALICE_ADDRESS) {
+    function test_RevertIf_NonOwnerAddsMarketHub() external prankModifier(ALICE_ADDRESS) {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE_ADDRESS));        
-        pointsFactory.addRecipeKernel(address(recipeKernel));
+        pointsFactory.addRecipeMarketHub(address(recipeMarketHub));
     }
 
     function test_CreatePointsProgram() external {

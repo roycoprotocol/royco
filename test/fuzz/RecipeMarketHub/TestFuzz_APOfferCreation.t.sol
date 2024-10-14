@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "src/base/RecipeKernelBase.sol";
+import "src/base/RecipeMarketHubBase.sol";
 
-import { RecipeKernelTestBase } from "../../utils/RecipeKernel/RecipeKernelTestBase.sol";
+import { RecipeMarketHubTestBase } from "../../utils/RecipeMarketHub/RecipeMarketHubTestBase.sol";
 import { AddressArrayUtils } from "../../utils/AddressArrayUtils.sol";
 import { MockERC4626 } from "../../mocks/MockERC4626.sol";
 import { MockERC20 } from "../../mocks/MockERC20.sol";
 
-contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
+contract TestFuzz_APOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
     using AddressArrayUtils for address[];
     
     function setUp() external {
         uint256 protocolFee = 0.01e18; // 1% protocol fee
         uint256 minimumFrontendFee = 0.001e18; // 0.1% minimum frontend fee
-        setUpRecipeKernelTests(protocolFee, minimumFrontendFee);
+        setUpRecipeMarketHubTests(protocolFee, minimumFrontendFee);
     }
 
     function TestFuzz_CreateAPOffer(
@@ -33,7 +33,7 @@ contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
         address[] memory tokensRequested = new address[](_tokenCount);
         uint256[] memory tokenAmountsRequested = new uint256[](_tokenCount);
 
-        uint256 expectedmarketHash = recipeKernel.numAPOffers();
+        uint256 expectedmarketHash = recipeMarketHub.numAPOffers();
 
         // Generate random token addresses and counts
         for (uint256 i = 0; i < _tokenCount; i++) {
@@ -50,17 +50,17 @@ contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
         address fundingVault = _fundingVaultSeed % 2 == 0 ? address(0) : address(mockVault);
 
         vm.expectEmit(true, true, true, true);
-        emit RecipeKernelBase.APOfferCreated(0, marketHash, fundingVault, _expiry, tokensRequested, tokenAmountsRequested, _quantity);
+        emit RecipeMarketHubBase.APOfferCreated(0, marketHash, fundingVault, _expiry, tokensRequested, tokenAmountsRequested, _quantity);
 
-        bytes32 offerHash = recipeKernel.createAPOffer(marketHash, fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
+        bytes32 offerHash = recipeMarketHub.createAPOffer(marketHash, fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
 
-        assertEq(recipeKernel.numAPOffers(), expectedmarketHash + 1);
-        assertEq(recipeKernel.numIPOffers(), 0);
+        assertEq(recipeMarketHub.numAPOffers(), expectedmarketHash + 1);
+        assertEq(recipeMarketHub.numIPOffers(), 0);
     }
 
     function TestFuzz_RevertIf_CreateAPOfferWithNonExistentMarket(bytes32 _marketHash) external {
-        vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.MarketDoesNotExist.selector));
-        recipeKernel.createAPOffer(
+        vm.expectRevert(abi.encodeWithSelector(RecipeMarketHubBase.MarketDoesNotExist.selector));
+        recipeMarketHub.createAPOffer(
             _marketHash, // Non-existent market ID
             address(0),
             100_000e18,
@@ -75,8 +75,8 @@ contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
         bytes32 marketHash = createMarket();
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.CannotPlaceZeroQuantityOffer.selector));
-        recipeKernel.createAPOffer(
+        vm.expectRevert(abi.encodeWithSelector(RecipeMarketHubBase.CannotPlaceZeroQuantityOffer.selector));
+        recipeMarketHub.createAPOffer(
             marketHash,
             address(0),
             _quantity, // Zero quantity
@@ -92,8 +92,8 @@ contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.warp(_blockTimestamp); // set block timestamp
 
         bytes32 marketHash = createMarket();
-        vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.CannotPlaceExpiredOffer.selector));
-        recipeKernel.createAPOffer(
+        vm.expectRevert(abi.encodeWithSelector(RecipeMarketHubBase.CannotPlaceExpiredOffer.selector));
+        recipeMarketHub.createAPOffer(
             marketHash,
             address(0),
             100_000e18,
@@ -111,8 +111,8 @@ contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
         address[] memory tokensRequested = new address[](_tokensRequestedLen);
         uint256[] memory tokenAmountsRequested = new uint256[](_tokenAmountsRequestedLen);
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.ArrayLengthMismatch.selector));
-        recipeKernel.createAPOffer(marketHash, address(0), 100_000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
+        vm.expectRevert(abi.encodeWithSelector(RecipeMarketHubBase.ArrayLengthMismatch.selector));
+        recipeMarketHub.createAPOffer(marketHash, address(0), 100_000e18, block.timestamp + 1 days, tokensRequested, tokenAmountsRequested);
     }
 
     function TestFuzz_RevertIf_CreateAPOfferWithMismatchedBaseAsset(string memory _tokenName, string memory _tokenSymbol) external {
@@ -125,8 +125,8 @@ contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
         MockERC4626 mismatchedTokenVault = new MockERC4626(new MockERC20(_tokenName, _tokenSymbol));
 
-        vm.expectRevert(abi.encodeWithSelector(RecipeKernelBase.MismatchedBaseAsset.selector));
-        recipeKernel.createAPOffer(
+        vm.expectRevert(abi.encodeWithSelector(RecipeMarketHubBase.MismatchedBaseAsset.selector));
+        recipeMarketHub.createAPOffer(
             marketHash,
             address(mismatchedTokenVault), // Funding vault with mismatched base asset
             100_000e18,
