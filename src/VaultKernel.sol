@@ -92,6 +92,8 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
     error ArrayLengthMismatch();
     /// @notice emitted when the AP tries to cancel an offer that they did not create
     error NotOfferCreator();
+    /// @notice emitted when the withdraw from funding vault fails on allocate
+    error FundingVaultWithdrawFailed();
     /// @notice emitted when trying to fill offers while offers are paused
     error OffersPaused();
 
@@ -207,8 +209,19 @@ contract VaultKernel is Ownable2Step, ReentrancyGuardTransient {
             // Transfer the base asset from the AP to the VaultKernel
             targetAsset.safeTransferFrom(offer.ap, address(this), fillAmount);
         } else {
+            // Get pre-withdraw token balance of VaultKernel
+            uint256 preWithdrawTokenBalance = targetAsset.balanceOf(address(this));
+            
             // Withdraw from the funding vault to the VaultKernel
             ERC4626(offer.fundingVault).withdraw(fillAmount, address(this), offer.ap);
+
+            // Get post-withdraw token balance of VaultKernel
+            uint256 postWithdrawTokenBalance = targetAsset.balanceOf(address(this));
+
+            // Check that quantity withdrawn from the funding vault is at least the quantity to allocate
+            if ((postWithdrawTokenBalance - preWithdrawTokenBalance) < fillAmount) {
+                revert FundingVaultWithdrawFailed();
+            }
         }
 
         for (uint256 i; i < offer.incentivesRatesRequested.length; ++i) {
