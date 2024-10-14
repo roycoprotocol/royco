@@ -485,7 +485,7 @@ contract WrappedVault is Ownable2Step, ERC20, IWrappedVault {
         if (rewardsInterval.start < block.timestamp || block.timestamp >= rewardsInterval.end) return 0;
         uint256 shares = VAULT.previewDeposit(assets);
 
-        return (uint256(rewardsInterval.rate) * shares * 1e18 / (totalSupply + shares)) / assets;
+        return (uint256(rewardsInterval.rate) * shares / (totalSupply + shares)) * 1e18 / assets;
     }
 
     /*//////////////////////////////////////////////////////////////
