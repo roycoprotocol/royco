@@ -479,7 +479,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     /// @return The rate of rewards, measured in wei of rewards token per wei of assets per second, scaled up by 1e18 to avoid precision loss
     function previewRateAfterDeposit(address reward, uint256 assets) public view returns (uint256) {
         RewardsInterval memory rewardsInterval = rewardToInterval[reward];
-        if (rewardsInterval.start < block.timestamp || block.timestamp >= rewardsInterval.end) return 0;
+        if (rewardsInterval.start > block.timestamp || block.timestamp >= rewardsInterval.end) return 0;
         uint256 shares = VAULT.previewDeposit(assets);
 
         return (uint256(rewardsInterval.rate) * shares / (totalSupply + shares)) * 1e18 / assets;
