@@ -41,6 +41,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.expectEmit(false, false, false, false, address(recipeKernel));
         emit RecipeKernelBase.IPOfferCreated(
             0, // Expected offer ID (starts at 0)
+            bytes32(0),
             marketId, // Market ID
             quantity, // Total quantity
             tokensOffered, // Tokens offered
@@ -57,7 +58,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         );
 
         // Create the IP offer
-        uint256 offerId = recipeKernel.createIPOffer(
+        bytes32 offerHash = recipeKernel.createIPOffer(
             marketId, // Referencing the created market
             quantity, // Total input token amount
             expiry, // Expiry time
@@ -66,14 +67,13 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         );
 
         // Assertions on the offer
-        assertEq(offerId, 0); // First IP offer should have ID 0
         assertEq(recipeKernel.numIPOffers(), 1); // IP offer count should be 1
         assertEq(recipeKernel.numAPOffers(), 0); // AP offers should remain 0
 
         // Use the helper function to retrieve values from storage
-        uint256 frontendFeeStored = recipeKernel.getIncentiveToFrontendFeeAmountForIPOffer(offerId, tokensOffered[0]);
-        uint256 protocolFeeAmountStored = recipeKernel.getIncentiveToProtocolFeeAmountForIPOffer(offerId, tokensOffered[0]);
-        uint256 incentiveAmountStored = recipeKernel.getIncentiveAmountsOfferedForIPOffer(offerId, tokensOffered[0]);
+        uint256 frontendFeeStored = recipeKernel.getIncentiveToFrontendFeeAmountForIPOffer(offerHash, tokensOffered[0]);
+        uint256 protocolFeeAmountStored = recipeKernel.getIncentiveToProtocolFeeAmountForIPOffer(offerHash, tokensOffered[0]);
+        uint256 incentiveAmountStored = recipeKernel.getIncentiveAmountsOfferedForIPOffer(offerHash, tokensOffered[0]);
 
         // Assert that the values match expected values
         assertEq(frontendFeeStored, frontendFeeAmount);
@@ -110,6 +110,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.expectEmit(false, false, false, false, address(recipeKernel));
         emit RecipeKernelBase.IPOfferCreated(
             0, // Expected offer ID (starts at 0)
+            bytes32(0),
             marketId, // Market ID
             quantity, // Total quantity
             tokensOffered, // Tokens offered
@@ -121,7 +122,7 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
 
         vm.startPrank(ALICE_ADDRESS);
         // Create the IP offer
-        uint256 offerId = recipeKernel.createIPOffer(
+        bytes32 offerHash = recipeKernel.createIPOffer(
             marketId, // Referencing the created market
             quantity, // Total input token amount
             expiry, // Expiry time
@@ -131,14 +132,13 @@ contract Test_IPOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Assertions on the offer
-        assertEq(offerId, 0); // First IP offer should have ID 0
         assertEq(recipeKernel.numIPOffers(), 1); // IP offer count should be 1
         assertEq(recipeKernel.numAPOffers(), 0); // AP offers should remain 0
 
         // Use the helper function to retrieve values from storage
-        uint256 frontendFeeStored = recipeKernel.getIncentiveToFrontendFeeAmountForIPOffer(offerId, tokensOffered[0]);
-        uint256 protocolFeeAmountStored = recipeKernel.getIncentiveToProtocolFeeAmountForIPOffer(offerId, tokensOffered[0]);
-        uint256 incentiveAmountStored = recipeKernel.getIncentiveAmountsOfferedForIPOffer(offerId, tokensOffered[0]);
+        uint256 frontendFeeStored = recipeKernel.getIncentiveToFrontendFeeAmountForIPOffer(offerHash, tokensOffered[0]);
+        uint256 protocolFeeAmountStored = recipeKernel.getIncentiveToProtocolFeeAmountForIPOffer(offerHash, tokensOffered[0]);
+        uint256 incentiveAmountStored = recipeKernel.getIncentiveAmountsOfferedForIPOffer(offerHash, tokensOffered[0]);
 
         // Assert that the values match expected values
         assertEq(frontendFeeStored, frontendFeeAmount);

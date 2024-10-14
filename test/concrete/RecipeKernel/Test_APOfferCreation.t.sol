@@ -36,7 +36,7 @@ contract Test_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
         );
 
         // Create the AP offer
-        uint256 offerId = recipeKernel.createAPOffer(
+        bytes32 offerHash = recipeKernel.createAPOffer(
             marketId, // Referencing the created market
             address(0), // No funding vault
             quantity, // Total input token amount
@@ -45,14 +45,8 @@ contract Test_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        assertEq(offerId, 0); // First AP offer should have ID 0
         assertEq(recipeKernel.numAPOffers(), 1); // AP offer count should be 1
         assertEq(recipeKernel.numIPOffers(), 0); // IP offers should remain 0
-
-        // Check hash is added correctly and quantity can be retrieved from mapping
-        bytes32 offerHash = recipeKernel.getOfferHash(
-            RecipeKernelBase.APOffer(0, marketId, ALICE_ADDRESS, address(0), quantity, expiry, tokensRequested, tokenAmountsRequested)
-        );
 
         assertEq(recipeKernel.offerHashToRemainingQuantity(offerHash), quantity); // Ensure the correct quantity is stored
     }

@@ -64,7 +64,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
     )
         public
         prankModifier(_ipAddress)
-        returns (uint256 orderId)
+        returns (bytes32 offerHash)
     {
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(mockIncentiveToken);
@@ -74,7 +74,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         mockIncentiveToken.mint(_ipAddress, 1000e18);
         mockIncentiveToken.approve(address(recipeKernel), 1000e18);
 
-        orderId = recipeKernel.createIPOffer(
+        offerHash = recipeKernel.createIPOffer(
             _targetMarketID, // Referencing the created market
             _quantity, // Total input token amount
             block.timestamp + 30 days, // Expiry time
@@ -91,7 +91,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
     )
         public
         prankModifier(_ipAddress)
-        returns (uint256 orderId)
+        returns (bytes32 offerHash)
     {
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(mockIncentiveToken);
@@ -101,7 +101,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         mockIncentiveToken.mint(_ipAddress, 1000e18);
         mockIncentiveToken.approve(address(recipeKernel), 1000e18);
 
-        orderId = recipeKernel.createIPOffer(
+        offerHash = recipeKernel.createIPOffer(
             _targetMarketID, // Referencing the created market
             _quantity, // Total input token amount
             _expiry, // Expiry time
@@ -118,14 +118,14 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
     )
         public
         prankModifier(_apAddress)
-        returns (uint256 orderId, RecipeKernelBase.APOffer memory order)
+        returns (bytes32 offerHash, RecipeKernelBase.APOffer memory offer)
     {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
         tokenAmountsRequested[0] = 1000e18;
 
-        orderId = recipeKernel.createAPOffer(
+        offerHash = recipeKernel.createAPOffer(
             _targetMarketID, // Referencing the created market
             _fundingVault, // Address of funding vault
             _quantity, // Total input token amount
@@ -134,7 +134,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        order = RecipeKernelBase.APOffer(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        offer = RecipeKernelBase.APOffer(recipeKernel.numAPOffers()-1, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
     }
 
     function createAPOffer_ForTokens(
@@ -146,14 +146,14 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
     )
         public
         prankModifier(_apAddress)
-        returns (uint256 orderId, RecipeKernelBase.APOffer memory order)
+        returns (bytes32 offerHash, RecipeKernelBase.APOffer memory offer)
     {
         address[] memory tokensRequested = new address[](1);
         tokensRequested[0] = address(mockIncentiveToken);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
         tokenAmountsRequested[0] = 1000e18;
 
-        orderId = recipeKernel.createAPOffer(
+        offerHash = recipeKernel.createAPOffer(
             _targetMarketID, // Referencing the created market
             _fundingVault, // Address of funding vault
             _quantity, // Total input token amount
@@ -162,7 +162,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        order = RecipeKernelBase.APOffer(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
+        offer = RecipeKernelBase.APOffer(recipeKernel.numAPOffers()-1, _targetMarketID, _apAddress, _fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
     }
 
     function createAPOffer_ForPoints(
@@ -173,7 +173,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         address _ipAddress
     )
         public
-        returns (uint256 orderId, RecipeKernelBase.APOffer memory order, Points points)
+        returns (bytes32 offerHash, RecipeKernelBase.APOffer memory offer, Points points)
     {
         address[] memory tokensRequested = new address[](1);
         uint256[] memory tokenAmountsRequested = new uint256[](1);
@@ -194,7 +194,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         tokenAmountsRequested[0] = 1000e18;
 
         vm.startPrank(_apAddress);
-        orderId = recipeKernel.createAPOffer(
+        offerHash = recipeKernel.createAPOffer(
             _targetMarketID, // Referencing the created market
             _fundingVault, // Address of funding vault
             _quantity, // Total input token amount
@@ -203,7 +203,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
         vm.stopPrank();
-        order = RecipeKernelBase.APOffer(orderId, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        offer = RecipeKernelBase.APOffer(recipeKernel.numAPOffers()-1, _targetMarketID, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
     }
 
     function createIPOffer_WithPoints(
@@ -213,7 +213,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
     )
         public
         prankModifier(_ipAddress)
-        returns (uint256 orderId, Points points)
+        returns (bytes32 offerHash, Points points)
     {
         address[] memory tokensOffered = new address[](1);
         uint256[] memory incentiveAmountsOffered = new uint256[](1);
@@ -231,7 +231,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         tokensOffered[0] = address(points);
         incentiveAmountsOffered[0] = 1000e18;
 
-        orderId = recipeKernel.createIPOffer(
+        offerHash = recipeKernel.createIPOffer(
             _targetMarketID, // Referencing the created market
             _quantity, // Total input token amount
             block.timestamp + 30 days, // Expiry time
@@ -241,8 +241,8 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
     }
 
     function calculateIPOfferExpectedIncentiveAndFrontendFee(
-        uint256 orderId,
-        uint256 orderAmount,
+        bytes32 offerHash,
+        uint256 offerAmount,
         uint256 fillAmount,
         address tokenOffered
     )
@@ -250,17 +250,17 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         view
         returns (uint256 fillPercentage, uint256 protocolFeeAmount, uint256 frontendFeeAmount, uint256 incentiveAmount)
     {
-        fillPercentage = fillAmount.divWadDown(orderAmount);
+        fillPercentage = fillAmount.divWadDown(offerAmount);
         // Fees are taken as a percentage of the promised amounts
-        protocolFeeAmount = recipeKernel.getIncentiveToProtocolFeeAmountForIPOffer(orderId, tokenOffered).mulWadDown(fillPercentage);
-        frontendFeeAmount = recipeKernel.getIncentiveToFrontendFeeAmountForIPOffer(orderId, tokenOffered).mulWadDown(fillPercentage);
-        incentiveAmount = recipeKernel.getIncentiveAmountsOfferedForIPOffer(orderId, tokenOffered).mulWadDown(fillPercentage);
+        protocolFeeAmount = recipeKernel.getIncentiveToProtocolFeeAmountForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
+        frontendFeeAmount = recipeKernel.getIncentiveToFrontendFeeAmountForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
+        incentiveAmount = recipeKernel.getIncentiveAmountsOfferedForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
     }
 
     function calculateAPOfferExpectedIncentiveAndFrontendFee(
         uint256 protocolFee,
         uint256 frontendFee,
-        uint256 orderAmount,
+        uint256 offerAmount,
         uint256 fillAmount,
         uint256 tokenAmountRequested
     )
@@ -268,7 +268,7 @@ contract RecipeKernelTestBase is RoycoTestBase, RecipeUtils {
         pure
         returns (uint256 fillPercentage, uint256 frontendFeeAmount, uint256 protocolFeeAmount, uint256 incentiveAmount)
     {
-        fillPercentage = fillAmount.divWadDown(orderAmount);
+        fillPercentage = fillAmount.divWadDown(offerAmount);
         incentiveAmount = tokenAmountRequested.mulWadDown(fillPercentage);
         protocolFeeAmount = incentiveAmount.mulWadDown(protocolFee);
         frontendFeeAmount = incentiveAmount.mulWadDown(frontendFee);

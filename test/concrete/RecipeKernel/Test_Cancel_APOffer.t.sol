@@ -26,13 +26,13 @@ contract Test_Cancel_APOffer_RecipeKernelBaseBase is RecipeKernelTestBase {
         uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the AP offer
-        (uint256 offerId, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
+        (bytes32 offerHash, RecipeKernelBase.APOffer memory offer) = createAPOffer_ForTokens(marketId, address(0), quantity, AP_ADDRESS);
 
         uint256 initialQuantity = recipeKernel.offerHashToRemainingQuantity(recipeKernel.getOfferHash(offer));
         assertEq(initialQuantity, quantity);
 
         vm.expectEmit(true, false, false, true, address(recipeKernel));
-        emit RecipeKernelBase.APOfferCancelled(offerId);
+        emit RecipeKernelBase.APOfferCancelled(offer.offerID);
 
         vm.startPrank(AP_ADDRESS);
         recipeKernel.cancelAPOffer(offer);
@@ -47,13 +47,13 @@ contract Test_Cancel_APOffer_RecipeKernelBaseBase is RecipeKernelTestBase {
         uint256 quantity = 100000e18; // The amount of input tokens to be deposited
 
         // Create the AP offer
-        (uint256 offerId, RecipeKernelBase.APOffer memory offer,) = createAPOffer_ForPoints(marketId, address(0), quantity, AP_ADDRESS, IP_ADDRESS);
+        (bytes32 offerHash, RecipeKernelBase.APOffer memory offer,) = createAPOffer_ForPoints(marketId, address(0), quantity, AP_ADDRESS, IP_ADDRESS);
 
         uint256 initialQuantity = recipeKernel.offerHashToRemainingQuantity(recipeKernel.getOfferHash(offer));
         assertEq(initialQuantity, quantity);
 
         vm.expectEmit(true, false, false, true, address(recipeKernel));
-        emit RecipeKernelBase.APOfferCancelled(offerId);
+        emit RecipeKernelBase.APOfferCancelled(offer.offerID);
 
         vm.startPrank(AP_ADDRESS);
         recipeKernel.cancelAPOffer(offer);

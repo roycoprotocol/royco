@@ -32,7 +32,7 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         // Create a fillable IP offer
-        uint256 offerId = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(BOB_ADDRESS, fillAmount);
@@ -41,7 +41,7 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
-            calculateIPOfferExpectedIncentiveAndFrontendFee(offerId, offerAmount, fillAmount, address(mockIncentiveToken));
+            calculateIPOfferExpectedIncentiveAndFrontendFee(offerHash, offerAmount, fillAmount, address(mockIncentiveToken));
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(mockIncentiveToken));
@@ -57,10 +57,10 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(BOB_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address
@@ -94,10 +94,10 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Create a fillable IP offer
-        (uint256 offerId, Points points) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
+        (bytes32 offerHash, Points points) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
 
         (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
-            calculateIPOfferExpectedIncentiveAndFrontendFee(offerId, offerAmount, fillAmount, address(points));
+            calculateIPOfferExpectedIncentiveAndFrontendFee(offerHash, offerAmount, fillAmount, address(points));
 
         // Expect events for transfers
         vm.expectEmit(true, true, false, true, address(points));
@@ -120,10 +120,10 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(BOB_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address
@@ -143,14 +143,14 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         // Create an offer with the specified amount
-        uint256 offerId = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
 
         // Warp to time beyond the expiry
         vm.warp(block.timestamp + timeDelta);
 
         // Expect revert due to offer expiration
         vm.expectRevert(RecipeKernelBase.OfferExpired.selector);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
     }
 
     function testFuzz_RevertIf_NotEnoughRemainingQuantity(uint256 offerAmount, uint256 fillAmount) external {
@@ -161,11 +161,11 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         // Create a fillable IP offer
-        uint256 offerId = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
 
         // Expect revert due to insufficient remaining quantity
         vm.expectRevert(RecipeKernelBase.NotEnoughRemainingQuantity.selector);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
     }
 
     function testFuzz_RevertIf_MismatchedBaseAsset(uint256 offerAmount, uint256 fillAmount) external {
@@ -176,14 +176,14 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         // Create a fillable IP offer
-        uint256 offerId = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
 
         // Use a different vault with a mismatched base asset
         address incorrectVault = address(new MockERC4626(mockIncentiveToken)); // Mismatched asset
 
         // Expect revert due to mismatched base asset
         vm.expectRevert(RecipeKernelBase.MismatchedBaseAsset.selector);
-        recipeKernel.fillIPOffers(offerId, fillAmount, incorrectVault, FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, incorrectVault, FRONTEND_FEE_RECIPIENT);
     }
 
     function testFuzz_RevertIf_ZeroQuantityFill(uint256 offerAmount) external {
@@ -193,10 +193,10 @@ contract TestFuzz_Fill_IPOffer_RecipeKernel is RecipeKernelTestBase {
         uint256 marketId = recipeKernel.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         // Create a fillable IP offer
-        uint256 offerId = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
 
         // Expect revert due to zero quantity fill
         vm.expectRevert(RecipeKernelBase.CannotPlaceZeroQuantityOffer.selector);
-        recipeKernel.fillIPOffers(offerId, 0, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, 0, address(0), FRONTEND_FEE_RECIPIENT);
     }
 }

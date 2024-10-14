@@ -28,7 +28,7 @@ contract Test_Forfeit_RecipeKernel is RecipeKernelTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP offer
-        uint256 offerId = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
@@ -40,10 +40,10 @@ contract Test_Forfeit_RecipeKernel is RecipeKernelTestBase {
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(AP_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
@@ -75,7 +75,7 @@ contract Test_Forfeit_RecipeKernel is RecipeKernelTestBase {
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP offer
-        uint256 offerId = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
+        bytes32 offerHash = createIPOffer_WithTokens(marketId, offerAmount, IP_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
@@ -87,10 +87,10 @@ contract Test_Forfeit_RecipeKernel is RecipeKernelTestBase {
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(AP_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         address weirollWallet = address(uint160(uint256(vm.getRecordedLogs()[0].topics[2])));
@@ -122,19 +122,19 @@ contract Test_Forfeit_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Create a fillable IP offer
-        (uint256 offerId, Points points) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
+        (bytes32 offerHash, Points points) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
 
         (, uint256 expectedProtocolFeeAmount, uint256 expectedFrontendFeeAmount, uint256 expectedIncentiveAmount) =
-            calculateIPOfferExpectedIncentiveAndFrontendFee(offerId, offerAmount, fillAmount, address(points));
+            calculateIPOfferExpectedIncentiveAndFrontendFee(offerHash, offerAmount, fillAmount, address(points));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(AP_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
@@ -149,7 +149,7 @@ contract Test_Forfeit_RecipeKernel is RecipeKernelTestBase {
         recipeKernel.forfeit(weirollWallet, true);
         vm.stopPrank();
 
-        (,,,, uint256 newResultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,,, uint256 newResultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(newResultingRemainingQuantity, resultingQuantity);
 
         // Check the weiroll wallet was deleted from recipeKernel state
@@ -173,16 +173,16 @@ contract Test_Forfeit_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Create a fillable IP offer
-        (uint256 offerId, Points points) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
+        (bytes32 offerHash, Points points) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(AP_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)
@@ -192,7 +192,7 @@ contract Test_Forfeit_RecipeKernel is RecipeKernelTestBase {
         recipeKernel.forfeit(weirollWallet, false);
         vm.stopPrank();
 
-        (,,,, uint256 newResultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,,, uint256 newResultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(newResultingRemainingQuantity, resultingQuantity);
 
         // Check the weiroll wallet was deleted from recipeKernel state
@@ -216,13 +216,13 @@ contract Test_Forfeit_RecipeKernel is RecipeKernelTestBase {
         vm.stopPrank();
 
         // Create a fillable IP offer
-        (uint256 offerId,) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
+        (bytes32 offerHash,) = createIPOffer_WithPoints(marketId, offerAmount, IP_ADDRESS);
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
         // Fill the offer
         vm.startPrank(AP_ADDRESS);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
         // Extract the Weiroll wallet address (the 'to' address from the Transfer event - third event in logs)

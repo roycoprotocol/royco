@@ -167,7 +167,7 @@ contract ScenarioTest is Test {
         baseToken2.mint(USER02, 1000e18);
         baseToken2.approve(address(recipeKernel), 1000e18);
 
-        uint256 offerId = recipeKernel.createIPOffer(
+        bytes32 offerHash = recipeKernel.createIPOffer(
             marketId, // Referencing the created market
             offerAmount, // Total input token amount
             block.timestamp + 30 days, // Expiry time
@@ -184,10 +184,10 @@ contract ScenarioTest is Test {
 
         // Fill the offer
         vm.startPrank(USER01);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
     }
 }

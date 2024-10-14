@@ -52,9 +52,8 @@ contract TestFuzz_APOfferCreation_RecipeKernel is RecipeKernelTestBase {
         vm.expectEmit(true, true, true, true);
         emit RecipeKernelBase.APOfferCreated(0, marketId, fundingVault, _expiry, tokensRequested, tokenAmountsRequested, _quantity);
 
-        uint256 offerId = recipeKernel.createAPOffer(marketId, fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
+        bytes32 offerHash = recipeKernel.createAPOffer(marketId, fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
 
-        assertEq(offerId, expectedMarketId);
         assertEq(recipeKernel.numAPOffers(), expectedMarketId + 1);
         assertEq(recipeKernel.numIPOffers(), 0);
     }
