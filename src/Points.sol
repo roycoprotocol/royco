@@ -27,15 +27,13 @@ contract Points is Ownable2Step {
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
-    event Award(address indexed to, uint256 indexed amount);
+    event Award(address indexed to, uint256 indexed amount, address indexed awardedBy);
     event AllowedVaultAdded(address indexed vault);
+    event AllowedIPAdded(address indexed ip);
     event VaultRemoved(address indexed vault);
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
-    /// @dev The allowed vaults to call this contract
-
-    address[] public allowedVaults;
     /// @dev Maps a vault to if the vault is allowed to call this contract
     mapping(address => bool) public isAllowedVault;
 
@@ -62,7 +60,6 @@ contract Points is Ownable2Step {
             revert VaultIsDuplicate();
         }
 
-        allowedVaults.push(vault);
         isAllowedVault[vault] = true;
 
         emit AllowedVaultAdded(vault);
@@ -71,6 +68,8 @@ contract Points is Ownable2Step {
     /// @param ip The incentive provider address to allow to mint points on RecipeKernel
     function addAllowedIP(address ip) external onlyOwner {
         allowedIPs[ip] = true;
+
+        emit AllowedIPAdded(ip);
     }
 
     error OnlyAllowedVaults();
@@ -103,13 +102,13 @@ contract Points is Ownable2Step {
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
     function award(address to, uint256 amount) external onlyAllowedVaults {
-        emit Award(to, amount);
+        emit Award(to, amount, msg.sender);
     }
 
     /// @param to The address to mint points to
     /// @param amount  The amount of points to award to the `to` address
     /// @param ip The incentive provider attempting to mint the points
     function award(address to, uint256 amount, address ip) external onlyRecipeKernelAllowedIP(ip) {
-        emit Award(to, amount);
+        emit Award(to, amount, ip);
     }
 }

@@ -65,7 +65,7 @@ contract ScenarioTest is Test {
             address(pointsFactory)
         );
 
-        vaultKernel = new VaultKernel();
+        vaultKernel = new VaultKernel(address(this));
     }
 
     function testBasicVaultKernelAllocate() public {
@@ -152,7 +152,7 @@ contract ScenarioTest is Test {
 
     function testBasicRecipeKernelAllocate() public {
         uint256 frontendFee = recipeKernel.minimumFrontendFee();
-        uint256 marketId = recipeKernel.createMarket(address(baseToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        bytes32 marketHash = recipeKernel.createMarket(address(baseToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
@@ -167,8 +167,8 @@ contract ScenarioTest is Test {
         baseToken2.mint(USER02, 1000e18);
         baseToken2.approve(address(recipeKernel), 1000e18);
 
-        uint256 offerId = recipeKernel.createIPOffer(
-            marketId, // Referencing the created market
+        bytes32 offerHash = recipeKernel.createIPOffer(
+            marketHash, // Referencing the created market
             offerAmount, // Total input token amount
             block.timestamp + 30 days, // Expiry time
             tokensOffered, // Incentive tokens offered
@@ -184,10 +184,10 @@ contract ScenarioTest is Test {
 
         // Fill the offer
         vm.startPrank(USER01);
-        recipeKernel.fillIPOffers(offerId, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
+        recipeKernel.fillIPOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerIDToIPOffer(offerId);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeKernel.offerHashToIPOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
     }
 }

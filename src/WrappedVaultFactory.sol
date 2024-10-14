@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.20;
 
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
@@ -104,13 +104,15 @@ contract WrappedVaultFactory is Owned(msg.sender) {
         payable
         returns (WrappedVault wrappedVault)
     {
+
+        string memory newSymbol = getNextSymbol();
         bytes32 salt = keccak256(abi.encodePacked(address(vault), owner, name, initialFrontendFee));
-        wrappedVault = new WrappedVault{ salt: salt }(owner, name, getNextSymbol(), address(vault), initialFrontendFee, pointsFactory);
+        wrappedVault = new WrappedVault{ salt: salt }(owner, name, newSymbol, address(vault), initialFrontendFee, pointsFactory);
 
         incentivizedVaults.push(address(wrappedVault));
         isVault[address(wrappedVault)] = true;
 
-        emit WrappedVaultCreated(vault, wrappedVault, owner, address(wrappedVault.asset()), initialFrontendFee, name, getNextSymbol());
+        emit WrappedVaultCreated(vault, wrappedVault, owner, address(wrappedVault.asset()), initialFrontendFee, name, newSymbol);
     }
 
     /// @dev Helper function to get the symbol for a new incentivized vault, ROY-0, ROY-1, etc.

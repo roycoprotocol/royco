@@ -52,11 +52,8 @@ contract WeirollWallet is Clone, VM {
 
     /// @dev Whether or not this order has been executed
     bool public executed;
-
+    /// @dev Whether or not the wallet has been forfeited
     bool public forfeited;
-    address[] public unlockRewardTokens;
-    uint256[] public unlockRewardAmounts;
-    address public forfeitRecipient;
 
     /// @notice Forfeit all rewards to get control of the wallet back
     function forfeit() public onlyRecipeKernel {
@@ -95,9 +92,9 @@ contract WeirollWallet is Clone, VM {
         return _getArgUint8(104) != 0;
     }
 
-    /// @notice Returns the marketId associated with this weiroll wallet
-    function marketId() public pure returns (uint256) {
-        return _getArgUint256(105);
+    /// @notice Returns the hash of the market associated with this weiroll wallet
+    function marketHash() public pure returns (bytes32) {
+        return bytes32(_getArgUint256(105));
     }
 
     /*//////////////////////////////////////////////////////////////

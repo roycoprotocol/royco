@@ -18,15 +18,12 @@ contract Test_MarketCreation_RecipeKernel is RecipeKernelTestBase {
         uint256 frontendFee = 0.002e18; // 0.2% frontend fee
         RewardStyle rewardStyle = RewardStyle.Upfront;
 
-        // Expected market ID of the next market created
-        uint256 expectedMarketId = recipeKernel.numMarkets();
-
         // Check for MarketCreated event
-        vm.expectEmit(true, true, false, true, address(recipeKernel));
-        emit RecipeKernelBase.MarketCreated(expectedMarketId, inputTokenAddress, lockupTime, frontendFee, rewardStyle);
+        vm.expectEmit(true, false, false, true, address(recipeKernel));
+        emit RecipeKernelBase.MarketCreated(0, bytes32(0), inputTokenAddress, lockupTime, frontendFee, rewardStyle);
 
         // Create market
-        uint256 marketId = recipeKernel.createMarket(
+        bytes32 marketHash = recipeKernel.createMarket(
             inputTokenAddress,
             lockupTime,
             frontendFee,
@@ -34,19 +31,18 @@ contract Test_MarketCreation_RecipeKernel is RecipeKernelTestBase {
             NULL_RECIPE, // Withdraw Recipe
             rewardStyle
         );
-        // Assert basic recipeKernel and market state
-        assertEq(marketId, expectedMarketId);
-        assertEq(recipeKernel.numMarkets(), expectedMarketId + 1);
 
         // Check that the newly added market was added correctly to the recipeKernel
         (
+            uint256 marketId,
             ERC20 resultingInputToken,
             uint256 resultingLockupTime,
             uint256 resultingFrontendFee,
             RecipeKernelBase.Recipe memory depositRecipe,
             RecipeKernelBase.Recipe memory withdrawRecipe,
             RewardStyle resultingRewardStyle
-        ) = recipeKernel.marketIDToWeirollMarket(marketId);
+        ) = recipeKernel.marketHashToWeirollMarket(marketHash);
+        assertEq(marketId, 0);
         assertEq(address(resultingInputToken), inputTokenAddress);
         assertEq(resultingLockupTime, lockupTime);
         assertEq(resultingFrontendFee, frontendFee);

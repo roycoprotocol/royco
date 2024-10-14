@@ -23,8 +23,8 @@ contract MockRecipeKernel is RecipeKernel {
         RecipeKernel(_weirollWalletImplementation, _protocolFee, _minimumFrontendFee, _owner, _pointsFactory)
     { }
 
-    function fillIPOffers(uint256 offerID, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) external {
-        _fillIPOffer(offerID, fillAmount, fundingVault, frontendFeeRecipient);
+    function fillIPOffers(bytes32 offerHash, uint256 fillAmount, address fundingVault, address frontendFeeRecipient) external {
+        _fillIPOffer(offerHash, fillAmount, fundingVault, frontendFeeRecipient);
     }
 
     function fillAPOffers(APOffer calldata offer, uint256 fillAmount, address frontendFeeRecipient) external {
@@ -32,16 +32,16 @@ contract MockRecipeKernel is RecipeKernel {
     }
 
     // Getters to access nested mappings
-    function getIncentiveAmountsOfferedForIPOffer(uint256 offerId, address tokenAddress) external view returns (uint256) {
-        return offerIDToIPOffer[offerId].incentiveAmountsOffered[tokenAddress];
+    function getIncentiveAmountsOfferedForIPOffer(bytes32 offerHash, address tokenAddress) external view returns (uint256) {
+        return offerHashToIPOffer[offerHash].incentiveAmountsOffered[tokenAddress];
     }
 
-    function getIncentiveToProtocolFeeAmountForIPOffer(uint256 offerId, address tokenAddress) external view returns (uint256) {
-        return offerIDToIPOffer[offerId].incentiveToProtocolFeeAmount[tokenAddress];
+    function getIncentiveToProtocolFeeAmountForIPOffer(bytes32 offerHash, address tokenAddress) external view returns (uint256) {
+        return offerHashToIPOffer[offerHash].incentiveToProtocolFeeAmount[tokenAddress];
     }
 
-    function getIncentiveToFrontendFeeAmountForIPOffer(uint256 offerId, address tokenAddress) external view returns (uint256) {
-        return offerIDToIPOffer[offerId].incentiveToFrontendFeeAmount[tokenAddress];
+    function getIncentiveToFrontendFeeAmountForIPOffer(bytes32 offerHash, address tokenAddress) external view returns (uint256) {
+        return offerHashToIPOffer[offerHash].incentiveToFrontendFeeAmount[tokenAddress];
     }
 
     // Single getter function that returns the entire LockedRewardParams struct as a tuple
