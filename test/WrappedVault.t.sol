@@ -107,6 +107,9 @@ contract WrappedVaultTest is Test {
 
     function testAddRewardToken(address newRewardToken) public {
         vm.assume(newRewardToken != address(0));
+        vm.assume(newRewardToken != address(testIncentivizedVault.VAULT()));
+        vm.assume(newRewardToken != address(testIncentivizedVault));
+
         testIncentivizedVault.addRewardsToken(newRewardToken);
         assertEq(testIncentivizedVault.rewards(0), newRewardToken);
 
@@ -238,10 +241,10 @@ contract WrappedVaultTest is Test {
     }
 
     function testRefundInterval(uint32 start, uint32 duration, uint256 totalRewards) public {
-        if (start < block.timestamp + 10000) {
-            start = uint32(block.timestamp + 10000);
+        if (start < block.timestamp + 10_000) {
+            start = uint32(block.timestamp + 10_000);
         }
-        
+
         vm.assume(duration >= testIncentivizedVault.MIN_CAMPAIGN_DURATION());
         vm.assume(duration <= type(uint32).max - start); //If this is not here, then 'end' variable will overflow
         vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
@@ -253,7 +256,7 @@ contract WrappedVaultTest is Test {
         rewardToken1.mint(address(this), totalRewards);
         rewardToken1.approve(address(testIncentivizedVault), totalRewards);
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, end, totalRewards, DEFAULT_FEE_RECIPIENT);
-        
+
         vm.startPrank(REGULAR_USER);
         vm.expectRevert("UNAUTHORIZED");
         testIncentivizedVault.refundRewardsInterval(address(rewardToken1));
@@ -262,9 +265,7 @@ contract WrappedVaultTest is Test {
         uint256 initialBalance = rewardToken1.balanceOf(address(this));
 
         testIncentivizedVault.refundRewardsInterval(address(rewardToken1));
-
     }
-    
 
     function testWithdraw(uint256 depositAmount, uint256 withdrawAmount) public {
         vm.assume(depositAmount > 0 && depositAmount <= type(uint96).max);
@@ -317,7 +318,7 @@ contract WrappedVaultTest is Test {
 
     function testClaim(uint96 _depositAmount, uint32 timeElapsed) public {
         uint256 depositAmount = _depositAmount;
-        
+
         vm.assume(depositAmount > 1e6);
         vm.assume(depositAmount <= type(uint96).max);
         vm.assume(timeElapsed > 1e6);
@@ -346,7 +347,7 @@ contract WrappedVaultTest is Test {
 
         uint256 expectedRewards = (rewardAmount / duration) * shares / testIncentivizedVault.totalSupply() * timeElapsed;
         testIncentivizedVault.rewardToInterval(address(rewardToken1));
-        
+
         testIncentivizedVault.claim(REGULAR_USER);
         vm.stopPrank();
 
@@ -572,6 +573,8 @@ contract WrappedVaultTest is Test {
             assertApproxEqRel(userRewards, expectedRewards, 0.005e18, "Incorrect rewards for user");
         }
 
-        assertApproxEqRel(totalRewards, (rewardAmount * timeElapsed) * totalShares / testIncentivizedVault.totalSupply() / duration, 1e15, "Total rewards mismatch");
+        assertApproxEqRel(
+            totalRewards, (rewardAmount * timeElapsed) * totalShares / testIncentivizedVault.totalSupply() / duration, 1e15, "Total rewards mismatch"
+        );
     }
 }
