@@ -1,0 +1,27 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "max-line-length": "off",
+    "no-inline-assembly": "off",
+    "reason-string": ["warn", { "maxLength": 160 }],
+    "func-visibility": ["warn", { "ignoreConstructors": true }],
+    "explicit-types": ["warn", "explicit"],
+    "quotes": ["warn", "double"],
+    "const-name-snakecase": "warn",
+    "not-rely-on-time": "off",
+    "avoid-low-level-calls": "off",
+    "contract-name-camelcase": "off",
+    "func-name-mixedcase": "off",
+    "var-name-mixedcase": "off",
+    "compiler-version": "off",
+    "custom-errors": "warn",
+    "no-global-import": "off",
+    "immutable-vars-naming": "off",
+    "no-console": "warn",
+    "named-parameters-mapping": "off",
+    "use-forbidden-name": "warn",
+    "imports-on-top": "warn",
+    "ordering": "off",
+    "comprehensive-interface": "off"
+  }
+}

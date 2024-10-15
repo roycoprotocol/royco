@@ -19,4 +19,4 @@ report.txt
 
 output.txt
 
-lcov.info
+/node_modules/

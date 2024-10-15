@@ -1,34 +1,45 @@
-name: test
+name: Tests
 
-on: workflow_dispatch
-
-env:
-  FOUNDRY_PROFILE: ci
+on:
+  push:
+    branches:
+      - "main"
+      - "develop"
+  pull_request:
+    types: [ready_for_review, synchronize, opened]
 
 jobs:
-  check:
-    strategy:
-      fail-fast: true
-
-    name: Foundry project
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
+
+    env:
+      TEST: "false"
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install yarn and dependencies
+        run: npm install -g yarn && yarn
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
 
-      - name: Run Forge build
-        run: |
-          forge --version
-          forge build --sizes
-        id: build
+      - name: Run Solhint linter
+        run: npx solhint "src/*.sol"
 
-      - name: Run Forge tests
-        run: |
-          forge test -vvv
-        id: test
+      - name: Test
+        run: yarn test
