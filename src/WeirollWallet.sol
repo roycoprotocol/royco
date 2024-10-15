@@ -24,6 +24,8 @@ contract WeirollWallet is Clone, VM {
     error NotRecipeMarketHub();
     error WalletLocked();
     error WalletNotForfeitable();
+    error OfferUnfilled();
+    error RawExecutionFailed();
 
     /// @notice Only the owner of the contract can call the function
     modifier onlyOwner() {
@@ -115,7 +117,7 @@ contract WeirollWallet is Clone, VM {
     /// @param commands The commands to be executed by the Weiroll VM.
     function manualExecuteWeiroll(bytes32[] calldata commands, bytes[] calldata state) public payable onlyOwner notLocked returns (bytes[] memory) {
         // Prevent people from approving w/e then rugging during vesting
-        require(executed, "Royco: Offer unfilled");
+        if (!executed) revert OfferUnfilled();
 
         emit WeirollWalletExecutedManually();
         // Execute the Weiroll VM.
@@ -128,13 +130,11 @@ contract WeirollWallet is Clone, VM {
     /// @param data The data to pass along with the call
     function execute(address to, uint256 value, bytes memory data) public payable onlyOwner notLocked returns (bytes memory) {
         // Prevent people from approving w/e then rugging during vesting
-        require(executed, "Royco: Offer unfilled");
+        if (!executed) revert OfferUnfilled();
 
         // Execute the call.
         (bool success, bytes memory result) = to.call{ value: value }(data);
-        if (!success) {
-            revert("Generic execute proxy failed");
-        }
+        if (!success) revert RawExecutionFailed();
 
         emit WeirollWalletExecutedManually();
         return result;

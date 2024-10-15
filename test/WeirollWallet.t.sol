@@ -95,7 +95,7 @@ contract WeirollWalletTest is Test {
         vm.warp(lockedUntil + 1);
 
         // This should still fail because the wallet is not executed
-        vm.expectRevert("Royco: Offer unfilled");
+        vm.expectRevert(abi.encodeWithSelector(WeirollWallet.OfferUnfilled.selector));
         wallet.manualExecuteWeiroll(commands, state);
     }
 
@@ -126,7 +126,7 @@ contract WeirollWalletTest is Test {
 
         // Test with a reverting call
         vm.mockCallRevert(target, value, data, "Mock revert");
-        vm.expectRevert("Generic execute proxy failed");
+        vm.expectRevert(abi.encodeWithSelector(WeirollWallet.RawExecutionFailed.selector));
         wallet.execute(target, value, data);
     }
 

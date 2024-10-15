@@ -2,9 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Points } from "src/Points.sol";
-import { RecipeMarketHub } from "src/RecipeMarketHub.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
-
 
 /// @title PointsFactory
 /// @author CopyPaste, corddry, ShivaanshK
@@ -23,7 +21,7 @@ contract PointsFactory is Ownable2Step {
     event RecipeMarketHubAdded(address indexed recipeMarketHub);
 
     /// @param _owner The owner of the points factory - responsible for adding valid RecipeMarketHub(s) to the PointsFactory
-    constructor(address _owner) Ownable(_owner) {}
+    constructor(address _owner) Ownable(_owner) { }
 
     /// @param _recipeMarketHub The RecipeMarketHub to mark as valid in the Points Factory
     function addRecipeMarketHub(address _recipeMarketHub) external onlyOwner {
@@ -35,17 +33,9 @@ contract PointsFactory is Ownable2Step {
     /// @param _symbol The symbol for the new points program
     /// @param _decimals The amount of decimals per point
     /// @param _owner The owner of the new points program
-    function createPointsProgram(
-        string memory _name,
-        string memory _symbol,
-        uint256 _decimals,
-        address _owner
-    )
-        external
-        returns (Points points)
-    {
+    function createPointsProgram(string memory _name, string memory _symbol, uint256 _decimals, address _owner) external returns (Points points) {
         bytes32 salt = keccak256(abi.encode(_name, _symbol, _decimals, _owner));
-        points = new Points{salt: salt}(_name, _symbol, _decimals, _owner);
+        points = new Points{ salt: salt }(_name, _symbol, _decimals, _owner);
         isPointsProgram[address(points)] = true;
 
         emit NewPointsProgram(points, _name, _symbol);
