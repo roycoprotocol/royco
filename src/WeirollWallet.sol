@@ -156,7 +156,8 @@ contract WeirollWallet is IERC1271, Clone, VM {
         // Modify digest to include the chainId and address of this wallet to prevent replay attacks
         bytes32 walletSpecificDigest = keccak256(abi.encode(digest, block.chainid, address(this)));
         // Check if signature was produced by owner of this wallet
-        if (ECDSA.recover(walletSpecificDigest, signature) == owner()) return ERC1271_MAGIC_VALUE;
+        // Don't revert on failure. Simply return INVALID_SIGNATURE.
+        if (ECDSA.tryRecover(walletSpecificDigest, signature) == owner()) return ERC1271_MAGIC_VALUE;
         else return INVALID_SIGNATURE;
     }
 }
