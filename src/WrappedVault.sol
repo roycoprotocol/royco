@@ -317,6 +317,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         if (!POINTS_FACTORY.isPointsProgram(reward)) {
             ERC20(reward).safeTransfer(msg.sender, rewardsOwed);
         }
+        emit RewardsSet(reward, 0, 0, 0, 0, 0, 0);
     }
 
     /// @notice Update the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked amount.
@@ -441,7 +442,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     /// @param to The address to send all rewards owed to the owner to
     /// @param reward The reward token / points program to claim rewards from
     function ownerClaim(address to, address reward) public payable onlyOwner {
-            _claim(reward, address(0), to, currentUserRewards(reward, address(0)));
+        _claim(reward, address(0), to, currentUserRewards(reward, address(0)));
     }
 
     /// @notice Claim all rewards for the caller
