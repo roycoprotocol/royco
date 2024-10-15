@@ -1,5 +1,4 @@
-[![Tests](https://github.com/roycoprotocol/royco/actions/workflows/test.yml/badge.svg)](https://github.com/roycoprotocol/royco/actions/workflows/test.yml)
-# Royco: The Incentivized Action Market Protocol
+# Royco: The Incentivized Action Market Protocol [![Tests](https://github.com/roycoprotocol/royco/actions/workflows/test.yml/badge.svg)](https://github.com/roycoprotocol/royco/actions/workflows/test.yml)
 ![Royco Banner](./roycobanner.png)
 
 Royco allows anyone to create a market around any onchain action. Those who wish to pay to execute an onchain action are called "Incentive Providers" (IPs) and offer token or points incentives in exchange for an "Action Provider" (APs) to take some action, be it enter a staking vault, or execute some "recipe" of one or more smart contract interactions, each having their own market types on Royco.
