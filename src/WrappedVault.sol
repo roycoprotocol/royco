@@ -439,11 +439,9 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
     /// @notice Allows the owner to claim the rewards from the burned shares
     /// @param to The address to send all rewards owed to the owner to
-    function ownerClaim(address to) public payable onlyOwner {
-        for (uint256 i = 0; i < rewards.length; i++) {
-            address reward = rewards[i];
+    /// @param reward The reward token / points program to claim rewards from
+    function ownerClaim(address to, address reward) public payable onlyOwner {
             _claim(reward, address(0), to, currentUserRewards(reward, address(0)));
-        }
     }
 
     /// @notice Claim all rewards for the caller
