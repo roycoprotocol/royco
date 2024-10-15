@@ -171,36 +171,88 @@ contract WrappedVaultTest is Test {
         assertEq(actualRate, totalRewards / duration);
     }
 
-    function testExtendRewardsInterval(uint32 start, uint32 initialDuration, uint32 extension, uint256 initialRewards, uint256 additionalRewards) public {
+    function testExtendRewardsInterval(uint256 start, uint256 initialDuration, uint256 extension, uint256 initialRewards, uint256 additionalRewards) public {
+        // Bound start to uint32 range
+        start = bound(start, 0, type(uint32).max);
+
         // Calculate the remaining space in uint32 after accounting for start
-        uint32 remainingSpace = type(uint32).max - start;
+        uint256 remainingSpace = type(uint32).max - start;
 
-        // Constrain initialDuration to be at most half of the remaining space
-        initialDuration = uint32(uint64(initialDuration) % (uint64(remainingSpace) / 2 + 1));
+        // Get the minimum campaign duration
+        uint256 minCampaignDuration = testIncentivizedVault.MIN_CAMPAIGN_DURATION();
 
-        // Constrain extension to fit within the remaining space after initialDuration
-        extension = uint32(uint64(extension) % (uint64(remainingSpace - initialDuration) + 1));
-        (uint64(extension) + uint64(start) > uint64(type(uint32).max));
+        // Ensure there is enough remaining space for the initial duration
+        if (remainingSpace < minCampaignDuration) {
+            return;
+        }
 
-        vm.assume(initialDuration >= testIncentivizedVault.MIN_CAMPAIGN_DURATION());
-        vm.assume(extension > 1 days);
-        vm.assume(initialRewards > 1e6 && initialRewards < type(uint96).max);
-        vm.assume(additionalRewards > 1e6 && additionalRewards < type(uint96).max);
-        vm.assume(initialRewards / initialDuration > 1e6);
+        // Bound initialDuration between minCampaignDuration and remainingSpace
+        initialDuration = bound(initialDuration, minCampaignDuration, remainingSpace);
 
+        // Calculate initialEnd and ensure it doesn't overflow
+        uint256 initialEnd = start + initialDuration;
+
+        // Calculate the remaining space after initialEnd
+        uint256 remainingSpaceAfterInitialEnd = type(uint32).max - initialEnd;
+
+        // Ensure there is enough remaining space for the extension
+        if (remainingSpaceAfterInitialEnd < 1 days + 1) {
+            return;
+        }
+
+        // Bound extension between 1 day + 1 and the remaining space after initialEnd
+        extension = bound(extension, 1 days + 1, remainingSpaceAfterInitialEnd);
+
+        // Calculate newEnd and ensure it doesn't overflow
+        uint256 newEnd = initialEnd + extension;
+
+        // Ensure that start, initialEnd, and newEnd fit within uint32
+        if (start > type(uint32).max || initialEnd > type(uint32).max || newEnd > type(uint32).max) {
+            return;
+        }
+
+        // Cast to uint32 after ensuring values are within uint32 range
+        uint32 _start = uint32(start);
+        uint32 _initialEnd = uint32(initialEnd);
+        uint32 _newEnd = uint32(newEnd);
+
+        // Ensure initialRewards is within specified bounds and satisfies the rate condition
+        uint256 minInitialRewards = (initialDuration * 1e6) + 1;
+        uint256 maxInitialRewards = type(uint96).max - 1;
+
+        if (maxInitialRewards < minInitialRewards) {
+            return; // Cannot proceed if maxInitialRewards is less than minInitialRewards
+        }
+
+        initialRewards = bound(initialRewards, minInitialRewards, maxInitialRewards);
+
+        // Ensure additionalRewards is within specified bounds
+        uint256 minAdditionalRewards = 1e6 + 1;
+        uint256 maxAdditionalRewards = type(uint96).max - 1;
+
+        if (maxAdditionalRewards < minAdditionalRewards) {
+            return; // Cannot proceed if maxAdditionalRewards is less than minAdditionalRewards
+        }
+
+        additionalRewards = bound(additionalRewards, minAdditionalRewards, maxAdditionalRewards);
+
+        // Ensure initialRewards / initialDuration > 1e6
+        if (initialRewards / initialDuration <= 1e6) {
+            // Adjust initialRewards to satisfy the condition
+            initialRewards = (initialDuration * 1e6) + 1e18;
+        }
+
+        // Adjust additionalRewards if the rate condition is not met
         if (additionalRewards / extension <= initialRewards / initialDuration) {
             additionalRewards = ((initialRewards / initialDuration) * extension) + 1e18;
         }
-
-        uint32 initialEnd = start + initialDuration;
-        uint32 newEnd = initialEnd + extension;
 
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
 
         rewardToken1.mint(address(this), initialRewards + additionalRewards);
         rewardToken1.approve(address(testIncentivizedVault), initialRewards + additionalRewards);
 
-        testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, initialEnd, initialRewards, DEFAULT_FEE_RECIPIENT);
+        testIncentivizedVault.setRewardsInterval(address(rewardToken1), _start, _initialEnd, initialRewards, DEFAULT_FEE_RECIPIENT);
 
         uint256 frontendFee = initialRewards.mulWadDown(testIncentivizedVault.frontendFee());
         uint256 protocolFee = initialRewards.mulWadDown(testFactory.protocolFee());
@@ -208,11 +260,12 @@ contract WrappedVaultTest is Test {
 
         vm.warp(start + (initialDuration / 2)); // Warp to middle of interval
 
-        if (newEnd - block.timestamp < testIncentivizedVault.MIN_CAMPAIGN_DURATION()) {
+        // Ensure the new campaign duration meets the minimum requirement
+        if (newEnd - block.timestamp < minCampaignDuration) {
             return;
         }
 
-        testIncentivizedVault.extendRewardsInterval(address(rewardToken1), additionalRewards, newEnd, address(this));
+        testIncentivizedVault.extendRewardsInterval(address(rewardToken1), additionalRewards, _newEnd, address(this));
 
         frontendFee = additionalRewards.mulWadDown(testIncentivizedVault.frontendFee());
         protocolFee = additionalRewards.mulWadDown(testFactory.protocolFee());
@@ -220,10 +273,10 @@ contract WrappedVaultTest is Test {
 
         (uint32 actualStart, uint32 actualEnd, uint96 actualRate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
         assertEq(actualStart, block.timestamp);
-        assertEq(actualEnd, newEnd);
+        assertEq(actualEnd, _newEnd);
 
-        uint256 remainingInitialRewards = (initialRewards / initialDuration) * (initialEnd - block.timestamp);
-        uint256 expectedRate = (remainingInitialRewards + additionalRewards) / (newEnd - block.timestamp);
+        uint256 remainingInitialRewards = (initialRewards / initialDuration) * (_initialEnd - block.timestamp);
+        uint256 expectedRate = (remainingInitialRewards + additionalRewards) / (_newEnd - block.timestamp);
         assertEq(actualRate, expectedRate);
     }
 
