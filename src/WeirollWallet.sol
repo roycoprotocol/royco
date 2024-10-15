@@ -149,11 +149,13 @@ contract WeirollWallet is IERC1271, Clone, VM {
     }
 
     /// @notice Check if signature is valid for this contract
-    /// @dev Check signer against the owner of the wallet
+    /// @dev Signature is valid if the signer is the owner of this wallet
     /// @param digest Hash of the message to validate the signature against
     /// @param signature Signature produced for the provided digest
     function isValidSignature(bytes32 digest, bytes calldata signature) external view returns (bytes4) {
-        bytes32 walletSpecificDigest = keccak256(abi.encode(digest, address(this)));
+        // Modify digest to include the chainId and address of this wallet to prevent replay attacks
+        bytes32 walletSpecificDigest = keccak256(abi.encode(digest, block.chainid, address(this)));
+        // Check if signature was produced by owner of this wallet
         if (ECDSA.recover(walletSpecificDigest, signature) == owner()) return ERC1271_MAGIC_VALUE;
         else return INVALID_SIGNATURE;
     }
