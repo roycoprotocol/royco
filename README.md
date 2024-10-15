@@ -1,3 +1,4 @@
+[![Tests](https://github.com/roycoprotocol/royco/actions/workflows/test.yml/badge.svg)](https://github.com/roycoprotocol/royco/actions/workflows/test.yml)
 # Royco: The Incentivized Action Market Protocol
 ![Royco Banner](./roycobanner.png)
 
