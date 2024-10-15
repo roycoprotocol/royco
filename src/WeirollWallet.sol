@@ -3,12 +3,20 @@ pragma solidity ^0.8.0;
 
 import { VM } from "lib/weiroll/contracts/VM.sol";
 import { Clone } from "lib/clones-with-immutable-args/src/Clone.sol";
+import { IERC1271 } from "src/interfaces/IERC1271.sol";
+import { ECDSA } from "lib/solady/src/utils/ECDSA.sol";
 
 /// @title WeirollWallet
 /// @author Royco
 /// @notice WeirollWallet implementation contract.
 /// @notice Implements a simple smart contract wallet that can execute Weiroll VM commands
-contract WeirollWallet is Clone, VM {
+contract WeirollWallet is IERC1271, Clone, VM {
+    // Returned to indicate a valid ERC1271 signature
+    bytes4 internal constant ERC1271_MAGIC_VALUE = 0x1626ba7e; // bytes4(keccak256("isValidSignature(bytes32,bytes)")
+
+    // Returned to indicate an invalid ERC1271 signature
+    bytes4 internal constant INVALID_SIGNATURE = 0x00000000;
+
     /// @notice Let the Weiroll Wallet receive ether directly if needed
     receive() external payable { }
     /// @notice Also allow a fallback with no logic if erroneous data is provided
@@ -138,5 +146,15 @@ contract WeirollWallet is Clone, VM {
 
         emit WeirollWalletExecutedManually();
         return result;
+    }
+
+    /// @notice Check if signature is valid for this contract
+    /// @dev Check signer against the owner of the wallet
+    /// @param digest Hash of the message to validate the signature against
+    /// @param signature Signature produced for the provided digest
+    function isValidSignature(bytes32 digest, bytes calldata signature) external view returns (bytes4) {
+        bytes32 walletSpecificDigest = keccak256(abi.encode(digest, address(this)));
+        if (ECDSA.recover(walletSpecificDigest, signature) == owner()) return ERC1271_MAGIC_VALUE;
+        else return INVALID_SIGNATURE;
     }
 }
