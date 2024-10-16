@@ -5,6 +5,7 @@ import { WeirollWallet } from "src/WeirollWallet.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 import { Test } from "forge-std/Test.sol";
 import { VM } from "lib/weiroll/contracts/VM.sol";
+import { ECDSA } from "lib/solady/src/utils/ECDSA.sol";
 
 contract WeirollWalletTest is Test {
     using ClonesWithImmutableArgs for address;
@@ -39,8 +40,9 @@ contract WeirollWalletTest is Test {
         public
         returns (WeirollWallet)
     {
-        return
-            WeirollWallet(payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(_owner, _recipeMarketHub, _amount, _lockedUntil, _isForfeitable, _marketHash))));
+        return WeirollWallet(
+            payable(WEIROLL_WALLET_IMPLEMENTATION.clone(abi.encodePacked(_owner, _recipeMarketHub, _amount, _lockedUntil, _isForfeitable, _marketHash)))
+        );
     }
 
     function testWalletInitialization() public view {
@@ -151,6 +153,43 @@ contract WeirollWalletTest is Test {
 
         // Check if the balance increased
         assertEq(address(wallet).balance, initialBalance + 1 ether);
+    }
+
+    function testIsValidSignatureFuzz(uint256 ownerPrivateKey, bytes32 digest, bytes memory signature) public {
+        // Avoid using zero private key and have it be in the correct range for secp256k1 SKs
+        vm.assume(
+            ownerPrivateKey != 0 && ownerPrivateKey < 115_792_089_237_316_195_423_570_985_008_687_907_852_837_564_279_074_904_382_605_163_141_518_161_494_337
+        );
+        // Initialize owner address from the private key
+        owner = vm.addr(ownerPrivateKey);
+
+        // Create a new wallet with the fuzzed owner
+        wallet = createWallet(owner, address(mockRecipeMarketHub), AMOUNT, lockedUntil, true, marketHash);
+
+        // Modify digest for replay protection
+        bytes32 walletSpecificDigest = keccak256(abi.encode(digest, block.chainid, address(wallet)));
+
+        // Create a valid signature from the owner
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, walletSpecificDigest);
+        bytes memory validSignature = abi.encodePacked(r, s, v);
+
+        // Test valid signature
+        bytes4 validResult = wallet.isValidSignature(digest, validSignature);
+        bytes4 expectedMagicValue = 0x1626ba7e; // ERC1271_MAGIC_VALUE
+        assertEq(validResult, expectedMagicValue);
+
+        // Skip invalid signature lengths
+        if (signature.length != 64 && signature.length != 65) {
+            return;
+        }
+
+        // Test invalid signature
+        bytes4 invalidResult = wallet.isValidSignature(digest, signature);
+        assertEq(invalidResult, 0x00000000); // INVALID_SIGNATURE
+
+        // Ensure the owner address is correctly recovered
+        address recoveredSigner = ECDSA.recover(walletSpecificDigest, validSignature);
+        assertEq(recoveredSigner, owner);
     }
 }
 
