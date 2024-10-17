@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { WeirollWallet } from "src/WeirollWallet.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 import { Test } from "forge-std/Test.sol";
-import { VM } from "lib/weiroll/contracts/VM.sol";
+import { VM } from "lib/enso-weiroll/contracts/VM.sol";
 import { ECDSA } from "lib/solady/src/utils/ECDSA.sol";
 
 contract WeirollWalletTest is Test {
