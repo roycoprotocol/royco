@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
