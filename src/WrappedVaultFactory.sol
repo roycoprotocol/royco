@@ -7,7 +7,7 @@ import { LibString } from "lib/solmate/src/utils/LibString.sol";
 import { WrappedVault } from "src/WrappedVault.sol";
 
 /// @title WrappedVaultFactory
-/// @author CopyPaste, corddry
+/// @author CopyPaste, Jack Corddry, Shivaansh Kapoor
 /// @dev A factory for deploying wrapped vaults, and managing protocol or other fees
 contract WrappedVaultFactory is Owned(msg.sender) {
     /*//////////////////////////////////////////////////////////////

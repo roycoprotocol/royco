@@ -9,7 +9,7 @@ import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/acce
 import { ReentrancyGuardTransient } from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @title VaultMarketHub
-/// @author CopyPaste, corddry, ShivaanshK
+/// @author Jack Corddry, CopyPaste, Shivaansh Kapoor
 /// @notice VaultMarketHub contract for Incentivizing AP/IPs to participate incentivized ERC4626 markets
 contract VaultMarketHub is Ownable2Step, ReentrancyGuardTransient {
     using SafeTransferLib for ERC20;

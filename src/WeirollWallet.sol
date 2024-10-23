@@ -7,7 +7,7 @@ import { IERC1271 } from "src/interfaces/IERC1271.sol";
 import { ECDSA } from "lib/solady/src/utils/ECDSA.sol";
 
 /// @title WeirollWallet
-/// @author Royco
+/// @author Jack Corddry, Shivaansh Kapoor, CopyPaste
 /// @notice WeirollWallet implementation contract.
 /// @notice Implements a simple smart contract wallet that can execute Weiroll VM commands
 contract WeirollWallet is IERC1271, Clone, VM {

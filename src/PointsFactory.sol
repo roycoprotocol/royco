@@ -5,7 +5,7 @@ import { Points } from "src/Points.sol";
 import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 /// @title PointsFactory
-/// @author CopyPaste, corddry, ShivaanshK
+/// @author CopyPaste, Jack Corddry, Shivaansh Kapoor
 /// @dev A simple factory for creating Points Programs
 contract PointsFactory is Ownable2Step {
     /// @notice Mapping of Points Program address => bool (indicator of if Points Program was deployed using this factory)

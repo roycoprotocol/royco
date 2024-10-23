@@ -12,7 +12,7 @@ import { PointsFactory } from "src/PointsFactory.sol";
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
 
 /// @title RecipeMarketHub
-/// @author CopyPaste, corddry, ShivaanshK
+/// @author Jack Corddry, CopyPaste, Shivaansh Kapoor
 /// @notice RecipeMarketHub contract for Incentivizing AP/IPs to participate in "recipe" markets which perform arbitrary actions
 contract RecipeMarketHub is RecipeMarketHubBase {
     using ClonesWithImmutableArgs for address;

@@ -13,6 +13,7 @@ enum RewardStyle {
 }
 
 /// @title RecipeMarketHubBase
+/// @author Shivaansh Kapoor, Jack Corddry, CopyPaste
 /// @notice Base contract for the RecipeMarketHub
 abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     /// @notice The address of the WeirollWallet implementation contract for use with ClonesWithImmutableArgs

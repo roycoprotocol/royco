@@ -11,6 +11,8 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IWrappedVault } from "src/interfaces/IWrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
+/// @title WrappedVault
+/// @author Jack Corddry, CopyPaste, Shivaansh Kapoor
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
