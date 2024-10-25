@@ -42,7 +42,7 @@ contract WrappedVaultTest is Test {
     MockERC20 rewardToken2;
 
     function setUp() public {
-        testFactory = new WrappedVaultFactory(DEFAULT_FEE_RECIPIENT, DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(pointsFactory));
+        testFactory = new WrappedVaultFactory(DEFAULT_FEE_RECIPIENT, DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(this), address(pointsFactory));
         testIncentivizedVault = testFactory.wrapVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
 
         rewardToken1 = new MockERC20("Reward Token 1", "RWD1");
