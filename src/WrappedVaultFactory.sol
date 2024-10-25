@@ -9,11 +9,20 @@ import { WrappedVault } from "src/WrappedVault.sol";
 /// @title WrappedVaultFactory
 /// @author CopyPaste, Jack Corddry, Shivaansh Kapoor
 /// @dev A factory for deploying wrapped vaults, and managing protocol or other fees
-contract WrappedVaultFactory is Owned(msg.sender) {
+contract WrappedVaultFactory is Owned {
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _protocolFeeRecipient, uint256 _protocolFee, uint256 _minimumFrontendFee, address _pointsFactory) payable {
+    constructor(
+        address _protocolFeeRecipient,
+        uint256 _protocolFee,
+        uint256 _minimumFrontendFee,
+        address _owner,
+        address _pointsFactory
+    )
+        payable
+        Owned(_owner)
+    {
         if (_protocolFee > MAX_PROTOCOL_FEE) revert ProtocolFeeTooHigh();
         if (_minimumFrontendFee > MAX_MIN_REFERRAL_FEE) revert ReferralFeeTooHigh();
 
@@ -94,17 +103,7 @@ contract WrappedVaultFactory is Owned(msg.sender) {
     /// @param owner The address of the wrapped vault owner
     /// @param name The name of the wrapped vault
     /// @param initialFrontendFee The initial frontend fee for the wrapped vault ()
-    function wrapVault(
-        ERC4626 vault,
-        address owner,
-        string calldata name,
-        uint256 initialFrontendFee
-    )
-        external
-        payable
-        returns (WrappedVault wrappedVault)
-    {
-
+    function wrapVault(ERC4626 vault, address owner, string calldata name, uint256 initialFrontendFee) external payable returns (WrappedVault wrappedVault) {
         string memory newSymbol = getNextSymbol();
         bytes32 salt = keccak256(abi.encodePacked(address(vault), owner, name, initialFrontendFee));
         wrappedVault = new WrappedVault{ salt: salt }(owner, name, newSymbol, address(vault), initialFrontendFee, pointsFactory);

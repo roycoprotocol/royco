@@ -24,10 +24,10 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         PointsFactory pointsFactory = new PointsFactory(deployerAddress);
-        WrappedVaultFactory erc4626iFactory = new WrappedVaultFactory(deployerAddress, 0.01e18, 0.001e18, address(pointsFactory) );
+        // WrappedVaultFactory erc4626iFactory = new WrappedVaultFactory(deployerAddress, 0.01e18, 0.001e18, address(pointsFactory) );
 
         WeirollWallet wwi = new WeirollWallet();
-        VaultMarketHub vaultMarketHub = new VaultMarketHub(deployerAddress);
+        // VaultMarketHub vaultMarketHub = new VaultMarketHub(deployerAddress);
         RecipeMarketHub recipeMarketHub = new RecipeMarketHub(
             address(wwi),
             0.01e18, // 1% protocol fee

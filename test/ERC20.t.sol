@@ -24,7 +24,7 @@ contract ERC20Test is Test {
 
     function setUp() public {
         vm.startPrank(address(0x1));
-        testFactory = new WrappedVaultFactory(address(0x0), 0.01e18, 0.01e18, address(0x0));
+        testFactory = new WrappedVaultFactory(address(0x0), 0.01e18, 0.01e18, address(this), address(0x0));
         vm.stopPrank();
         token = testFactory.wrapVault(testVault, address(0x01), "Test iVault", 0.05e18);
     }

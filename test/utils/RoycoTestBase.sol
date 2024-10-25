@@ -94,6 +94,6 @@ contract RoycoTestBase is Test {
         mockIncentiveToken = new MockERC20("Mock Incentive Token", "MIT");
         mockVault = new MockERC4626(mockLiquidityToken);
         pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER_ADDRESS);
-        erc4626iFactory = new WrappedVaultFactory(OWNER_ADDRESS, ERC4626I_FACTORY_PROTOCOL_FEE, ERC4626I_FACTORY_MIN_FRONTEND_FEE, address(pointsFactory));
+        erc4626iFactory = new WrappedVaultFactory(OWNER_ADDRESS, ERC4626I_FACTORY_PROTOCOL_FEE, ERC4626I_FACTORY_MIN_FRONTEND_FEE, OWNER_ADDRESS, address(pointsFactory));
     }
 }
