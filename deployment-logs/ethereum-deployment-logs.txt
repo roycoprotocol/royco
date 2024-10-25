@@ -1,53 +1,31 @@
-[⠒] Compiling...
-[⠢] Unable to resolve imports:
-      "../../../src/WrappedVaultFactory.sol" in "/Users/ankurdubey/Code/royco/royco/test/utils/RoycoTestBase.sol"
-      "../../../src/PointsFactory.sol" in "/Users/ankurdubey/Code/royco/royco/test/utils/RoycoTestBase.sol"
-      "../../../src/WeirollWallet.sol" in "/Users/ankurdubey/Code/royco/royco/test/utils/RoycoTestBase.sol"
-with remappings:
-      @openzeppelin/contracts/=/Users/ankurdubey/Code/royco/royco/lib/openzeppelin-contracts/contracts/
-      clones-with-immutable-args/=/Users/ankurdubey/Code/royco/royco/lib/clones-with-immutable-args/src/
-      ds-test/=/Users/ankurdubey/Code/royco/royco/lib/solmate/lib/ds-test/src/
-      enso-weiroll/=/Users/ankurdubey/Code/royco/royco/lib/enso-weiroll/contracts/
-      erc4626-tests/=/Users/ankurdubey/Code/royco/royco/lib/erc4626-tests/
-      forge-std/=/Users/ankurdubey/Code/royco/royco/lib/forge-std/src/
-      halmos-cheatcodes/=/Users/ankurdubey/Code/royco/royco/lib/openzeppelin-contracts/lib/halmos-cheatcodes/src/
-      openzeppelin-contracts/=/Users/ankurdubey/Code/royco/royco/lib/openzeppelin-contracts/
-      solady/=/Users/ankurdubey/Code/royco/royco/lib/solady/src/
-[⠆] Unable to resolve imports:ey/Code/royco/royco/lib/solmate/src/
-      "../../../src/WrappedVaultFactory.sol" in "/Users/ankurdubey/Code/royco/royco/test/utils/RoycoTestBase.sol"
-      "../../../src/PointsFactory.sol" in "/Users/ankurdubey/Code/royco/royco/test/utils/RoycoTestBase.sol"
-      "../../../src/WeirollWallet.sol" in "/Users/ankurdubey/Code/royco/royco/test/utils/RoycoTestBase.sol"
-with remappings:
-      @openzeppelin/contracts/=/Users/ankurdubey/Code/royco/royco/lib/openzeppelin-contracts/contracts/
-      clones-with-immutable-args/=/Users/ankurdubey/Code/royco/royco/lib/clones-with-immutable-args/src/
-      ds-test/=/Users/ankurdubey/Code/royco/royco/lib/solmate/lib/ds-test/src/
-      enso-weiroll/=/Users/ankurdubey/Code/royco/royco/lib/enso-weiroll/contracts/
-      erc4626-tests/=/Users/ankurdubey/Code/royco/royco/lib/erc4626-tests/
-      forge-std/=/Users/ankurdubey/Code/royco/royco/lib/forge-std/src/
-      halmos-cheatcodes/=/Users/ankurdubey/Code/royco/royco/lib/openzeppelin-contracts/lib/halmos-cheatcodes/src/
-      openzeppelin-contracts/=/Users/ankurdubey/Code/royco/royco/lib/openzeppelin-contracts/
-      solady/=/Users/ankurdubey/Code/royco/royco/lib/solady/src/
-      solmate/=/Users/ankurdubey/Code/royco/royco/lib/solmate/src/
-No files changed, compilation skipped
-Script ran successfully.
 
 == Logs ==
   Deploying with address:  0x35518D5E1fD8105FC325c5c171c329c3B10b254c
   Deployer is ready
+
   Deploying PointsFactory
+  contract already deployed at:  0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50
   Verifying PointsFactory deployment
-  PointsFactory deployed at:  0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50
+  PointsFactory deployed at:  0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50 
+
   Deploying WrappedVaultFactory
   Verifying WrappedVaultFactory deployment
-  WrappedVaultFactory deployed at:  0x7C0fB28B7bb6C8Ee935045842C8110e80d2cdCeD
+  WrappedVaultFactory deployed at:  0xb316D165D01aC68d31B297F847533D671c965662 
+
   Deploying WeirollWallet
-  WeirollWallet deployed at:  0x40a1c08084671E9A799B73853E82308225309Dc0
+  contract already deployed at:  0x40a1c08084671E9A799B73853E82308225309Dc0
+  WeirollWallet deployed at:  0x40a1c08084671E9A799B73853E82308225309Dc0 
+
   Deploying VaultMarketHub
+  contract already deployed at:  0x52341389BE638A5B8083d2B70a421f9D4C87EBcd
   Verifying VaultMarketHub deployment
-  VaultMarketHub deployed at:  0x52341389BE638A5B8083d2B70a421f9D4C87EBcd
+  VaultMarketHub deployed at:  0x52341389BE638A5B8083d2B70a421f9D4C87EBcd 
+
   Deploying RecipeMarketHub
+  contract already deployed at:  0x76953A612c256fc497bBb49ed14147f24C4feB71
   Verifying RecipeMarketHub deployment
-  RecipeMarketHub deployed at:  0x76953A612c256fc497bBb49ed14147f24C4feB71
+  RecipeMarketHub deployed at:  0x76953A612c256fc497bBb49ed14147f24C4feB71 
+
 
 ## Setting up 1 EVM.
 
@@ -55,58 +33,34 @@ Script ran successfully.
 
 Chain 1
 
-Estimated gas price: 8.188221162 gwei
+Estimated gas price: 9.065441026 gwei
 
-Estimated total gas used for script: 23650045
+Estimated total gas used for script: 7476827
 
-Estimated amount required: 0.19365179895125229 ETH
+Estimated amount required: 0.067780734230104502 ETH
 
 ==========================
 
 ##### mainnet
-✅  [Success]Hash: 0xa67c71818801fab16c94298a42cef036243e001d9206676af04e73bf04d3d72a
-Block: 21040393
-Paid: 0.023286912662785926 ETH (5279626 gas * 4.410712551 gwei)
+✅  [Success]Hash: 0x73f2e0bbb094e79cd142bfdf9f077d118a516f20094cc15e1505d998e78925c2
+Block: 21040754
+Paid: 0.025219071967128864 ETH (5413088 gas * 4.658906703 gwei)
 
-
-##### mainnet
-✅  [Success]Hash: 0x0fab10644b8bb22236111ed653d6f1be65ed9582c228b876fc625430f6a5579e
-Block: 21040393
-Paid: 0.006178645230679677 ETH (1400827 gas * 4.410712551 gwei)
-
-
-##### mainnet
-✅  [Success]Hash: 0x0ea25128c3fe13eab98b17cbc7fc8e0e16da7cb7866a49d2a2026498979268c3
-Block: 21040393
-Paid: 0.012935909787362289 ETH (2932839 gas * 4.410712551 gwei)
-
-
-##### mainnet
-✅  [Success]Hash: 0x6da1faea2ba1274348f4275de951014c9b48a16b5d97cc4b50e995f059824878
-Block: 21040393
-Paid: 0.007514464812450435 ETH (1703685 gas * 4.410712551 gwei)
-
-
-##### mainnet
-✅  [Success]Hash: 0x114abaa041e4f83973da0c4847c23708a15270d487fd1a3a3c12cc648a0d571f
-Block: 21040393
-Paid: 0.023871936343412913 ETH (5412263 gas * 4.410712551 gwei)
-
-✅ Sequence #1 on mainnet | Total Paid: 0.07378786883669124 ETH (16729240 gas * avg 4.410712551 gwei)
+✅ Sequence #1 on mainnet | Total Paid: 0.025219071967128864 ETH (5413088 gas * avg 4.658906703 gwei)
                                                                                                                                                                                                                                                                                                 
 
 ==========================
 
 ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
 ##
-Start verification for (5) contracts
-Start verifying contract `0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50` deployed on mainnet
+Start verification for (1) contracts
+Start verifying contract `0xb316D165D01aC68d31B297F847533D671c965662` deployed on mainnet
 
-Submitting verification for [src/PointsFactory.sol:PointsFactory] 0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50.
+Submitting verification for [src/WrappedVaultFactory.sol:WrappedVaultFactory] 0xb316D165D01aC68d31B297F847533D671c965662.
 Submitted contract for verification:
         Response: `OK`
-        GUID: `zura9f93wijztfc6aykfzhhdpgf4wa3k1iuxy6gyw92t6rmjwn`
-        URL: https://etherscan.io/address/0x19112adbdafb465ddf0b57ecc07e68110ad09c50
+        GUID: `4pfu1sjys1duqbthyn2nje9zrimawccnsjj11sy53rg6b5vh7h`
+        URL: https://etherscan.io/address/0xb316d165d01ac68d31b297f847533d671c965662
 Contract verification status:
 Response: `NOTOK`
 Details: `Pending in queue`
@@ -114,60 +68,4 @@ Contract verification status:
 Response: `OK`
 Details: `Pass - Verified`
 Contract successfully verified
-Start verifying contract `0x7C0fB28B7bb6C8Ee935045842C8110e80d2cdCeD` deployed on mainnet
-
-Submitting verification for [src/WrappedVaultFactory.sol:WrappedVaultFactory] 0x7C0fB28B7bb6C8Ee935045842C8110e80d2cdCeD.
-Submitted contract for verification:
-        Response: `OK`
-        GUID: `k9y6bt5ekcwjihcycuijcrkmnvst3u7u5s71ja1yg8sidrk4sj`
-        URL: https://etherscan.io/address/0x7c0fb28b7bb6c8ee935045842c8110e80d2cdced
-Contract verification status:
-Response: `NOTOK`
-Details: `Pending in queue`
-Contract verification status:
-Response: `OK`
-Details: `Pass - Verified`
-Contract successfully verified
-Start verifying contract `0x40a1c08084671E9A799B73853E82308225309Dc0` deployed on mainnet
-
-Submitting verification for [src/WeirollWallet.sol:WeirollWallet] 0x40a1c08084671E9A799B73853E82308225309Dc0.
-Submitted contract for verification:
-        Response: `OK`
-        GUID: `bdxj4gt9rcslldsm52zbps1yfesblp27hrwxa6p18ute19mqxv`
-        URL: https://etherscan.io/address/0x40a1c08084671e9a799b73853e82308225309dc0
-Contract verification status:
-Response: `NOTOK`
-Details: `Pending in queue`
-Contract verification status:
-Response: `OK`
-Details: `Pass - Verified`
-Contract successfully verified
-Start verifying contract `0x52341389BE638A5B8083d2B70a421f9D4C87EBcd` deployed on mainnet
-
-Submitting verification for [src/VaultMarketHub.sol:VaultMarketHub] 0x52341389BE638A5B8083d2B70a421f9D4C87EBcd.
-Submitted contract for verification:
-        Response: `OK`
-        GUID: `ay55rvahsxaprecr3fzz5rpilgbfuwhn6x3kad2fuczd3lpxxq`
-        URL: https://etherscan.io/address/0x52341389be638a5b8083d2b70a421f9d4c87ebcd
-Contract verification status:
-Response: `NOTOK`
-Details: `Pending in queue`
-Contract verification status:
-Response: `OK`
-Details: `Pass - Verified`
-Contract successfully verified
-Start verifying contract `0x76953A612c256fc497bBb49ed14147f24C4feB71` deployed on mainnet
-
-Submitting verification for [src/RecipeMarketHub.sol:RecipeMarketHub] 0x76953A612c256fc497bBb49ed14147f24C4feB71.
-Submitted contract for verification:
-        Response: `OK`
-        GUID: `uafrzvawbav1zd2z8i6amapr8pemxt13gureuide9gmdpx44ez`
-        URL: https://etherscan.io/address/0x76953a612c256fc497bbb49ed14147f24c4feb71
-Contract verification status:
-Response: `NOTOK`
-Details: `Pending in queue`
-Contract verification status:
-Response: `OK`
-Details: `Pass - Verified`
-Contract successfully verified
-All (5) contracts were verified!
+All (1) contracts were verified!

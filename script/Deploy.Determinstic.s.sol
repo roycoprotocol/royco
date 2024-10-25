@@ -22,7 +22,7 @@ address constant CREATE2_FACTORY_ADDRESS = 0x4e59b44847b379578588920cA78FbF26c0B
 
 // Deployment Salts
 string constant POINTS_FACTORY_SALT = "ROYCO_POINTS_FACTORY_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50
-string constant WRAPPED_VAULT_FACTORY_SALT = "ROYCO_WRAPPED_VAULT_FACTORY_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x7C0fB28B7bb6C8Ee935045842C8110e80d2cdCeD
+string constant WRAPPED_VAULT_FACTORY_SALT = "ROYCO_WRAPPED_VAULT_FACTORY_153a5c1e619a98ec578748451a879136baf2d345"; // 0xb316D165D01aC68d31B297F847533D671c965662
 string constant WEIROLL_WALLET_SALT = "ROYCO_WEIROLL_WALLET_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x40a1c08084671E9A799B73853E82308225309Dc0
 string constant VAULT_MARKET_HUB_SALT = "ROYCO_VAULT_MARKET_HUB_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x52341389BE638A5B8083d2B70a421f9D4C87EBcd
 string constant RECIPE_MARKET_HUB_SALT = "ROYCO_RECIPE_MARKET_HUB_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x76953A612c256fc497bBb49ed14147f24C4feB71
@@ -45,6 +45,7 @@ contract DeployDeterministic is Script {
     error WrappedVaultFactoryProtocolFeeRecipientIncorrect(address expected, address actual);
     error WrappedVaultFactoryProtocolFeeIncorrect(uint256 expected, uint256 actual);
     error WrappedVaultFactoryMinimumFrontendFeeIncorrect(uint256 expected, uint256 actual);
+    error WrappedVaultFactoryOwnerIncorrect(address expected, address actual);
     error WrappedVaultFactoryPointsFactoryIncorrect(address expected, address actual);
 
     error VaultMarketHubOwnerIncorrect(address expected, address actual);
@@ -86,6 +87,11 @@ contract DeployDeterministic is Script {
     function _deployWithSanityChecks(string memory _salt, bytes memory _creationCode) internal returns (address) {
         address expectedAddress = _generateDeterminsticAddress(_salt, _creationCode);
 
+        if (address(expectedAddress).code.length != 0) {
+            console2.log("contract already deployed at: ", expectedAddress);
+            return expectedAddress;
+        }
+
         address addr = _deploy(_salt, _creationCode);
 
         if (addr != expectedAddress) {
@@ -112,6 +118,9 @@ contract DeployDeterministic is Script {
         }
         if (_wrappedVaultFactory.minimumFrontendFee() != MINIMUM_FRONTEND_FEE) {
             revert WrappedVaultFactoryMinimumFrontendFeeIncorrect(MINIMUM_FRONTEND_FEE, _wrappedVaultFactory.minimumFrontendFee());
+        }
+        if (_wrappedVaultFactory.owner() != ROYCO_OWNER) {
+            revert WrappedVaultFactoryOwnerIncorrect(ROYCO_OWNER, _wrappedVaultFactory.owner());
         }
         if (_wrappedVaultFactory.pointsFactory() != address(_pointsFactory)) {
             revert WrappedVaultFactoryPointsFactoryIncorrect(address(_pointsFactory), _wrappedVaultFactory.pointsFactory());
@@ -149,7 +158,7 @@ contract DeployDeterministic is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         _checkDeployer();
-        console2.log("Deployer is ready");
+        console2.log("Deployer is ready\n");
 
         // Deploy PointsFactory
         console2.log("Deploying PointsFactory");
@@ -157,22 +166,23 @@ contract DeployDeterministic is Script {
         PointsFactory pointsFactory = PointsFactory(_deployWithSanityChecks(POINTS_FACTORY_SALT, pointsFactoryCreationCode));
         console2.log("Verifying PointsFactory deployment");
         _verifyPointsFactoryDeployment(pointsFactory);
-        console2.log("PointsFactory deployed at: ", address(pointsFactory));
+        console2.log("PointsFactory deployed at: ", address(pointsFactory), "\n");
 
         // Deploy WrappedVaultFactory
         console2.log("Deploying WrappedVaultFactory");
-        bytes memory wrappedVaultFactoryCreationCode =
-            abi.encodePacked(vm.getCode("WrappedVaultFactory"), abi.encode(PROTOCOL_FEE_RECIPIENT, PROTOCOL_FEE, MINIMUM_FRONTEND_FEE, address(pointsFactory)));
+        bytes memory wrappedVaultFactoryCreationCode = abi.encodePacked(
+            vm.getCode("WrappedVaultFactory"), abi.encode(PROTOCOL_FEE_RECIPIENT, PROTOCOL_FEE, MINIMUM_FRONTEND_FEE, ROYCO_OWNER, address(pointsFactory))
+        );
         WrappedVaultFactory wrappedVaultFactory = WrappedVaultFactory(_deployWithSanityChecks(WRAPPED_VAULT_FACTORY_SALT, wrappedVaultFactoryCreationCode));
         console2.log("Verifying WrappedVaultFactory deployment");
         _verifyWrappedVaultFactoryDeployment(wrappedVaultFactory, pointsFactory);
-        console2.log("WrappedVaultFactory deployed at: ", address(wrappedVaultFactory));
+        console2.log("WrappedVaultFactory deployed at: ", address(wrappedVaultFactory), "\n");
 
         // Deploy WeirollWallet
         console2.log("Deploying WeirollWallet");
         bytes memory weirollWalletCreationCode = abi.encodePacked(vm.getCode("WeirollWallet"));
         WeirollWallet weirollWallet = WeirollWallet(payable(_deployWithSanityChecks(WEIROLL_WALLET_SALT, weirollWalletCreationCode)));
-        console2.log("WeirollWallet deployed at: ", address(weirollWallet));
+        console2.log("WeirollWallet deployed at: ", address(weirollWallet), "\n");
 
         // Deploy VaultMarketHub
         console2.log("Deploying VaultMarketHub");
@@ -180,7 +190,7 @@ contract DeployDeterministic is Script {
         VaultMarketHub vaultMarketHub = VaultMarketHub(_deployWithSanityChecks(VAULT_MARKET_HUB_SALT, vaultMarketHubCreationCode));
         console2.log("Verifying VaultMarketHub deployment");
         _verifyVaultMarketHubDeployment(vaultMarketHub);
-        console2.log("VaultMarketHub deployed at: ", address(vaultMarketHub));
+        console2.log("VaultMarketHub deployed at: ", address(vaultMarketHub), "\n");
 
         // Deploy RecipeMarketHub
         console2.log("Deploying RecipeMarketHub");
@@ -190,7 +200,7 @@ contract DeployDeterministic is Script {
         RecipeMarketHub recipeMarketHub = RecipeMarketHub(_deployWithSanityChecks(RECIPE_MARKET_HUB_SALT, recipeMarketHubCreationCode));
         console2.log("Verifying RecipeMarketHub deployment");
         _verifyRecipeMarketHubDeployment(recipeMarketHub, weirollWallet, pointsFactory);
-        console2.log("RecipeMarketHub deployed at: ", address(recipeMarketHub));
+        console2.log("RecipeMarketHub deployed at: ", address(recipeMarketHub), "\n");
 
         vm.stopBroadcast();
     }
