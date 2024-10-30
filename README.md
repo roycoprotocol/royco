@@ -1,30 +1,52 @@
 # Royco: The Incentivized Action Market Protocol [![Tests](https://github.com/roycoprotocol/royco/actions/workflows/test.yml/badge.svg)](https://github.com/roycoprotocol/royco/actions/workflows/test.yml)
 ![Royco Banner](./roycobanner.png)
 
-Royco allows anyone to create a market around any onchain action. Those who wish to pay to execute an onchain action are called "Incentive Providers" (IPs) and offer token or points incentives in exchange for an "Action Provider" (APs) to take some action, be it enter a staking vault, or execute some "recipe" of one or more smart contract interactions, each having their own market types on Royco.
+Royco Protocol allows anyone to create a market to incentivize any onchain transaction or series of transactions–we call these markets Incentivized Action Markets (IAMs).
+In IAMs, Incentive Providers (IPs) offer incentives, like tokens or points, for Action Providers (APs) to perform onchain actions. IPs and APs make offers/counter-offers until they agree upon an incentive amount for which the AP will complete the transaction. When they agree, the AP’s transactions are programmatically executed and the incentives are atomically allocated to the AP.
 
-## Vault Markets
-Actions which deposit in staking vaults are called "Vault Markets". Vault Markets consist of a Royco wrapped vault and a Vault Market Hub.
+There are two types of IAMs:
+
+1. **Vault IAM**: Incentive Providers offer incentives to deposit into an underlying ERC4626 Vault.
+2. **Recipe IAM**:  Incentive Providers offer incentives to perform any onchain transaction or series of transactions–aka a “recipe.”
+
+Both are highly capital-efficient since APs can make offers with assets currently deployed in incentivized Vault IAMs, or other ERC4626 vaults.
+
+Royco Protocol is entirely non-custodial, trustless, and permissionless. The following documentation details its smart contracts for developers who wish to interact with and build upon it. 
+
+## Vault IAMs
+A Vault IAM is a market that incentivizes deposits into an underlying 4626 Vault. To achieve this, there are two components:
+
+**A. Wrapped Vault**: wraps an existing ERC-4626 Vault to distribute incentives to depositors.
+
+**B. Vault Market**: enables APs and IPs to create offers for incentives and deposits.
 ### WrappedVault.sol
-Vault Markets are centered around wrapped vaults, which are 4626 vaults wrapped with the ability to stream "incentives". Wrapped vaults are created through the WrappedVaultFactory by simply pointing to an existing 4626 vault and deploying a new WrappedVault to allow IPs to distribute Unipool style staking incentives to APs who deposit in the vault through the wrapper. The underlying 4626 vault must be fully compliant to vanilla 4626 behavior, meaning working previewWithdraw functions, immediate deposits/withdrawals, etc.
+The Wrapped Vault wraps an existing ERC-4626 Vault to distribute incentives to APs who deposit into the underlying Vault.
 
-Wrapped vaults are owned by the Incentive Provider who deploys them. The IP who owns a wrapped vault is solely permissioned to distribute incentives, and may add additional incentive tokens or points campaigns at any time, (for up to 20 different assets). IPs can also "extend" incentive campaigns by calling extendRewardsInterval, however to prevent dishonest AP limit offer sniping, IPs must keep the new rewards rate equivalent or higher than the current rewards rate when doing so.
+Anyone can use the Wrapped Vault Factory to point to an ERC-4626 Vault and specify what incentives will be distributed (up to 20 different assets) and an owner address (i.e. an EOA, contract, many party multi-sig, etc.) that the incentives will be contributed from. The owner can also "extend" incentive campaigns by calling extendRewardsInterval, as long as the new offered rewards rate is higher than or equal to the current rewards rate. The underlying Vault must be fully compliant to ERC-4626 behavior.
+
+Once the Wrapped Vault is deployed, IPs can distribute pro-rata, pool-style incentives to APs who enter the underlying 4626 Vault through the Vault Market.
 
 ### VaultMarketHub.sol
-The Vault Market Hub is where APs offer to deposit into wrapped vaults. APs place "limit offers" on vaults specifying the incentive rates they would need to receive per deposit token in offer to be allocated into a vault. Once a vault is streaming the rate desired by the LP, an IP can call allocateOffer to draw the in-range offers into the pool.
+A Vault Market enables IPs and APs to negotiate for the incentives required to deposit into the underlying ERC-4626 Vault. APs can make conditional offers specifying the incentive they would need to receive per deposit token, in offer to deposit into the Vault. For example, “10 $ABC per 1 USDC” or “1 ABC Points per 1 ETH.” APs make these offers via approvals, so they can make an unlimited number of conditional offers with the same ERC20 tokens as collateral. 
 
-Offers on Royco's Vault Market Hub are placed without transferring tokens to the hub, allowing many offers to be placed off of the same tokens. Additionally, offers can be placed against not only ERC20 tokens but also against other 4626 or wrapped vaults, withdrawing from the vaults on offer fill to allow APs to farm one pool while simultaneously offering to enter other pools if incentive rates increase.
+An IP could see these conditional offers, update their incentive rates to meet them, and call allocateOffer to draw all in-range offers into the Vault (as long as the incentive campaign has a minimum remaining duration of 1 week. Following this, the streaming rates will continue to fluctuate as incentives are added and APs enter/exit the Vault.
 
-## Recipe Markets
-More long-tail actions which may not be easily represented by 4626 vaults instead occur through recipe markets, which heavily rely on the [operation-chaining/scripting language Weiroll](https://github.com/weiroll/weiroll). Weiroll allows IPs to write complex chained "Recipes" of smart contract interactions that can express any chain of actions you could make through an EOA.
+**AP Capital Efficiency:** AP Offers are placed via approvals so APs can make an unlimited number of offers with the same ERC20 tokens in their wallet–but also with tokens currently deployed in other 4626 Vaults. If an AP’s conditional offer is filled by an IP, they are automatically allocated from their current Vault and deposited into another Vault.
+
+## Recipe IAMs
+A Recipe IAM is a market that can incentivize any arbitrary onchain transaction or series of transactions that an EOA can perform. Recipe IAMs achieve this through the scripting language, Weiroll (https://github.com/weiroll/weiroll). Weiroll allows Market Creators to define single transactions or complex, operation-chaining “recipes” of transactions for IPs to incentivize. There are two components,
+
+**A. Weiroll Wallet**: wraps an existing ERC-4626 Vault to distribute incentives to depositors.
+
+**B. Recipe Market**: enables APs and IPs to create offers for incentives and deposits.
 
 ### WeirollWallet.sol
-Instead of depositing in a wrapped vault, recipe markets deposit assets into a lightweight, disposable, smart contract wallet owned by the AP with the Weiroll VM built in. This allows the AP to execute weiroll scripts without exposing all their funds to the arbitrary (and potentially malicious) interactions given by the script. Weiroll Wallets also allow locking the wallet itself, enabling IPs to ensure an AP holds their position after executing the script for some set amount of time. 
+In Recipe IAMs, when an AP makes an offer, they transfer their funds into a fully self-custodial, lightweight, disposable smart contract wallet with Weiroll VM built-in. The AP uses this wallet to execute Weiroll scripts and limit the funds exposed in each transaction.
 
-After a timelock has expired, an AP gains full control over the wallet, and is now able to call a withdrawal recipe specified in the market, or can simply pass raw calldata for the wallet to execute.
+IPs may want to ensure that an AP performs the defined action (e.g. hold a position) for some set amount of time. So for these markets, IPs can specify that the AP must deploy a Weiroll Wallet with a pre-defined timelock. After the timelock expires, the AP may call a withdrawal recipe specified in the market, or can simply pass raw call data for the wallet to execute.
 
 ### RecipeMarketHub.sol
-The Recipe Market Hub functions much like the Vault Market Hub, but allows Incentive Providers to also place limit offers, stating that they are willing to pay APs some amount of incentive in exchange for calling the Weiroll recipe with some amount of deposit token. Both IP and AP limit offers may be filled by the opposite parties.
+Like a Vault Market, a Recipe Market enables IPs and APs to negotiate for incentives, but it also enables Incentive Providers to create conditional offers. For example, as an IP I will pay you, “1 USDC for calling the Weiroll Recipe with $10 ABC.” IPs and APs can effectively offer/counter-offer to find the true price of the Weiroll Recipe execution
 
 ## Other Contracts
 
@@ -43,3 +65,21 @@ Royco is built using [Foundry](https://github.com/foundry-rs/foundry)
 **Installing Dependencies** ``` forge install ```
 
 **Running Tests:** ``` forge test ```
+
+## Deployments
+Royco was initially deployed to Ethereum Mainnet, Arbitrum, and Base at the following deterministic deployment addresses:
+
+**PointsFactory:**
+0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50
+
+**WrappedVaultFactory:**
+0xb316D165D01aC68d31B297F847533D671c965662
+
+**VaultMarketHub:**
+0x52341389BE638A5B8083d2B70a421f9D4C87EBcd
+
+**WeirollWallet:**
+0x40a1c08084671E9A799B73853E82308225309Dc0
+
+**RecipeMarketHub:**
+0x76953A612c256fc497bBb49ed14147f24C4feB71
