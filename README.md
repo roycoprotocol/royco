@@ -34,7 +34,7 @@ An IP could see these conditional offers, update their incentive rates to meet t
 **AP Capital Efficiency:** AP Offers are placed via approvals so APs can make an unlimited number of offers with the same ERC20 tokens in their wallet–but also with tokens currently deployed in other 4626 Vaults. If an AP’s conditional offer is filled by an IP, they are automatically allocated from their current Vault and deposited into another Vault.
 
 ## Recipe IAMs
-A Recipe IAM is a market that can incentivize any arbitrary onchain transaction or series of transactions that an EOA can perform. Recipe IAMs achieve this through the scripting language, Weiroll (https://github.com/weiroll/weiroll). Weiroll allows Market Creators to define single transactions or complex, operation-chaining “recipes” of transactions for IPs to incentivize. There are two components,
+A Recipe IAM is a market that can incentivize any arbitrary onchain transaction or series of transactions that an EOA can perform. Recipe IAMs achieve this through the scripting language, [Weiroll](https://github.com/weiroll/weiroll). Weiroll allows Market Creators to define single transactions or complex, operation-chaining “recipes” of transactions for IPs to incentivize. There are two components,
 
 **A. Weiroll Wallet**: wraps an existing ERC-4626 Vault to distribute incentives to depositors.
 
