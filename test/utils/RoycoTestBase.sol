@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../../src/WeirollWallet.sol";
+import "src/WeirollWallet.sol";
 import "test/mocks/MockRecipeMarketHub.sol";
-import "../../../src/PointsFactory.sol";
-import { WrappedVaultFactory } from "../../../src/WrappedVaultFactory.sol";
+import "src/PointsFactory.sol";
+import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
