@@ -164,7 +164,7 @@ contract WrappedVaultTest is Test {
         uint256 protocolFee = totalRewards.mulWadDown(testFactory.protocolFee());
         totalRewards -= frontendFee + protocolFee;
 
-        (uint32 actualStart, uint32 actualEnd, uint96 actualRate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
+        (uint32 actualStart, uint32 actualEnd, uint256 actualRate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
 
         assertEq(actualStart, start);
         assertEq(actualEnd, end);
@@ -271,7 +271,7 @@ contract WrappedVaultTest is Test {
         protocolFee = additionalRewards.mulWadDown(testFactory.protocolFee());
         additionalRewards -= frontendFee + protocolFee;
 
-        (uint32 actualStart, uint32 actualEnd, uint96 actualRate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
+        (uint32 actualStart, uint32 actualEnd, uint256 actualRate) = testIncentivizedVault.rewardToInterval(address(rewardToken1));
         assertEq(actualStart, block.timestamp);
         assertEq(actualEnd, _newEnd);
 
