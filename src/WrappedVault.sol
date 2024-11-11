@@ -247,7 +247,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
         if (rate < rewardsInterval.rate) revert RateCannotDecrease();
 
-        rewardsAdded = rate * (newEnd - newStart) + frontendFeeTaken + protocolFeeTaken;
+        rewardsAdded = (rate - rewardsInterval.rate) * (newEnd - newStart) + frontendFeeTaken + protocolFeeTaken;
 
         rewardsInterval.start = newStart;
         rewardsInterval.end = newEnd.toUint32();
