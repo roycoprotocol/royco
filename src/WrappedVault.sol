@@ -140,7 +140,9 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         DEPOSIT_ASSET = ERC20(VAULT.asset());
         POINTS_FACTORY = PointsFactory(pointsFactory);
 
-        uint256 decimalOffset = ERC20(vault).decimals() > DEPOSIT_ASSET.decimals() ? ERC20(vault).decimals() - DEPOSIT_ASSET.decimals() : 0;
+        uint256 vaultDecimals = ERC20(vault).decimals();
+        uint256 assetDecimals = DEPOSIT_ASSET.decimals();
+        uint256 decimalOffset = vaultDecimals > assetDecimals ? vaultDecimals - assetDecimals : 0;
         DECIMAL_NORMALIZATION_FACTOR = 10 ** decimalOffset;
 
         _mint(address(0), 10_000); // Burn 10,000 wei to stop 'first share' front running attacks on depositors
