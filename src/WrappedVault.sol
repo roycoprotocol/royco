@@ -108,6 +108,9 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     /// @dev Maps a reward (either token or points) to a claimant, to accrued fees
     mapping(address => mapping(address => uint256)) public rewardToClaimantToFees;
 
+    /// @dev Normalizes rewardsPerToken for vaults with high decimals or decimals offset
+    uint256 public immutable DECIMAL_NORMALIZATION_FACTOR;
+
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -136,6 +139,9 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         VAULT = IWrappedVault(vault);
         DEPOSIT_ASSET = ERC20(VAULT.asset());
         POINTS_FACTORY = PointsFactory(pointsFactory);
+
+        uint256 decimalOffset = ERC20(vault).decimals() > DEPOSIT_ASSET.decimals() ? ERC20(vault).decimals() - DEPOSIT_ASSET.decimals() : 0;
+        DECIMAL_NORMALIZATION_FACTOR = 10 ** decimalOffset;
 
         _mint(address(0), 10_000); // Burn 10,000 wei to stop 'first share' front running attacks on depositors
 
@@ -351,7 +357,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
         uint256 elapsedWAD = elapsed * 1e18;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply))); // The
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate * DECIMAL_NORMALIZATION_FACTOR, totalSupply))); // The
             // rewards per token are scaled up for precision
 
         return rewardsPerTokenOut;
@@ -397,7 +403,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         if (userRewards_.checkpoint == rewardsPerToken_.accumulated) return userRewards_;
 
         // Calculate and update the new value user reserves.
-        userRewards_.accumulated += _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerToken_.accumulated).toUint128();
+        userRewards_.accumulated += _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerToken_.accumulated).toUint128() / DECIMAL_NORMALIZATION_FACTOR;
         userRewards_.checkpoint = rewardsPerToken_.accumulated;
 
         rewardToUserToAR[reward][user] = userRewards_;
@@ -473,7 +479,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     function currentUserRewards(address reward, address user) public view returns (uint256) {
         UserRewards memory accumulatedRewards_ = rewardToUserToAR[reward][user];
         RewardsPerToken memory rewardsPerToken_ = _calculateRewardsPerToken(rewardToRPT[reward], rewardToInterval[reward]);
-        return accumulatedRewards_.accumulated + _calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerToken_.accumulated);
+        return accumulatedRewards_.accumulated + (_calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerToken_.accumulated) / DECIMAL_NORMALIZATION_FACTOR);
     }
 
     /// @notice Calculates the rate a user would receive in rewards after depositing assets
