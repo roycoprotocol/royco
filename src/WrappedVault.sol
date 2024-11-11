@@ -351,8 +351,9 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
         uint256 elapsedWAD = elapsed * 1e18;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply))); // The
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, VAULT.convertToAssets(totalSupply)))); // The
             // rewards per token are scaled up for precision
+
 
         return rewardsPerTokenOut;
     }
@@ -397,7 +398,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         if (userRewards_.checkpoint == rewardsPerToken_.accumulated) return userRewards_;
 
         // Calculate and update the new value user reserves.
-        userRewards_.accumulated += _calculateUserRewards(balanceOf[user], userRewards_.checkpoint, rewardsPerToken_.accumulated).toUint128();
+        userRewards_.accumulated += _calculateUserRewards(VAULT.convertToAssets(balanceOf[user]), userRewards_.checkpoint, rewardsPerToken_.accumulated).toUint128();
         userRewards_.checkpoint = rewardsPerToken_.accumulated;
 
         rewardToUserToAR[reward][user] = userRewards_;
@@ -473,7 +474,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     function currentUserRewards(address reward, address user) public view returns (uint256) {
         UserRewards memory accumulatedRewards_ = rewardToUserToAR[reward][user];
         RewardsPerToken memory rewardsPerToken_ = _calculateRewardsPerToken(rewardToRPT[reward], rewardToInterval[reward]);
-        return accumulatedRewards_.accumulated + _calculateUserRewards(balanceOf[user], accumulatedRewards_.checkpoint, rewardsPerToken_.accumulated);
+        return accumulatedRewards_.accumulated + _calculateUserRewards(VAULT.convertToAssets(balanceOf[user]), accumulatedRewards_.checkpoint, rewardsPerToken_.accumulated);
     }
 
     /// @notice Calculates the rate a user would receive in rewards after depositing assets
