@@ -252,7 +252,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         rewardsInterval.end = newEnd.toUint32();
         rewardsInterval.rate = rate.toUint96();
 
-        emit RewardsSet(reward, newStart, newEnd.toUint32(), rate, (rewardsAfterFee + remainingRewards), protocolFeeTaken, frontendFeeTaken);
+        emit RewardsSet(reward, newStart, newEnd.toUint32(), rate, (rate * (newEnd - newStart)), protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, rewardsAdded);
     }
@@ -305,7 +305,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         // Any unclaimed rewards can still be claimed
         rewardsPerToken.lastUpdated = start.toUint32();
 
-        emit RewardsSet(reward, block.timestamp.toUint32(), rewardsInterval.end, rate, rewardsAfterFee, protocolFeeTaken, frontendFeeTaken);
+        emit RewardsSet(reward, block.timestamp.toUint32(), rewardsInterval.end, rate, (rate * (end - start)), protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, totalRewards);
     }
