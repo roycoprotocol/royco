@@ -238,14 +238,13 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the new rate
-        uint256 rewardsAfterFee = rewardsAdded - frontendFeeTaken - protocolFeeTaken;
 
         uint32 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp.toUint32() : rewardsInterval.start;
 
         if ((newEnd - newStart) < MIN_CAMPAIGN_EXTENSION) revert InvalidIntervalDuration();
 
         uint256 remainingRewards = rewardsInterval.rate * (rewardsInterval.end - newStart);
-        uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - newStart);
+        uint256 rate = (rewardsAdded - frontendFeeTaken - protocolFeeTaken + remainingRewards) / (newEnd - newStart);
         rewardsAdded = (rate - rewardsInterval.rate) * (newEnd - newStart) + frontendFeeTaken + protocolFeeTaken;
 
         if (rate < rewardsInterval.rate) revert RateCannotDecrease();
@@ -291,8 +290,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the rate
-        uint256 rewardsAfterFee = totalRewards - frontendFeeTaken - protocolFeeTaken;
-        uint256 rate = rewardsAfterFee / (end - start);
+        uint256 rate = (totalRewards - frontendFeeTaken - protocolFeeTaken) / (end - start);
 
         if (rate == 0) revert NoZeroRateAllowed();
         totalRewards = rate * (end - start) + frontendFeeTaken + protocolFeeTaken;
