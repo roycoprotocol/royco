@@ -82,6 +82,8 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
     /// @dev The minimum lifespan of an extended campaign
     uint256 public constant MIN_CAMPAIGN_EXTENSION = 1 weeks;
+    /// @dev RewardsPerToken.accumulated is scaled up to prevent loss of incentives
+    uint256 public constant RPT_PRECISION = 1e27;
 
     /// @dev The address of the underlying vault being incentivized
     IWrappedVault public immutable VAULT;
@@ -236,14 +238,14 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the new rate
-        uint256 rewardsAfterFee = rewardsAdded - frontendFeeTaken - protocolFeeTaken;
 
         uint32 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp.toUint32() : rewardsInterval.start;
 
         if ((newEnd - newStart) < MIN_CAMPAIGN_EXTENSION) revert InvalidIntervalDuration();
 
         uint256 remainingRewards = rewardsInterval.rate * (rewardsInterval.end - newStart);
-        uint256 rate = (rewardsAfterFee + remainingRewards) / (newEnd - newStart);
+        uint256 rate = (rewardsAdded - frontendFeeTaken - protocolFeeTaken + remainingRewards) / (newEnd - newStart);
+        rewardsAdded = (rate - rewardsInterval.rate) * (newEnd - newStart) + frontendFeeTaken + protocolFeeTaken;
 
         if (rate < rewardsInterval.rate) revert RateCannotDecrease();
 
@@ -251,7 +253,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         rewardsInterval.end = newEnd.toUint32();
         rewardsInterval.rate = rate.toUint96();
 
-        emit RewardsSet(reward, newStart, newEnd.toUint32(), rate, (rewardsAfterFee + remainingRewards), protocolFeeTaken, frontendFeeTaken);
+        emit RewardsSet(reward, newStart, newEnd.toUint32(), rate, (rate * (newEnd - newStart)), protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, rewardsAdded);
     }
@@ -288,10 +290,10 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the rate
-        uint256 rewardsAfterFee = totalRewards - frontendFeeTaken - protocolFeeTaken;
-        uint256 rate = rewardsAfterFee / (end - start);
+        uint256 rate = (totalRewards - frontendFeeTaken - protocolFeeTaken) / (end - start);
 
         if (rate == 0) revert NoZeroRateAllowed();
+        totalRewards = rate * (end - start) + frontendFeeTaken + protocolFeeTaken;
 
         rewardsInterval.start = start.toUint32();
         rewardsInterval.end = end.toUint32();
@@ -303,7 +305,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         // Any unclaimed rewards can still be claimed
         rewardsPerToken.lastUpdated = start.toUint32();
 
-        emit RewardsSet(reward, block.timestamp.toUint32(), rewardsInterval.end, rate, rewardsAfterFee, protocolFeeTaken, frontendFeeTaken);
+        emit RewardsSet(reward, block.timestamp.toUint32(), rewardsInterval.end, rate, (rate * (end - start)), protocolFeeTaken, frontendFeeTaken);
 
         pullReward(reward, msg.sender, totalRewards);
     }
@@ -349,17 +351,17 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
         // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
 
-        uint256 elapsedWAD = elapsed * 1e18;
+        // The rewards per token are scaled up for precision
+        uint256 elapsedScaled = elapsed * RPT_PRECISION;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply))); // The
-            // rewards per token are scaled up for precision
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedScaled.mulDivDown(rewardsInterval_.rate, totalSupply)));
 
         return rewardsPerTokenOut;
     }
 
     /// @notice Calculate the rewards accumulated by a stake between two checkpoints.
     function _calculateUserRewards(uint256 stake_, uint256 earlierCheckpoint, uint256 latterCheckpoint) internal pure returns (uint256) {
-        return stake_ * (latterCheckpoint - earlierCheckpoint) / 1e18; // We must scale down the rewards by the precision factor
+        return stake_ * (latterCheckpoint - earlierCheckpoint) / RPT_PRECISION; // We must scale down the rewards by the precision factor
     }
 
     /// @notice Update and return the rewards per token accumulator according to the rate, the time elapsed since the last update, and the current total staked
