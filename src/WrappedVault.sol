@@ -354,9 +354,9 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         // If there are no stakers we just change the last update time, the rewards for intervals without stakers are not accumulated
 
         // The rewards per token are scaled up for precision
-        uint256 elapsedWAD = elapsed * RPT_PRECISION;
+        uint256 elapsedScaled = elapsed * RPT_PRECISION;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedWAD.mulDivDown(rewardsInterval_.rate, totalSupply)));
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedScaled.mulDivDown(rewardsInterval_.rate, totalSupply)));
 
         return rewardsPerTokenOut;
     }
