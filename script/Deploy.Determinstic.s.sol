@@ -22,7 +22,7 @@ address constant CREATE2_FACTORY_ADDRESS = 0x4e59b44847b379578588920cA78FbF26c0B
 
 // Deployment Salts
 string constant POINTS_FACTORY_SALT = "ROYCO_POINTS_FACTORY_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50
-string constant WRAPPED_VAULT_FACTORY_SALT = "ROYCO_WRAPPED_VAULT_FACTORY_153a5c1e619a98ec578748451a879136baf2d345"; // 0xb316D165D01aC68d31B297F847533D671c965662
+string constant WRAPPED_VAULT_FACTORY_SALT = "ROYCO_WRAPPED_VAULT_FACTORY_91808adcb7fa5a62d0f432799a66eb39c7306733"; // 0xBFaC50C6b2c91AB756c1e5EFab699438992cc1b2
 string constant WEIROLL_WALLET_SALT = "ROYCO_WEIROLL_WALLET_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x40a1c08084671E9A799B73853E82308225309Dc0
 string constant VAULT_MARKET_HUB_SALT = "ROYCO_VAULT_MARKET_HUB_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x52341389BE638A5B8083d2B70a421f9D4C87EBcd
 string constant RECIPE_MARKET_HUB_SALT = "ROYCO_RECIPE_MARKET_HUB_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x76953A612c256fc497bBb49ed14147f24C4feB71
@@ -33,12 +33,20 @@ address constant PROTOCOL_FEE_RECIPIENT = 0x85De42e5697D16b853eA24259C42290DaCe3
 uint256 constant PROTOCOL_FEE = 0;
 uint256 constant MINIMUM_FRONTEND_FEE = 0.005e18;
 
+// Expected Deployment Addresses
+address constant EXPECTED_POINTS_FACTORY_ADDRESS = 0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50;
+address constant EXPECTED_WRAPPED_VAULT_FACTORY_ADDRESS = 0xBFaC50C6b2c91AB756c1e5EFab699438992cc1b2;
+address constant EXPECTED_WEIROLL_WALLET_ADDRESS = 0x40a1c08084671E9A799B73853E82308225309Dc0;
+address constant EXPECTED_VAULT_MARKET_HUB_ADDRESS = 0x52341389BE638A5B8083d2B70a421f9D4C87EBcd;
+address constant EXPECTED_RECIPE_MARKET_HUB_ADDRESS = 0x76953A612c256fc497bBb49ed14147f24C4feB71;
+
 contract DeployDeterministic is Script {
     error Create2DeployerNotDeployed();
 
     error DeploymentFailed(bytes reason);
     error NotDeployedToExpectedAddress(address expected, address actual);
     error AddressDoesNotContainBytecode(address addr);
+    error UnexpectedDeploymentAddress(address expected, address actual);
 
     error PointsFactoryOwnerIncorrect(address expected, address actual);
 
@@ -106,10 +114,17 @@ contract DeployDeterministic is Script {
     }
 
     function _verifyPointsFactoryDeployment(PointsFactory _pointsFactory) internal view {
+        if (address(_pointsFactory) != EXPECTED_POINTS_FACTORY_ADDRESS) {
+            revert UnexpectedDeploymentAddress(EXPECTED_POINTS_FACTORY_ADDRESS, address(_pointsFactory));
+        }
+
         if (_pointsFactory.owner() != ROYCO_OWNER) revert PointsFactoryOwnerIncorrect(ROYCO_OWNER, _pointsFactory.owner());
     }
 
     function _verifyWrappedVaultFactoryDeployment(WrappedVaultFactory _wrappedVaultFactory, PointsFactory _pointsFactory) internal view {
+        if (address(_wrappedVaultFactory) != EXPECTED_WRAPPED_VAULT_FACTORY_ADDRESS) {
+            revert UnexpectedDeploymentAddress(EXPECTED_WRAPPED_VAULT_FACTORY_ADDRESS, address(_wrappedVaultFactory));
+        }
         if (_wrappedVaultFactory.protocolFeeRecipient() != PROTOCOL_FEE_RECIPIENT) {
             revert WrappedVaultFactoryProtocolFeeRecipientIncorrect(PROTOCOL_FEE_RECIPIENT, _wrappedVaultFactory.protocolFeeRecipient());
         }
@@ -127,11 +142,23 @@ contract DeployDeterministic is Script {
         }
     }
 
+    function _verifyWeirollWalletDeployment(WeirollWallet _weirollWallet) internal pure {
+        if (address(_weirollWallet) != EXPECTED_WEIROLL_WALLET_ADDRESS) {
+            revert UnexpectedDeploymentAddress(EXPECTED_WEIROLL_WALLET_ADDRESS, address(_weirollWallet));
+        }
+    }
+
     function _verifyVaultMarketHubDeployment(VaultMarketHub _vaultMarketHub) internal view {
+        if (address(_vaultMarketHub) != EXPECTED_VAULT_MARKET_HUB_ADDRESS) {
+            revert UnexpectedDeploymentAddress(EXPECTED_VAULT_MARKET_HUB_ADDRESS, address(_vaultMarketHub));
+        }
         if (_vaultMarketHub.owner() != ROYCO_OWNER) revert VaultMarketHubOwnerIncorrect(ROYCO_OWNER, _vaultMarketHub.owner());
     }
 
     function _verifyRecipeMarketHubDeployment(RecipeMarketHub _recipeMarketHub, WeirollWallet _weirollWallet, PointsFactory _pointsFactory) internal view {
+        if (address(_recipeMarketHub) != EXPECTED_RECIPE_MARKET_HUB_ADDRESS) {
+            revert UnexpectedDeploymentAddress(EXPECTED_RECIPE_MARKET_HUB_ADDRESS, address(_recipeMarketHub));
+        }
         if (_recipeMarketHub.WEIROLL_WALLET_IMPLEMENTATION() != address(_weirollWallet)) {
             revert RecipeMarketHubWeirollWalletImplementationIncorrect(address(_weirollWallet), _recipeMarketHub.WEIROLL_WALLET_IMPLEMENTATION());
         }
@@ -182,6 +209,7 @@ contract DeployDeterministic is Script {
         console2.log("Deploying WeirollWallet");
         bytes memory weirollWalletCreationCode = abi.encodePacked(vm.getCode("WeirollWallet"));
         WeirollWallet weirollWallet = WeirollWallet(payable(_deployWithSanityChecks(WEIROLL_WALLET_SALT, weirollWalletCreationCode)));
+        _verifyWeirollWalletDeployment(weirollWallet);
         console2.log("WeirollWallet deployed at: ", address(weirollWallet), "\n");
 
         // Deploy VaultMarketHub
