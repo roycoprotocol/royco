@@ -77,18 +77,16 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     }
 
     /// @dev The max amount of reward campaigns a user can be involved in
-    uint256 public constant MAX_REWARDS = 20;
+    uint256 private constant MAX_REWARDS = 20;
     /// @dev The minimum duration a reward campaign must last
-    uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
-    /// @dev The minimum lifespan of an extended campaign
-    uint256 public constant MIN_CAMPAIGN_EXTENSION = 1 weeks;
+    uint256 private constant MIN_CAMPAIGN_DURATION = 1 weeks;
     /// @dev RewardsPerToken.accumulated is scaled up to prevent loss of incentives
-    uint256 public constant RPT_PRECISION = 1e27;
+    uint256 private constant RPT_PRECISION = 1e27;
 
     /// @dev The address of the underlying vault being incentivized
     IWrappedVault public immutable VAULT;
     /// @dev The underlying asset being deposited into the vault
-    ERC20 internal immutable DEPOSIT_ASSET;
+    ERC20 private immutable DEPOSIT_ASSET;
     /// @dev The address of the canonical points program factory
     PointsFactory public immutable POINTS_FACTORY;
     /// @dev The address of the canonical WrappedVault factory
@@ -217,10 +215,10 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         }
     }
 
-    /// @notice Extend the rewards interval for a given rewards campaign by adding more rewards
+    /// @notice Extend the rewards interval for a given rewards campaign by adding more rewards, must run for at least 1 more week
     /// @param reward The reward token / points campaign to extend rewards for
     /// @param rewardsAdded The amount of rewards to add to the campaign
-    /// @param newEnd The end date of the rewards campaign
+    /// @param newEnd The end date of the rewards campaign, must be more than 1 week after the updated campaign start
     /// @param frontendFeeRecipient The address to reward for directing IP flow
     function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) external payable onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
@@ -241,7 +239,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
         uint32 newStart = block.timestamp > uint256(rewardsInterval.start) ? block.timestamp.toUint32() : rewardsInterval.start;
 
-        if ((newEnd - newStart) < MIN_CAMPAIGN_EXTENSION) revert InvalidIntervalDuration();
+        if ((newEnd - newStart) < MIN_CAMPAIGN_DURATION) revert InvalidIntervalDuration();
 
         uint256 remainingRewards = rewardsInterval.rate * (rewardsInterval.end - newStart);
         uint256 rate = (rewardsAdded - frontendFeeTaken - protocolFeeTaken + remainingRewards) / (newEnd - newStart);
@@ -259,9 +257,10 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     }
 
     /// @dev Set a rewards schedule
+    /// @notice Starts a rewards schedule, must run for at least 1 week
     /// @param reward The reward token or points program to set the interval for
     /// @param start The start timestamp of the interval
-    /// @param end The end timestamp of the interval
+    /// @param end The end timestamp of the interval, interval must be more than 1 week long
     /// @param totalRewards The amount of rewards to distribute over the interval
     /// @param frontendFeeRecipient The address to reward the frontendFee
     function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) external payable onlyOwner {
