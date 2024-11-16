@@ -73,7 +73,7 @@ Royco was initially deployed to Ethereum Mainnet, Arbitrum, and Base at the foll
 0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50
 
 **WrappedVaultFactory:**
-0xb316D165D01aC68d31B297F847533D671c965662
+0xBFaC50C6b2c91AB756c1e5EFab699438992cc1b2
 
 **VaultMarketHub:**
 0x52341389BE638A5B8083d2B70a421f9D4C87EBcd
