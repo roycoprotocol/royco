@@ -582,8 +582,8 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     }
 
     /// @inheritdoc IWrappedVault
-    function maxDeposit(address) external view returns (uint256 maxAssets) {
-        maxAssets = VAULT.maxDeposit(address(this));
+    function maxDeposit(address receiver) external view returns (uint256 maxAssets) {
+        maxAssets = VAULT.maxDeposit(receiver);
     }
 
     /// @inheritdoc IWrappedVault
@@ -592,8 +592,8 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     }
 
     /// @inheritdoc IWrappedVault
-    function maxMint(address) external view returns (uint256 maxShares) {
-        maxShares = VAULT.maxMint(address(this));
+    function maxMint(address receiver) external view returns (uint256 maxShares) {
+        maxShares = VAULT.maxMint(receiver);
     }
 
     /// @inheritdoc IWrappedVault
@@ -602,8 +602,8 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     }
 
     /// @inheritdoc IWrappedVault
-    function maxWithdraw(address) external view returns (uint256 maxAssets) {
-        maxAssets = VAULT.maxWithdraw(address(this));
+    function maxWithdraw(address owner) external view returns (uint256 maxAssets) {
+        maxAssets = VAULT.maxWithdraw(owner);
     }
 
     /// @inheritdoc IWrappedVault
@@ -612,8 +612,8 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     }
 
     /// @inheritdoc IWrappedVault
-    function maxRedeem(address) external view returns (uint256 maxShares) {
-        maxShares = VAULT.maxRedeem(address(this));
+    function maxRedeem(address owner) external view returns (uint256 maxShares) {
+        maxShares = VAULT.maxRedeem(owner);
     }
 
     /// @inheritdoc IWrappedVault
