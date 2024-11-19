@@ -2,21 +2,23 @@
 pragma solidity ^0.8.0;
 
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import { InitializableERC20 } from "src/periphery/InitializableERC20.sol";
 import { SafeCast } from "src/libraries/SafeCast.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
-import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { Ownable } from "lib/solady/src/auth/Ownable.sol";
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { IWrappedVault } from "src/interfaces/IWrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
+import { Initializable } from "lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
 
 /// @title WrappedVault
 /// @author Jack Corddry, CopyPaste, Shivaansh Kapoor
 /// @dev A token inheriting from ERC20Rewards will reward token holders with a rewards token.
 /// The rewarded amount will be a fixed wei per second, distributed proportionally to token holders
 /// by the size of their holdings.
-contract WrappedVault is Owned, ERC20, IWrappedVault {
+contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
     using SafeTransferLib for ERC20;
     using SafeCast for uint256;
     using FixedPointMathLib for uint256;
@@ -84,13 +86,13 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     uint256 private constant RPT_PRECISION = 1e27;
 
     /// @dev The address of the underlying vault being incentivized
-    IWrappedVault public immutable VAULT;
+    IWrappedVault public VAULT;
     /// @dev The underlying asset being deposited into the vault
-    ERC20 private immutable DEPOSIT_ASSET;
+    ERC20 private DEPOSIT_ASSET;
     /// @dev The address of the canonical points program factory
-    PointsFactory public immutable POINTS_FACTORY;
+    PointsFactory public POINTS_FACTORY;
     /// @dev The address of the canonical WrappedVault factory
-    WrappedVaultFactory public immutable ERC4626I_FACTORY;
+    WrappedVaultFactory public WRAPPED_VAULT_FACTORY;
 
     /// @dev The fee taken by the referring frontend, out of WAD
     uint256 public frontendFee;
@@ -109,7 +111,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     mapping(address => mapping(address => uint256)) public rewardToClaimantToFees;
 
     /*//////////////////////////////////////////////////////////////
-                              CONSTRUCTOR
+                                INITIALIZER
     //////////////////////////////////////////////////////////////*/
 
     /// @param _owner The owner of the incentivized vault
@@ -118,7 +120,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
     /// @param vault The underlying vault being incentivized
     /// @param initialFrontendFee The initial fee set for the frontend out of WAD
     /// @param pointsFactory The canonical factory responsible for deploying all points programs
-    constructor(
+    function initialize(
         address _owner,
         string memory _name,
         string memory _symbol,
@@ -126,11 +128,15 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
         uint256 initialFrontendFee,
         address pointsFactory
     )
-        Owned(_owner)
-        ERC20(_name, _symbol, ERC20(vault).decimals())
+        external
+        initializer
     {
-        ERC4626I_FACTORY = WrappedVaultFactory(msg.sender);
-        if (initialFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
+        // Initialize child contracts
+        _initializeOwner(_owner);
+        _initializeERC20(_name, _symbol, ERC20(vault).decimals());
+
+        WRAPPED_VAULT_FACTORY = WrappedVaultFactory(msg.sender);
+        if (initialFrontendFee < WRAPPED_VAULT_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
 
         frontendFee = initialFrontendFee;
         VAULT = IWrappedVault(vault);
@@ -141,6 +147,8 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
         DEPOSIT_ASSET.approve(vault, type(uint256).max);
     }
+
+    constructor() { }
 
     /// @param rewardsToken The new reward token / points program to be used as incentives
     function addRewardsToken(address rewardsToken) public payable onlyOwner {
@@ -165,7 +173,7 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
     /// @param newFrontendFee The new front-end fee out of WAD
     function setFrontendFee(uint256 newFrontendFee) public payable onlyOwner {
-        if (newFrontendFee < ERC4626I_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
+        if (newFrontendFee < WRAPPED_VAULT_FACTORY.minimumFrontendFee()) revert FrontendFeeBelowMinimum();
         frontendFee = newFrontendFee;
         emit FrontendFeeUpdated(newFrontendFee);
     }
@@ -229,11 +237,11 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
         // Calculate fees
         uint256 frontendFeeTaken = rewardsAdded.mulWadDown(frontendFee);
-        uint256 protocolFeeTaken = rewardsAdded.mulWadDown(ERC4626I_FACTORY.protocolFee());
+        uint256 protocolFeeTaken = rewardsAdded.mulWadDown(WRAPPED_VAULT_FACTORY.protocolFee());
 
         // Make fees available for claiming
         rewardToClaimantToFees[reward][frontendFeeRecipient] += frontendFeeTaken;
-        rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
+        rewardToClaimantToFees[reward][WRAPPED_VAULT_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the new rate
 
@@ -283,11 +291,11 @@ contract WrappedVault is Owned, ERC20, IWrappedVault {
 
         // Calculate fees
         uint256 frontendFeeTaken = totalRewards.mulWadDown(frontendFee);
-        uint256 protocolFeeTaken = totalRewards.mulWadDown(ERC4626I_FACTORY.protocolFee());
+        uint256 protocolFeeTaken = totalRewards.mulWadDown(WRAPPED_VAULT_FACTORY.protocolFee());
 
         // Make fees available for claiming
         rewardToClaimantToFees[reward][frontendFeeRecipient] += frontendFeeTaken;
-        rewardToClaimantToFees[reward][ERC4626I_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
+        rewardToClaimantToFees[reward][WRAPPED_VAULT_FACTORY.protocolFeeRecipient()] += protocolFeeTaken;
 
         // Calculate the rate
         uint256 rate = (totalRewards - frontendFeeTaken - protocolFeeTaken) / (end - start);

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "src/WeirollWallet.sol";
 import "test/mocks/MockRecipeMarketHub.sol";
 import "src/PointsFactory.sol";
-import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
+import { WrappedVaultFactory, WrappedVault } from "src/WrappedVaultFactory.sol";
 
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
@@ -32,8 +32,8 @@ contract RoycoTestBase is Test {
     address internal CHARLIE_ADDRESS;
     address internal DAN_ADDRESS;
 
-    uint256 internal constant ERC4626I_FACTORY_PROTOCOL_FEE = 0.01e18;
-    uint256 internal constant ERC4626I_FACTORY_MIN_FRONTEND_FEE = 0.02e18;
+    uint256 internal constant WrappedVault_FACTORY_PROTOCOL_FEE = 0.01e18;
+    uint256 internal constant WrappedVault_FACTORY_MIN_FRONTEND_FEE = 0.02e18;
 
     // -----------------------------------------
     // Royco Contracts
@@ -44,7 +44,7 @@ contract RoycoTestBase is Test {
     MockERC20 public mockIncentiveToken;
     MockERC4626 public mockVault;
     PointsFactory public pointsFactory;
-    WrappedVaultFactory public erc4626iFactory;
+    WrappedVaultFactory public wrappedVaultFactory;
 
     // -----------------------------------------
     // Modifiers
@@ -94,6 +94,13 @@ contract RoycoTestBase is Test {
         mockIncentiveToken = new MockERC20("Mock Incentive Token", "MIT");
         mockVault = new MockERC4626(mockLiquidityToken);
         pointsFactory = new PointsFactory(POINTS_FACTORY_OWNER_ADDRESS);
-        erc4626iFactory = new WrappedVaultFactory(OWNER_ADDRESS, ERC4626I_FACTORY_PROTOCOL_FEE, ERC4626I_FACTORY_MIN_FRONTEND_FEE, OWNER_ADDRESS, address(pointsFactory));
+        wrappedVaultFactory = new WrappedVaultFactory(
+            address(new WrappedVault()),
+            OWNER_ADDRESS,
+            WrappedVault_FACTORY_PROTOCOL_FEE,
+            WrappedVault_FACTORY_MIN_FRONTEND_FEE,
+            OWNER_ADDRESS,
+            address(pointsFactory)
+        );
     }
 }
