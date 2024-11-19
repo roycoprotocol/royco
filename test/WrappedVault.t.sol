@@ -153,7 +153,7 @@ contract WrappedVaultTest is Test {
 
     function testSetRewardsInterval(uint32 start, uint32 duration, uint256 totalRewards) public {
         vm.assume(start != 0);
-        vm.assume(duration >= /*testIncentivizedVault.MIN_CAMPAIGN_DURATION_OR_EXTENSION()*/1 weeks);
+        vm.assume(duration /*testIncentivizedVault.MIN_CAMPAIGN_DURATION_OR_EXTENSION()*/ >= 1 weeks);
         vm.assume(duration <= type(uint32).max - start); //If this is not here, then 'end' variable will overflow
         vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
         vm.assume(totalRewards / duration > 1e6);
@@ -347,7 +347,7 @@ contract WrappedVaultTest is Test {
         vm.assume(timeElapsed > 7 days && timeElapsed <= 30 days);
 
         uint256 rewardAmount = 1000 * WAD;
-        uint32 start = uint32(bound(start, 0, block.timestamp));
+        uint32 start = uint32(bound(start, 1, block.timestamp));
         uint32 duration = 30 days;
 
         testIncentivizedVault.addRewardsToken(address(rewardToken1));

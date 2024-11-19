@@ -39,7 +39,6 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
     error MaxRewardsReached();
     error TooFewShares();
     error VaultNotAuthorizedToRewardPoints();
-    error InvalidInterval();
     error IntervalInProgress();
     error IntervalScheduled();
     error NoIntervalInProgress();
@@ -51,6 +50,10 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
     error InvalidWithdrawal();
     error InvalidIntervalDuration();
     error NotOwnerOfVaultOrApproved();
+    error IntervalEndBeforeStart();
+    error IntervalEndInPast();
+    error CannotShortenInterval();
+    error IntervalStartIsZero();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -232,7 +235,7 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
     function extendRewardsInterval(address reward, uint256 rewardsAdded, uint256 newEnd, address frontendFeeRecipient) external payable onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
-        if (newEnd <= rewardsInterval.end) revert InvalidInterval();
+        if (newEnd <= rewardsInterval.end) revert CannotShortenInterval();
         if (block.timestamp >= rewardsInterval.end) revert NoIntervalInProgress();
         _updateRewardsPerToken(reward);
 
@@ -274,8 +277,9 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
     /// @param frontendFeeRecipient The address to reward the frontendFee
     function setRewardsInterval(address reward, uint256 start, uint256 end, uint256 totalRewards, address frontendFeeRecipient) external payable onlyOwner {
         if (!isReward[reward]) revert InvalidReward();
-        if (start >= end || end <= block.timestamp) revert InvalidInterval();
-        if (start == 0) revert InvalidInterval();
+        if (start >= end) revert IntervalEndBeforeStart();
+        if (end <= block.timestamp) revert IntervalEndInPast();
+        if (start == 0) revert IntervalStartIsZero();
         if ((end - start) < MIN_CAMPAIGN_DURATION) revert InvalidIntervalDuration();
 
         RewardsInterval storage rewardsInterval = rewardToInterval[reward];
