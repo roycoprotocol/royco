@@ -635,4 +635,40 @@ contract WrappedVaultTest is Test {
             totalRewards, (rewardAmount * timeElapsed) * totalShares / testIncentivizedVault.totalSupply() / duration, 1e15, "Total rewards mismatch"
         );
     }
+
+    function testStartZeroExtendRewardsInterval() public {
+        uint32 initialTime = 1000 days; // nice round number
+        vm.warp(initialTime); // just get off of zero for realism
+
+        uint32 start = 1;
+        uint32 initialEnd = initialTime + 10 days;
+        uint32 newEnd = initialEnd + 10 days;
+
+        uint256 initialRewards = 10e18;
+        uint256 additionalRewards = 10e18;
+
+        testIncentivizedVault.addRewardsToken(address(rewardToken1));
+        rewardToken1.mint(address(this), initialRewards + additionalRewards);
+        rewardToken1.approve(address(testIncentivizedVault), initialRewards + additionalRewards);
+        testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, initialEnd, initialRewards, DEFAULT_FEE_RECIPIENT);
+
+        // user deposits
+        MockERC20(address(token)).mint(REGULAR_USER, 1e18);
+        vm.startPrank(REGULAR_USER);
+        token.approve(address(testIncentivizedVault), type(uint256).max);
+        testIncentivizedVault.deposit(1e18, REGULAR_USER);
+        vm.stopPrank();
+
+        vm.warp(initialTime + (initialEnd - initialTime) / 2); // let some time elapse, but interval isn't over yet
+
+        testIncentivizedVault.extendRewardsInterval(address(rewardToken1), additionalRewards, newEnd, address(this));
+
+        // user deposits even more--this will their rewards to be updated
+        MockERC20(address(token)).mint(REGULAR_USER, 1e18);
+        vm.startPrank(REGULAR_USER);
+        testIncentivizedVault.deposit(1e18, REGULAR_USER);
+        vm.stopPrank();
+
+        assertLt(testIncentivizedVault.currentUserRewards(address(rewardToken1), REGULAR_USER), rewardToken1.balanceOf(address(testIncentivizedVault)));
+    }
 }
