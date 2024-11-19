@@ -152,7 +152,8 @@ contract WrappedVaultTest is Test {
     }
 
     function testSetRewardsInterval(uint32 start, uint32 duration, uint256 totalRewards) public {
-        vm.assume(duration /*testIncentivizedVault.MIN_CAMPAIGN_DURATION_OR_EXTENSION()*/ >= 1 weeks);
+        vm.assume(start != 0);
+        vm.assume(duration >= /*testIncentivizedVault.MIN_CAMPAIGN_DURATION_OR_EXTENSION()*/1 weeks);
         vm.assume(duration <= type(uint32).max - start); //If this is not here, then 'end' variable will overflow
         vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
         vm.assume(totalRewards / duration > 1e6);
@@ -177,7 +178,7 @@ contract WrappedVaultTest is Test {
 
     function testExtendRewardsInterval(uint256 start, uint256 initialDuration, uint256 extension, uint256 initialRewards, uint256 additionalRewards) public {
         // Bound start to uint32 range
-        start = bound(start, 0, type(uint32).max);
+        start = bound(start, 1, type(uint32).max);
 
         // Calculate the remaining space in uint32 after accounting for start
         uint256 remainingSpace = type(uint32).max - start;

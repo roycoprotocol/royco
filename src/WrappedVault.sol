@@ -9,6 +9,7 @@ import { Ownable } from "lib/solady/src/auth/Ownable.sol";
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FixedPointMathLib as SoladyMath } from "lib/solady/src/utils/FixedPointMathLib.sol";
 import { IWrappedVault } from "src/interfaces/IWrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 import { Initializable } from "lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
@@ -79,11 +80,11 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
     }
 
     /// @dev The max amount of reward campaigns a user can be involved in
-    uint256 private constant MAX_REWARDS = 20;
+    uint256 public constant MAX_REWARDS = 20;
     /// @dev The minimum duration a reward campaign must last
-    uint256 private constant MIN_CAMPAIGN_DURATION = 1 weeks;
+    uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
     /// @dev RewardsPerToken.accumulated is scaled up to prevent loss of incentives
-    uint256 private constant RPT_PRECISION = 1e27;
+    uint256 public constant RPT_PRECISION = 1e27;
 
     /// @dev The address of the underlying vault being incentivized
     IWrappedVault public VAULT;
@@ -362,7 +363,7 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
         // The rewards per token are scaled up for precision
         uint256 elapsedScaled = elapsed * RPT_PRECISION;
         // Calculate and update the new value of the accumulator.
-        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (elapsedScaled.mulDivDown(rewardsInterval_.rate, totalSupply)));
+        rewardsPerTokenOut.accumulated = (rewardsPerTokenIn.accumulated + (SoladyMath.fullMulDiv(elapsedScaled, rewardsInterval_.rate, totalSupply)));
 
         return rewardsPerTokenOut;
     }
@@ -591,8 +592,8 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
     }
 
     /// @inheritdoc IWrappedVault
-    function maxDeposit(address receiver) external view returns (uint256 maxAssets) {
-        maxAssets = VAULT.maxDeposit(receiver);
+    function maxDeposit(address) external view returns (uint256 maxAssets) {
+        maxAssets = VAULT.maxDeposit(address(this));
     }
 
     /// @inheritdoc IWrappedVault
@@ -601,8 +602,8 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
     }
 
     /// @inheritdoc IWrappedVault
-    function maxMint(address receiver) external view returns (uint256 maxShares) {
-        maxShares = VAULT.maxMint(receiver);
+    function maxMint(address) external view returns (uint256 maxShares) {
+        maxShares = VAULT.maxMint(address(this));
     }
 
     /// @inheritdoc IWrappedVault
@@ -612,7 +613,7 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
 
     /// @inheritdoc IWrappedVault
     function maxWithdraw(address owner) external view returns (uint256 maxAssets) {
-        maxAssets = VAULT.maxWithdraw(owner);
+        return SoladyMath.min(VAULT.previewWithdraw(balanceOf[owner]), VAULT.maxWithdraw(address(this)));
     }
 
     /// @inheritdoc IWrappedVault
@@ -622,7 +623,7 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
 
     /// @inheritdoc IWrappedVault
     function maxRedeem(address owner) external view returns (uint256 maxShares) {
-        maxShares = VAULT.maxRedeem(owner);
+        return SoladyMath.min(VAULT.previewRedeem(balanceOf[owner]), VAULT.maxRedeem(address(this)));
     }
 
     /// @inheritdoc IWrappedVault
