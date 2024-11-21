@@ -617,7 +617,7 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
 
     /// @inheritdoc IWrappedVault
     function maxWithdraw(address owner) external view returns (uint256 maxAssets) {
-        return SoladyMath.min(VAULT.previewWithdraw(balanceOf[owner]), VAULT.maxWithdraw(address(this)));
+        return SoladyMath.min(VAULT.convertToAssets(balanceOf[owner]), VAULT.maxWithdraw(address(this)));
     }
 
     /// @inheritdoc IWrappedVault
@@ -627,7 +627,7 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
 
     /// @inheritdoc IWrappedVault
     function maxRedeem(address owner) external view returns (uint256 maxShares) {
-        return SoladyMath.min(VAULT.previewRedeem(balanceOf[owner]), VAULT.maxRedeem(address(this)));
+        return SoladyMath.min(balanceOf[owner], VAULT.maxRedeem(address(this)));
     }
 
     /// @inheritdoc IWrappedVault
