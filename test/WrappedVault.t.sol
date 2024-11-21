@@ -12,8 +12,10 @@ import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 import { PointsFactory } from "src/PointsFactory.sol";
+import { Ownable as SoladyOwnable } from "lib/solady/src/auth/Ownable.sol";
 
 import { Test, console } from "forge-std/Test.sol";
 
@@ -42,7 +44,9 @@ contract WrappedVaultTest is Test {
     MockERC20 rewardToken2;
 
     function setUp() public {
-        testFactory = new WrappedVaultFactory(DEFAULT_FEE_RECIPIENT, DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(this), address(pointsFactory));
+        testFactory = new WrappedVaultFactory(
+            address(new WrappedVault()), DEFAULT_FEE_RECIPIENT, DEFAULT_PROTOCOL_FEE, DEFAULT_FRONTEND_FEE, address(this), address(pointsFactory)
+        );
         testIncentivizedVault = testFactory.wrapVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
 
         rewardToken1 = new MockERC20("Reward Token 1", "RWD1");
@@ -57,7 +61,7 @@ contract WrappedVaultTest is Test {
 
     function testFactoryUpdateProtocolFees() public {
         vm.startPrank(address(0x8482));
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(0x8482)));
         testFactory.updateProtocolFee(0.01e18);
         vm.stopPrank();
 
@@ -72,7 +76,7 @@ contract WrappedVaultTest is Test {
 
     function testFactoryUpdateReferralFee() public {
         vm.startPrank(address(0x8482));
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(0x8482)));
         testFactory.updateMinimumReferralFee(0.01e18);
         vm.stopPrank();
 
@@ -93,7 +97,7 @@ contract WrappedVaultTest is Test {
     }
 
     function testVaultPassThroughFunctions() public {
-        testIncentivizedVault = testFactory.wrapVault(testVault, address(this), "Incentivized Vault", DEFAULT_FRONTEND_FEE);
+        testIncentivizedVault = testFactory.wrapVault(testVault, address(this), "Incentivized Vault 1", DEFAULT_FRONTEND_FEE);
 
         assertEq(address(testIncentivizedVault.asset()), address(testVault.asset()));
         assertEq(testIncentivizedVault.maxDeposit(address(this)), testVault.maxDeposit(address(this)));
@@ -120,13 +124,13 @@ contract WrappedVaultTest is Test {
 
     function testAddRewardTokenUnauthorized(address unauthorized) public {
         vm.assume(unauthorized != address(this));
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert(abi.encodeWithSelector(SoladyOwnable.Unauthorized.selector));
         vm.prank(unauthorized);
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
     }
 
     function testAddRewardTokenMaxReached() public {
-        for (uint256 i = 0; i < 20 /*testIncentivizedVault.MAX_REWARDS()*/; i++) {
+        for (uint256 i = 0; i < 20; /*testIncentivizedVault.MAX_REWARDS()*/ i++) {
             testIncentivizedVault.addRewardsToken(address(new MockERC20("", "")));
         }
 
@@ -148,7 +152,8 @@ contract WrappedVaultTest is Test {
     }
 
     function testSetRewardsInterval(uint32 start, uint32 duration, uint256 totalRewards) public {
-        vm.assume(duration >= /*testIncentivizedVault.MIN_CAMPAIGN_DURATION_OR_EXTENSION()*/1 weeks);
+        vm.assume(start != 0);
+        vm.assume(duration /*testIncentivizedVault.MIN_CAMPAIGN_DURATION_OR_EXTENSION()*/ >= 1 weeks);
         vm.assume(duration <= type(uint32).max - start); //If this is not here, then 'end' variable will overflow
         vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
         vm.assume(totalRewards / duration > 1e6);
@@ -173,7 +178,7 @@ contract WrappedVaultTest is Test {
 
     function testExtendRewardsInterval(uint256 start, uint256 initialDuration, uint256 extension, uint256 initialRewards, uint256 additionalRewards) public {
         // Bound start to uint32 range
-        start = bound(start, 0, type(uint32).max);
+        start = bound(start, 1, type(uint32).max);
 
         // Calculate the remaining space in uint32 after accounting for start
         uint256 remainingSpace = type(uint32).max - start;
@@ -298,7 +303,7 @@ contract WrappedVaultTest is Test {
             start = uint32(block.timestamp + 10_000);
         }
 
-        vm.assume(duration >= /*testIncentivizedVault.MIN_CAMPAIGN_DURATION_OR_EXTENSION()*/ 1 weeks);
+        vm.assume(duration /*testIncentivizedVault.MIN_CAMPAIGN_DURATION_OR_EXTENSION()*/ >= 1 weeks);
         vm.assume(duration <= type(uint32).max - start); //If this is not here, then 'end' variable will overflow
         vm.assume(totalRewards > 0 && totalRewards < type(uint96).max);
         vm.assume(totalRewards / duration > 1e6);
@@ -311,7 +316,7 @@ contract WrappedVaultTest is Test {
         testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, end, totalRewards, DEFAULT_FEE_RECIPIENT);
 
         vm.startPrank(REGULAR_USER);
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert(SoladyOwnable.Unauthorized.selector);
         testIncentivizedVault.refundRewardsInterval(address(rewardToken1));
         vm.stopPrank();
 
@@ -337,12 +342,12 @@ contract WrappedVaultTest is Test {
         assertEq(testIncentivizedVault.totalAssets(), depositAmount - withdrawAmount);
     }
 
-    function testRewardsAccrual(uint256 depositAmount, uint32 timeElapsed) public {
+    function testRewardsAccrual(uint32 start, uint256 depositAmount, uint32 timeElapsed) public {
         vm.assume(depositAmount > 1e6 && depositAmount <= type(uint96).max);
         vm.assume(timeElapsed > 7 days && timeElapsed <= 30 days);
 
         uint256 rewardAmount = 1000 * WAD;
-        uint32 start = uint32(block.timestamp);
+        uint32 start = uint32(bound(start, 1, block.timestamp));
         uint32 duration = 30 days;
 
         testIncentivizedVault.addRewardsToken(address(rewardToken1));
@@ -629,5 +634,41 @@ contract WrappedVaultTest is Test {
         assertApproxEqRel(
             totalRewards, (rewardAmount * timeElapsed) * totalShares / testIncentivizedVault.totalSupply() / duration, 1e15, "Total rewards mismatch"
         );
+    }
+
+    function testStartZeroExtendRewardsInterval() public {
+        uint32 initialTime = 1000 days; // nice round number
+        vm.warp(initialTime); // just get off of zero for realism
+
+        uint32 start = 1;
+        uint32 initialEnd = initialTime + 10 days;
+        uint32 newEnd = initialEnd + 10 days;
+
+        uint256 initialRewards = 10e18;
+        uint256 additionalRewards = 10e18;
+
+        testIncentivizedVault.addRewardsToken(address(rewardToken1));
+        rewardToken1.mint(address(this), initialRewards + additionalRewards);
+        rewardToken1.approve(address(testIncentivizedVault), initialRewards + additionalRewards);
+        testIncentivizedVault.setRewardsInterval(address(rewardToken1), start, initialEnd, initialRewards, DEFAULT_FEE_RECIPIENT);
+
+        // user deposits
+        MockERC20(address(token)).mint(REGULAR_USER, 1e18);
+        vm.startPrank(REGULAR_USER);
+        token.approve(address(testIncentivizedVault), type(uint256).max);
+        testIncentivizedVault.deposit(1e18, REGULAR_USER);
+        vm.stopPrank();
+
+        vm.warp(initialTime + (initialEnd - initialTime) / 2); // let some time elapse, but interval isn't over yet
+
+        testIncentivizedVault.extendRewardsInterval(address(rewardToken1), additionalRewards, newEnd, address(this));
+
+        // user deposits even more--this will their rewards to be updated
+        MockERC20(address(token)).mint(REGULAR_USER, 1e18);
+        vm.startPrank(REGULAR_USER);
+        testIncentivizedVault.deposit(1e18, REGULAR_USER);
+        vm.stopPrank();
+
+        assertLt(testIncentivizedVault.currentUserRewards(address(rewardToken1), REGULAR_USER), rewardToken1.balanceOf(address(testIncentivizedVault)));
     }
 }

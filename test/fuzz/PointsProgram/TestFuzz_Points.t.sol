@@ -19,7 +19,7 @@ contract TestFuzz_Points is RoycoTestBase {
     function setUp() external {
         setupBaseEnvironment();
         owner = ALICE_ADDRESS;
-        vault = erc4626iFactory.wrapVault(mockVault, owner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
+        vault = wrappedVaultFactory.wrapVault(mockVault, owner, "Test Vault", WrappedVault_FACTORY_MIN_FRONTEND_FEE);
         pointsProgram = PointsFactory(vault.POINTS_FACTORY()).createPointsProgram(programName, programSymbol, decimals, owner);
         ipAddress = CHARLIE_ADDRESS;
 
@@ -36,7 +36,7 @@ contract TestFuzz_Points is RoycoTestBase {
     function testFuzz_PointsCreation(address _owner, string memory _name, string memory _symbol, uint256 _decimals) external {
         vm.assume(_owner != address(0));
 
-        WrappedVault newVault = erc4626iFactory.wrapVault(mockVault, _owner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
+        WrappedVault newVault = wrappedVaultFactory.wrapVault(mockVault, _owner, "Test Vault", WrappedVault_FACTORY_MIN_FRONTEND_FEE);
         Points fuzzPoints = PointsFactory(vault.POINTS_FACTORY()).createPointsProgram(_name, _symbol, _decimals, _owner);
 
         assertEq(fuzzPoints.name(), _name);
@@ -81,7 +81,14 @@ contract TestFuzz_Points is RoycoTestBase {
     }
 
     // Fuzz test reverting when a non-recipeMarketHub address calls award for IPs
-    function testFuzz_RevertIf_NonRecipeMarketHubCallsAwardForIP(address _to, uint256 _amount, address _nonRecipeMarketHub) external prankModifier(_nonRecipeMarketHub) {
+    function testFuzz_RevertIf_NonRecipeMarketHubCallsAwardForIP(
+        address _to,
+        uint256 _amount,
+        address _nonRecipeMarketHub
+    )
+        external
+        prankModifier(_nonRecipeMarketHub)
+    {
         vm.assume(_nonRecipeMarketHub != address(recipeMarketHub));
 
         vm.expectRevert(abi.encodeWithSelector(Points.OnlyRecipeMarketHub.selector));

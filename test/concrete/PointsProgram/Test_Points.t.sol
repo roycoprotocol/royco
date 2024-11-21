@@ -21,7 +21,7 @@ contract Test_Points is RoycoTestBase {
     function setUp() external {
         setupBaseEnvironment();
         programOwner = ALICE_ADDRESS;
-        vault = erc4626iFactory.wrapVault(mockVault, programOwner, "Test Vault", ERC4626I_FACTORY_MIN_FRONTEND_FEE);
+        vault = wrappedVaultFactory.wrapVault(mockVault, programOwner, "Test Vault", WrappedVault_FACTORY_MIN_FRONTEND_FEE);
         pointsProgram = PointsFactory(vault.POINTS_FACTORY()).createPointsProgram(programName, programSymbol, decimals, programOwner);
         ipAddress = CHARLIE_ADDRESS;
 
