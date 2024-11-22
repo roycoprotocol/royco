@@ -22,7 +22,8 @@ address constant CREATE2_FACTORY_ADDRESS = 0x4e59b44847b379578588920cA78FbF26c0B
 
 // Deployment Salts
 string constant POINTS_FACTORY_SALT = "ROYCO_POINTS_FACTORY_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50
-string constant WRAPPED_VAULT_FACTORY_SALT = "ROYCO_WRAPPED_VAULT_FACTORY_91808adcb7fa5a62d0f432799a66eb39c7306733"; // 0xBFaC50C6b2c91AB756c1e5EFab699438992cc1b2
+string constant WRAPPED_VAULT_SALT = "ROYCO_WRAPPED_VAULT_5414c04eeefec8db6047b9508f5c07245a5e7c81"; // 0xd13868133A5A51F78Ea3a1a903986DaED38fE5B6
+string constant WRAPPED_VAULT_FACTORY_SALT = "ROYCO_WRAPPED_VAULT_FACTORY_5414c04eeefec8db6047b9508f5c07245a5e7c81"; // 0x75E502644284eDf34421f9c355D75DB79e343Bca
 string constant WEIROLL_WALLET_SALT = "ROYCO_WEIROLL_WALLET_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x40a1c08084671E9A799B73853E82308225309Dc0
 string constant VAULT_MARKET_HUB_SALT = "ROYCO_VAULT_MARKET_HUB_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x52341389BE638A5B8083d2B70a421f9D4C87EBcd
 string constant RECIPE_MARKET_HUB_SALT = "ROYCO_RECIPE_MARKET_HUB_458371a243a7299e99f3fbfb67799eaaf734ccaf"; // 0x76953A612c256fc497bBb49ed14147f24C4feB71
@@ -35,10 +36,13 @@ uint256 constant MINIMUM_FRONTEND_FEE = 0.005e18;
 
 // Expected Deployment Addresses
 address constant EXPECTED_POINTS_FACTORY_ADDRESS = 0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50;
-address constant EXPECTED_WRAPPED_VAULT_FACTORY_ADDRESS = 0xBFaC50C6b2c91AB756c1e5EFab699438992cc1b2;
+address constant EXPECTED_WRAPPED_VAULT_ADDRESS = 0xd13868133A5A51F78Ea3a1a903986DaED38fE5B6;
+address constant EXPECTED_WRAPPED_VAULT_FACTORY_ADDRESS = 0x75E502644284eDf34421f9c355D75DB79e343Bca;
 address constant EXPECTED_WEIROLL_WALLET_ADDRESS = 0x40a1c08084671E9A799B73853E82308225309Dc0;
 address constant EXPECTED_VAULT_MARKET_HUB_ADDRESS = 0x52341389BE638A5B8083d2B70a421f9D4C87EBcd;
 address constant EXPECTED_RECIPE_MARKET_HUB_ADDRESS = 0x76953A612c256fc497bBb49ed14147f24C4feB71;
+
+bytes32 constant WRAPPED_VAULT_FACTORY_IMPL_SLOT = bytes32(uint256(2));
 
 contract DeployDeterministic is Script {
     error Create2DeployerNotDeployed();
@@ -55,6 +59,7 @@ contract DeployDeterministic is Script {
     error WrappedVaultFactoryMinimumFrontendFeeIncorrect(uint256 expected, uint256 actual);
     error WrappedVaultFactoryOwnerIncorrect(address expected, address actual);
     error WrappedVaultFactoryPointsFactoryIncorrect(address expected, address actual);
+    error WrappedVaultFactoryImplementationIncorrect(address expected, address actual);
 
     error VaultMarketHubOwnerIncorrect(address expected, address actual);
 
@@ -121,7 +126,13 @@ contract DeployDeterministic is Script {
         if (_pointsFactory.owner() != ROYCO_OWNER) revert PointsFactoryOwnerIncorrect(ROYCO_OWNER, _pointsFactory.owner());
     }
 
-    function _verifyWrappedVaultFactoryDeployment(WrappedVaultFactory _wrappedVaultFactory, PointsFactory _pointsFactory) internal view {
+    function _verifyWrappedVaultDeployment(WrappedVault _wrappedVault) internal pure {
+        if (address(_wrappedVault) != EXPECTED_WRAPPED_VAULT_ADDRESS) {
+            revert UnexpectedDeploymentAddress(EXPECTED_WRAPPED_VAULT_ADDRESS, address(_wrappedVault));
+        }
+    }
+
+    function _verifyWrappedVaultFactoryDeployment(WrappedVaultFactory _wrappedVaultFactory, PointsFactory _pointsFactory, WrappedVault _impl) internal view {
         if (address(_wrappedVaultFactory) != EXPECTED_WRAPPED_VAULT_FACTORY_ADDRESS) {
             revert UnexpectedDeploymentAddress(EXPECTED_WRAPPED_VAULT_FACTORY_ADDRESS, address(_wrappedVaultFactory));
         }
@@ -139,6 +150,10 @@ contract DeployDeterministic is Script {
         }
         if (_wrappedVaultFactory.pointsFactory() != address(_pointsFactory)) {
             revert WrappedVaultFactoryPointsFactoryIncorrect(address(_pointsFactory), _wrappedVaultFactory.pointsFactory());
+        }
+        address actualImpl = address(uint160(uint256(vm.load(address(_wrappedVaultFactory), WRAPPED_VAULT_FACTORY_IMPL_SLOT))));
+        if (actualImpl != address(_impl)) {
+            revert WrappedVaultFactoryImplementationIncorrect(address(_impl), actualImpl);
         }
     }
 
@@ -195,14 +210,23 @@ contract DeployDeterministic is Script {
         _verifyPointsFactoryDeployment(pointsFactory);
         console2.log("PointsFactory deployed at: ", address(pointsFactory), "\n");
 
+        // Deploy WrappedVault
+        console2.log("Deploying WrappedVault");
+        bytes memory wrappedVaultCreationCode = abi.encodePacked(vm.getCode("WrappedVault"));
+        WrappedVault wrappedVault = WrappedVault(_deployWithSanityChecks("WRAPPED_VAULT_SALT", wrappedVaultCreationCode));
+        console2.log("Verifying WrappedVault deployment");
+        _verifyWrappedVaultDeployment(wrappedVault);
+        console2.log("WrappedVault deployed at: ", address(wrappedVault), "\n");
+
         // Deploy WrappedVaultFactory
         console2.log("Deploying WrappedVaultFactory");
         bytes memory wrappedVaultFactoryCreationCode = abi.encodePacked(
-            vm.getCode("WrappedVaultFactory"), abi.encode(PROTOCOL_FEE_RECIPIENT, PROTOCOL_FEE, MINIMUM_FRONTEND_FEE, ROYCO_OWNER, address(pointsFactory))
+            vm.getCode("WrappedVaultFactory"),
+            abi.encode(wrappedVault, PROTOCOL_FEE_RECIPIENT, PROTOCOL_FEE, MINIMUM_FRONTEND_FEE, ROYCO_OWNER, address(pointsFactory))
         );
         WrappedVaultFactory wrappedVaultFactory = WrappedVaultFactory(_deployWithSanityChecks(WRAPPED_VAULT_FACTORY_SALT, wrappedVaultFactoryCreationCode));
         console2.log("Verifying WrappedVaultFactory deployment");
-        _verifyWrappedVaultFactoryDeployment(wrappedVaultFactory, pointsFactory);
+        _verifyWrappedVaultFactoryDeployment(wrappedVaultFactory, pointsFactory, wrappedVault);
         console2.log("WrappedVaultFactory deployed at: ", address(wrappedVaultFactory), "\n");
 
         // Deploy WeirollWallet
