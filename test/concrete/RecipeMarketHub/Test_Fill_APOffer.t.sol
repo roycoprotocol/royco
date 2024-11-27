@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "src/base/RecipeMarketHubBase.sol";
-import {ERC4626} from "src/RecipeMarketHub.sol";
+import { ERC4626 } from "src/RecipeMarketHub.sol";
 import "src/WrappedVault.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
@@ -62,7 +62,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
 
         // Expect events for offer fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -129,7 +129,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
 
         // Expect events for offer fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -199,7 +199,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(recipeMarketHub));
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -265,7 +265,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
 
         // Expect events for offer fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -305,7 +305,8 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeMarketHubBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeMarketHubBase.APOffer memory offer, Points points) =
+            createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeMarketHub.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -338,7 +339,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(recipeMarketHub));
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -395,7 +396,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
 
         // Expect events for offer fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -455,7 +456,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(recipeMarketHub));
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -521,7 +522,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
 
         // Expect events for offer fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -561,7 +562,8 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeMarketHubBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeMarketHubBase.APOffer memory offer, Points points) =
+            createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeMarketHub.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -584,7 +586,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(recipeMarketHub));
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -644,7 +646,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
 
         // Expect events for offer fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -704,7 +706,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(recipeMarketHub));
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -770,7 +772,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
 
         // Expect events for offer fill
         vm.expectEmit(false, false, false, false);
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         vm.recordLogs();
 
@@ -810,7 +812,8 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeMarketHubBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeMarketHubBase.APOffer memory offer, Points points) =
+            createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeMarketHub.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -826,7 +829,6 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
 
         vm.stopPrank();
 
-
         vm.expectEmit(true, false, true, false, address(mockVault));
         emit ERC4626.Withdraw(address(recipeMarketHub), address(0), AP_ADDRESS, fillAmount, 0);
 
@@ -834,7 +836,7 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         emit ERC20.Transfer(address(mockVault), address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(recipeMarketHub));
-        emit RecipeMarketHubBase.APOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.APOfferFilled(0, address(0), 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();

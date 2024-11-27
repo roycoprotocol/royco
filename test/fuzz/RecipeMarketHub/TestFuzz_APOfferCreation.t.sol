@@ -10,7 +10,7 @@ import { MockERC20 } from "../../mocks/MockERC20.sol";
 
 contract TestFuzz_APOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
     using AddressArrayUtils for address[];
-    
+
     function setUp() external {
         uint256 protocolFee = 0.01e18; // 1% protocol fee
         uint256 minimumFrontendFee = 0.001e18; // 0.1% minimum frontend fee
@@ -50,7 +50,7 @@ contract TestFuzz_APOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
         address fundingVault = _fundingVaultSeed % 2 == 0 ? address(0) : address(mockVault);
 
         vm.expectEmit(true, true, true, true);
-        emit RecipeMarketHubBase.APOfferCreated(0, marketHash, fundingVault, _expiry, tokensRequested, tokenAmountsRequested, _quantity);
+        emit RecipeMarketHubBase.APOfferCreated(0, marketHash, address(0), fundingVault, _expiry, tokensRequested, tokenAmountsRequested, _quantity);
 
         bytes32 offerHash = recipeMarketHub.createAPOffer(marketHash, fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
 

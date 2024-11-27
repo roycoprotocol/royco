@@ -377,11 +377,10 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         uint256[] memory protocolFeesPaid = new uint256[](numIncentives);
         uint256[] memory frontendFeesPaid = new uint256[](numIncentives);
 
-        // Calculate the percentage of the offer the AP is filling
-        uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
-
         // Perform incentive accounting on a per incentive basis
         for (uint256 i = 0; i < numIncentives; ++i) {
+            // Calculate the percentage of the offer the AP is filling
+            uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
             // Incentive address
             address incentive = offer.incentivesOffered[i];
 
