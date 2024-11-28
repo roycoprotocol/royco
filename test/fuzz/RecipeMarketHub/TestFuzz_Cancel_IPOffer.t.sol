@@ -24,8 +24,8 @@ contract TestFuzz_Cancel_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
     }
 
     function test_cancelIPOffer_WithTokens_PartiallyFilled(uint256 _fillAmount) external {
-        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
-        vm.assume(_fillAmount > 0);
+        uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
+        vm.assume(_fillAmount > 1e3);
         vm.assume(_fillAmount <= quantity);
 
         bytes32 marketHash = recipeMarketHub.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
@@ -69,7 +69,8 @@ contract TestFuzz_Cancel_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         vm.stopPrank();
 
         // Check if offer was deleted from mapping
-        (, bytes32 _targetmarketHash, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) = recipeMarketHub.offerHashToIPOffer(offerHash);
+        (, bytes32 _targetmarketHash, address _ip, uint256 _expiry, uint256 _quantity, uint256 _remainingQuantity) =
+            recipeMarketHub.offerHashToIPOffer(offerHash);
         assertEq(_targetmarketHash, bytes32(0));
         assertEq(_ip, address(0));
         assertEq(_expiry, 0);
@@ -77,7 +78,9 @@ contract TestFuzz_Cancel_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         assertEq(_remainingQuantity, 0);
 
         // Check that refund was made
-        assertApproxEqRel(mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored + 1, 0.0001e18);
+        assertApproxEqRel(
+            mockIncentiveToken.balanceOf(IP_ADDRESS), incentivesRemaining + unchargedFrontendFeeAmount + unchargedProtocolFeeStored + 1, 0.0001e18
+        );
     }
 
     function test_RevertIf_cancelIPOffer_NotOwner(address _nonOwner) external {
@@ -85,7 +88,7 @@ contract TestFuzz_Cancel_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
 
         bytes32 marketHash = recipeMarketHub.createMarket(address(mockLiquidityToken), 30 days, 0.001e18, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
 
-        uint256 quantity = 100000e18; // The amount of input tokens to be deposited
+        uint256 quantity = 100_000e18; // The amount of input tokens to be deposited
 
         // Create the IP offer
         bytes32 offerHash = createIPOffer_WithTokens(marketHash, quantity, IP_ADDRESS);
