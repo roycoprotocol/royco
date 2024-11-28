@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import "lib/forge-std/src/console.sol";
+
 import "src/base/RecipeMarketHubBase.sol";
 import "src/WrappedVault.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
-import {ERC4626} from "src/RecipeMarketHub.sol";
+import { ERC4626 } from "src/RecipeMarketHub.sol";
 import { RecipeMarketHubTestBase } from "../../utils/RecipeMarketHub/RecipeMarketHubTestBase.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 
@@ -30,12 +32,19 @@ contract Test_Fill_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
     function test_DirectFill_Upfront_IPOffer_ForTokens() external {
         uint256 frontendFee = recipeMarketHub.minimumFrontendFee();
         bytes32 marketHash = recipeMarketHub.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        console.log("===========RecipeMarket Created===========");
+        console.log("inputToken:", address(mockLiquidityToken));
+        console.log("Market created:", vm.toString(marketHash));
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP offer
         bytes32 offerHash = createIPOffer_WithTokens(marketHash, offerAmount, IP_ADDRESS);
+        console.log("===========IP Offer Created===========");
+        console.log("marketHash:", vm.toString(marketHash));
+        console.log("offerAmount:", offerAmount);
+        console.log("IP address:", AP_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
@@ -869,7 +878,7 @@ contract Test_Fill_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         // Ensure the weiroll wallet got the liquidity
         assertEq(mockLiquidityToken.balanceOf(weirollWallet), fillAmount);
 
-                // Check the frontend fee recipient received the correct fee
+        // Check the frontend fee recipient received the correct fee
         assertEq(recipeMarketHub.feeClaimantToTokenToAmount(FRONTEND_FEE_RECIPIENT, address(mockIncentiveToken)), 0);
 
         // Check the protocol fee recipient received the correct fee

@@ -7,6 +7,7 @@ import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
+// import { SafeCastLib } from "";
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
 import { Owned } from "lib/solmate/src/auth/Owned.sol";
@@ -257,6 +258,143 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         offer.remainingQuantity = quantity;
         offer.expiry = expiry;
         offer.incentivesOffered = incentivesOffered;
+
+        // Set incentives and fees in the offer mapping
+        for (uint256 i = 0; i < incentivesOffered.length; ++i) {
+            address incentive = incentivesOffered[i];
+
+            offer.incentiveAmountsOffered[incentive] = incentiveAmountsOffered[i];
+            offer.incentiveToProtocolFeeAmount[incentive] = protocolFeesToBePaid[i];
+            offer.incentiveToFrontendFeeAmount[incentive] = frontendFeesToBePaid[i];
+        }
+
+        // Emit IP offer creation event
+        emit IPOfferCreated(
+            numIPOffers, offerHash, targetMarketHash, quantity, incentivesOffered, incentiveAmountsOffered, protocolFeesToBePaid, frontendFeesToBePaid, expiry
+        );
+
+        // Increment the number of IP offers created
+        numIPOffers++;
+    }
+
+    /// @notice Create a new IP offer, transferring the IP's incentives to the RecipeMarketHub and putting all the offer params in contract storage
+    /// @dev IP must approve all incentives to be spent by the RecipeMarketHub before calling this function
+    /// @param targetMarketHash The hash of the weiroll market to create the IP offer for
+    /// @param quantity The total amount of input tokens to be deposited
+    /// @param expiry The timestamp after which the offer is considered expired
+    /// @param incentivesOffered The addresses of the incentives offered by the IP
+    /// @param incentiveAmountsPaid The amount of each incentives paid by the IP (including fees)
+    /// @param initialPrice
+    /// @param decayConstant
+    /// @param emissionRate
+    /// @return offerHash The hash of the IP offer created
+    function createIPOfferGda(
+        bytes32 targetMarketHash,
+        uint256 quantity,
+        uint256 expiry,
+        address[] calldata incentivesOffered,
+        uint256[] calldata incentiveAmountsPaid,
+        int256 initialPrice,
+        int256 decayConstant,
+        int256 emissionRate
+    )
+        external
+        payable
+        nonReentrant
+        returns (bytes32 offerHash)
+    {
+        // Retrieve the target market
+        WeirollMarket storage targetMarket = marketHashToWeirollMarket[targetMarketHash];
+
+        // Check that the market exists
+        if (address(targetMarket.inputToken) == address(0)) {
+            revert MarketDoesNotExist();
+        }
+        // Check that the offer isn't expired
+        if (expiry != 0 && expiry < block.timestamp) {
+            revert CannotPlaceExpiredOffer();
+        }
+
+        // Check that the incentives and amounts arrays are the same length
+        if (incentivesOffered.length != incentiveAmountsPaid.length) {
+            revert ArrayLengthMismatch();
+        }
+
+        // Check offer isn't empty
+        if (quantity < MINIMUM_QUANTITY) {
+            revert CannotPlaceZeroQuantityOffer();
+        }
+
+        // To keep track of incentives allocated to the AP and fees (per incentive)
+        uint256[] memory incentiveAmountsOffered = new uint256[](incentivesOffered.length);
+        uint256[] memory protocolFeesToBePaid = new uint256[](incentivesOffered.length);
+        uint256[] memory frontendFeesToBePaid = new uint256[](incentivesOffered.length);
+
+        // Transfer the IP's incentives to the RecipeMarketHub and set aside fees
+        address lastIncentive;
+        for (uint256 i = 0; i < incentivesOffered.length; ++i) {
+            // Get the incentive offered
+            address incentive = incentivesOffered[i];
+
+            // Check that the sorted incentive array has no duplicates
+            if (uint256(bytes32(bytes20(incentive))) <= uint256(bytes32(bytes20(lastIncentive)))) {
+                revert OfferCannotContainDuplicates();
+            }
+            lastIncentive = incentive;
+
+            // Total amount IP is paying in this incentive including fees
+            uint256 amount = incentiveAmountsPaid[i];
+
+            // Get the frontend fee for the target weiroll market
+            uint256 frontendFee = targetMarket.frontendFee;
+
+            // Calculate incentive and fee breakdown
+            uint256 incentiveAmount = amount.divWadDown(1e18 + protocolFee + frontendFee);
+            uint256 protocolFeeAmount = incentiveAmount.mulWadDown(protocolFee);
+            uint256 frontendFeeAmount = incentiveAmount.mulWadDown(frontendFee);
+
+            // Use a scoping block to avoid stack to deep errors
+            {
+                // Track incentive amounts and fees (per incentive)
+                incentiveAmountsOffered[i] = incentiveAmount;
+                protocolFeesToBePaid[i] = protocolFeeAmount;
+                frontendFeesToBePaid[i] = frontendFeeAmount;
+            }
+
+            // Check if incentive is a points program
+            if (PointsFactory(POINTS_FACTORY).isPointsProgram(incentive)) {
+                // If points incentive, make sure:
+                // 1. The points factory used to create the program is the same as this RecipeMarketHubs PF
+                // 2. IP placing the offer can award points
+                // 3. Points factory has this RecipeMarketHub marked as a valid RO - can be assumed true
+                if (POINTS_FACTORY != address(Points(incentive).pointsFactory()) || !Points(incentive).allowedIPs(msg.sender)) {
+                    revert InvalidPointsProgram();
+                }
+            } else {
+                // SafeTransferFrom does not check if a incentive address has any code, so we need to check it manually to prevent incentive deployment
+                // frontrunning
+                if (incentive.code.length == 0) revert TokenDoesNotExist();
+                // Transfer frontend fee + protocol fee + incentiveAmount of the incentive to RecipeMarketHub
+                ERC20(incentive).safeTransferFrom(msg.sender, address(this), incentiveAmount + protocolFeeAmount + frontendFeeAmount);
+            }
+        }
+
+        // Set the offer hash
+        offerHash = getIPOfferHash(numIPOffers, targetMarketHash, msg.sender, expiry, quantity, incentivesOffered, incentiveAmountsOffered);
+        // Create and store the offer
+        IPOfferGda storage offer = offerHashToIPOffer[offerHash];
+        // IPOffer storage offer = offerHashToIPOffer[offerHash];
+        offer.offerID = numIPOffers;
+        offer.targetMarketHash = targetMarketHash;
+        offer.ip = msg.sender;
+        offer.quantity = quantity;
+        offer.remainingQuantity = quantity;
+        offer.expiry = expiry;
+        offer.incentivesOffered = incentivesOffered;
+        offer.initialPrice = initialPrice;
+        offer.decayConstant = decayConstant;
+        offer.emissionRate = emissionRate;
+        offer.lastAuctionStartTime = block.timestamp;
 
         // Set incentives and fees in the offer mapping
         for (uint256 i = 0; i < incentivesOffered.length; ++i) {

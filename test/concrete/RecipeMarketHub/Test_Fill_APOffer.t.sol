@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import "lib/forge-std/src/console.sol";
+
 import "src/base/RecipeMarketHubBase.sol";
-import {ERC4626} from "src/RecipeMarketHub.sol";
+import { ERC4626 } from "src/RecipeMarketHub.sol";
 import "src/WrappedVault.sol";
 
 import { MockERC20, ERC20 } from "../../mocks/MockERC20.sol";
@@ -30,11 +32,20 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
     function test_DirectFill_Upfront_APOffer_ForTokens() external {
         uint256 frontendFee = recipeMarketHub.minimumFrontendFee();
         bytes32 marketHash = recipeMarketHub.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
+        console.log("===========RecipeMarket Created===========");
+        // console.log("inputToken:", address(mockLiquidityToken));
+        // console.log("lockupTime:", 30 days);
+        // console.log("Reward style:", RewardStyle.Upfront);
+        // console.log("Market created:", marketHash);
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 25_000e18; // Fill amount
 
         (, RecipeMarketHubBase.APOffer memory offer) = createAPOffer_ForTokens(marketHash, address(0), offerAmount, AP_ADDRESS);
+        console.log("===========AP Offer Created===========");
+        // console.log("marketHash:", marketHash);
+        // console.log("offerAmount:", offerAmount);
+        // console.log("AP address:", AP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeMarketHub.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -305,7 +316,8 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeMarketHubBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeMarketHubBase.APOffer memory offer, Points points) =
+            createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeMarketHub.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -561,7 +573,8 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeMarketHubBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeMarketHubBase.APOffer memory offer, Points points) =
+            createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeMarketHub.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -810,7 +823,8 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         uint256 fillAmount = 25_000e18; // Fill amount
 
         // Create a fillable IP offer
-        (, RecipeMarketHubBase.APOffer memory offer, Points points) = createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
+        (, RecipeMarketHubBase.APOffer memory offer, Points points) =
+            createAPOffer_ForPoints(marketHash, address(mockVault), offerAmount, AP_ADDRESS, IP_ADDRESS);
 
         (, uint256 expectedFrontendFeeAmount, uint256 expectedProtocolFeeAmount, uint256 expectedIncentiveAmount) =
             calculateAPOfferExpectedIncentiveAndFrontendFee(recipeMarketHub.protocolFee(), frontendFee, offerAmount, fillAmount, 1000e18);
@@ -825,7 +839,6 @@ contract Test_Fill_APOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         mockVault.approve(address(recipeMarketHub), fillAmount);
 
         vm.stopPrank();
-
 
         vm.expectEmit(true, false, true, false, address(mockVault));
         emit ERC4626.Withdraw(address(recipeMarketHub), address(0), AP_ADDRESS, fillAmount, 0);

@@ -23,7 +23,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     address public immutable POINTS_FACTORY;
 
     /// @notice The minimum percent you can fill an AP offer with, to prevent griefing attacks
-    uint256 public constant MIN_FILL_PERCENT = 0.10e18; // == 10%
+    uint256 public constant MIN_FILL_PERCENT = 0.1e18; // == 10%
 
     /// @dev The minimum quantity of tokens for an offer
     uint256 internal constant MINIMUM_QUANTITY = 1e6;
@@ -102,6 +102,36 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
         mapping(address => uint256) incentiveAmountsOffered; // amounts to be allocated to APs (per incentive)
         mapping(address => uint256) incentiveToProtocolFeeAmount; // amounts to be allocated to protocolFeeClaimant (per incentive)
         mapping(address => uint256) incentiveToFrontendFeeAmount; // amounts to be allocated to frontend provider (per incentive)
+    }
+
+    /// @custom:field offerID Set to numAPOffers (zero-indexed) - ordered separately for AP and IP offers
+    /// @custom:field targetMarketHash The hash of the weiroll market which the IP offer is for
+    /// @custom:field ip The address of the incentive provider
+    /// @custom:field expiry The timestamp after which the offer is considered expired
+    /// @custom:field quantity The total quantity of the market's input token requested by the IP
+    /// @custom:field incentivesOffered The incentives offered by the IP
+    /// @custom:field incentiveAmountsOffered Mapping of incentive to the amount of the incentive allocated to APs
+    /// @custom:field incentiveToProtocolFeeAmount Mapping of incentive to the amount of the incentive allocated to the protocol fee
+    /// @custom:field incentiveToFrontendFeeAmount Mapping of incentive to the amount of the incentive allocated to frontend fee recipients
+    /// @custom:field initialPrice t_0 in GDA
+    /// @custom:field decayConstant k in GDA
+    /// @custom:field emissionRate r in GDA
+    /// @custom:field lastAuctionStartTime t_0 in GDA
+    struct IPOfferGda {
+        uint256 offerID;
+        bytes32 targetMarketHash;
+        address ip;
+        uint256 expiry;
+        uint256 quantity;
+        uint256 remainingQuantity;
+        address[] incentivesOffered;
+        mapping(address => uint256) incentiveAmountsOffered; // amounts to be allocated to APs (per incentive)
+        mapping(address => uint256) incentiveToProtocolFeeAmount; // amounts to be allocated to protocolFeeClaimant (per incentive)
+        mapping(address => uint256) incentiveToFrontendFeeAmount; // amounts to be allocated to frontend provider (per incentive)
+        int256 initialPrice; // p_0 in GDA
+        int256 decayConstant; // k in GDA
+        int256 emissionRate; // r in GDA
+        int256 lastAuctionStartTime; // t_0 in GDA
     }
 
     /// @custom:field offerID Set to numAPOffers (zero-indexed) - ordered separately for AP and IP offers
