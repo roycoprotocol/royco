@@ -12,7 +12,6 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FixedPointMathLib as SoladyMath } from "lib/solady/src/utils/FixedPointMathLib.sol";
 import { IWrappedVault } from "src/interfaces/IWrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
-import { Initializable } from "lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
 
 /// @title WrappedVault
 /// @author Jack Corddry, CopyPaste, Shivaansh Kapoor
@@ -151,8 +150,6 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
 
         DEPOSIT_ASSET.approve(vault, type(uint256).max);
     }
-
-    constructor() { }
 
     /// @param rewardsToken The new reward token / points program to be used as incentives
     function addRewardsToken(address rewardsToken) public payable onlyOwner {
