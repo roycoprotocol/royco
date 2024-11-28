@@ -32,6 +32,8 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     uint256 public numAPOffers;
     /// @notice The number of IP offers that have been created
     uint256 public numIPOffers;
+    /// @notice The number of IPGda offers that have been created
+    uint256 public numIPGdaOffers;
     /// @notice The number of unique weiroll markets added
     uint256 public numMarkets;
 
@@ -50,6 +52,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
 
     /// @notice Holds all IPOffer structs
     mapping(bytes32 => IPOffer) public offerHashToIPOffer;
+    mapping(bytes32 => IPGdaOffer) public offerHashToIPGdaOffer;
     /// @notice Tracks the unfilled quantity of each AP offer
     mapping(bytes32 => uint256) public offerHashToRemainingQuantity;
 
@@ -117,7 +120,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     /// @custom:field decayConstant k in GDA
     /// @custom:field emissionRate r in GDA
     /// @custom:field lastAuctionStartTime t_0 in GDA
-    struct IPOfferGda {
+    struct IPGdaOffer {
         uint256 offerID;
         bytes32 targetMarketHash;
         address ip;
@@ -128,10 +131,14 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
         mapping(address => uint256) incentiveAmountsOffered; // amounts to be allocated to APs (per incentive)
         mapping(address => uint256) incentiveToProtocolFeeAmount; // amounts to be allocated to protocolFeeClaimant (per incentive)
         mapping(address => uint256) incentiveToFrontendFeeAmount; // amounts to be allocated to frontend provider (per incentive)
-        int256 initialPrice; // p_0 in GDA
-        int256 decayConstant; // k in GDA
-        int256 emissionRate; // r in GDA
-        int256 lastAuctionStartTime; // t_0 in GDA
+        GDAParams gdaParams;
+    }
+
+    struct GDAParams {
+        int256 initialPrice;
+        int256 decayRate;
+        int256 emissionRate;
+        int256 lastAuctionStartTime;
     }
 
     /// @custom:field offerID Set to numAPOffers (zero-indexed) - ordered separately for AP and IP offers
@@ -212,6 +219,19 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
         uint256[] protocolFeeAmounts,
         uint256[] frontendFeeAmounts,
         uint256 expiry
+    );
+
+    event IPOfferGdaCreated(
+        uint256 indexed offerID,
+        bytes32 indexed offerHash,
+        bytes32 indexed marketHash,
+        uint256 quantity,
+        address[] incentivesOffered,
+        uint256[] incentiveAmounts,
+        uint256[] protocolFeeAmounts,
+        uint256[] frontendFeeAmounts,
+        uint256 expiry,
+        GDAParams gdaParams
     );
 
     /// @param offerHash Hash of the offer (used to identify IP offers)
@@ -381,5 +401,36 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
         returns (bytes32)
     {
         return keccak256(abi.encodePacked(offerID, targetMarketHash, ip, expiry, quantity, incentivesOffered, incentiveAmountsOffered));
+    }
+
+    /// @notice Calculates the hash of an IPGda offer
+    function getIPGdaOfferHash(
+        uint256 offerID,
+        bytes32 targetMarketHash,
+        address ip,
+        uint256 expiry,
+        uint256 quantity,
+        address[] calldata incentivesOffered,
+        uint256[] memory incentiveAmountsOffered,
+        GDAParams calldata gdaParams
+    )
+        public
+        pure
+        returns (bytes32)
+    {
+        return keccak256(
+            abi.encodePacked(
+                offerID,
+                targetMarketHash,
+                ip,
+                expiry,
+                quantity,
+                incentivesOffered,
+                incentiveAmountsOffered,
+                gdaParams.initialPrice,
+                gdaParams.decayRate,
+                gdaParams.emissionRate
+            )
+        );
     }
 }
