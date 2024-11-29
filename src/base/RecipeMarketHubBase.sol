@@ -113,6 +113,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     /// @custom:field expiry The timestamp after which the offer is considered expired
     /// @custom:field quantity The total quantity of the market's input token requested by the IP
     /// @custom:field incentivesOffered The incentives offered by the IP
+    /// @custom:field initialIncentiveAmountsOffered Mapping of incentive to the initial  amount of the incentive allocated to APs
     /// @custom:field incentiveAmountsOffered Mapping of incentive to the amount of the incentive allocated to APs
     /// @custom:field incentiveToProtocolFeeAmount Mapping of incentive to the amount of the incentive allocated to the protocol fee
     /// @custom:field incentiveToFrontendFeeAmount Mapping of incentive to the amount of the incentive allocated to frontend fee recipients
@@ -128,6 +129,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
         uint256 quantity;
         uint256 remainingQuantity;
         address[] incentivesOffered;
+        mapping(address => uint256) initialIncentiveAmountOffered; // amounts to be allocated to APs when auction starts (per incentive)
         mapping(address => uint256) incentiveAmountsOffered; // amounts to be allocated to APs (per incentive)
         mapping(address => uint256) incentiveToProtocolFeeAmount; // amounts to be allocated to protocolFeeClaimant (per incentive)
         mapping(address => uint256) incentiveToFrontendFeeAmount; // amounts to be allocated to frontend provider (per incentive)
@@ -135,7 +137,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     }
 
     struct GDAParams {
-        int256 initialPrice;
+        uint256 initialDiscountMultiplier; // 1e18 is 100%, 90 * 1e18 / 100 is 90%  must be less than 1e18
         int256 decayRate;
         int256 emissionRate;
         int256 lastAuctionStartTime;
@@ -249,6 +251,15 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
         uint256[] frontendFeeAmounts
     );
 
+    event IPGdaOfferFilled(
+        bytes32 indexed offerHash,
+        uint256 fillAmount,
+        address weirollWallet,
+        uint256[] incentiveAmounts,
+        uint256[] protocolFeeAmounts,
+        uint256[] frontendFeeAmounts
+    );
+
     /// @param offerID The ID of the AP offer filled
     /// @param fillAmount The amount of the offer that was filled in the market input token
     /// @param weirollWallet The address of the weiroll wallet containing the AP's funds, created on fill, used to execute the recipes
@@ -328,6 +339,8 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     error WalletNotForfeitable();
     /// @notice emitted when trying to fill an offer with a quantity below the minimum fill percent
     error InsufficientFillPercent();
+    /// @notice emitted when the initialDiscountMultiplier is more than 100%
+    error InvalidInitialDiscountMultiplier();
 
     /// @notice Modifier to check if msg.sender is owner of a weirollWallet
     modifier isWeirollOwner(address weirollWallet) {
@@ -427,7 +440,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
                 quantity,
                 incentivesOffered,
                 incentiveAmountsOffered,
-                gdaParams.initialPrice,
+                gdaParams.initialDiscountMultiplier,
                 gdaParams.decayRate,
                 gdaParams.emissionRate
             )

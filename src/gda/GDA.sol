@@ -15,8 +15,7 @@ import { Owned } from "lib/solmate/src/auth/Owned.sol";
 library GradualDutchAuction {
     error GDA__MulDivFailed();
 
-    function _calculateIncentiveAmount(
-        int256 initialPrice,
+    function _calculateIncentiveMultiplier(
         int256 decayRate,
         int256 emissionRate,
         int256 lastAuctionStartTime,
@@ -29,12 +28,12 @@ library GradualDutchAuction {
         int256 quantity = SafeCastLib.toInt256(numTokens);
         int256 timeSinceLastAuctionStart = SafeCastLib.toInt256(block.timestamp) - lastAuctionStartTime;
 
-        int256 num1 = FixedPointMathLib.rawSDivWad(initialPrice, decayRate);
+        int256 num1 = FixedPointMathLib.rawSDivWad(1e18, decayRate);
         int256 exponent = FixedPointMathLib.expWad(_mulDiv(decayRate, quantity, emissionRate)) - 1e18;
         int256 den = FixedPointMathLib.expWad(decayRate * timeSinceLastAuctionStart / 1e18);
 
-        int256 totalIncentive = (num1 * exponent) / den;
-        return SafeCastLib.toUint256(totalIncentive);
+        int256 totalIncentiveMultiplier = (num1 * exponent) / den;
+        return SafeCastLib.toUint256(totalIncentiveMultiplier);
     }
 
     /// @dev equivalent to `(x * y) / d` rounded down.

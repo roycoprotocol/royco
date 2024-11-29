@@ -323,6 +323,10 @@ contract RecipeMarketHub is RecipeMarketHubBase {
             revert CannotPlaceZeroQuantityOffer();
         }
 
+        if (gdaParams.initialDiscountMultiplier >= 1e18) {
+            revert InvalidInitialDiscountMultiplier();
+        }
+
         // To keep track of incentives allocated to the AP and fees (per incentive)
         uint256[] memory incentiveAmountsOffered = new uint256[](incentivesOffered.length);
         uint256[] memory protocolFeesToBePaid = new uint256[](incentivesOffered.length);
@@ -388,7 +392,6 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         offer.remainingQuantity = quantity;
         offer.expiry = expiry;
         offer.incentivesOffered = incentivesOffered;
-        offer.gdaParams.initialPrice = gdaParams.initialPrice;
         offer.gdaParams.decayRate = gdaParams.decayRate;
         offer.gdaParams.emissionRate = gdaParams.emissionRate;
         offer.gdaParams.lastAuctionStartTime = SafeCastLib.toInt256(block.timestamp);
@@ -396,8 +399,8 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         // Set incentives and fees in the offer mapping
         for (uint256 i = 0; i < incentivesOffered.length; ++i) {
             address incentive = incentivesOffered[i];
-
             offer.incentiveAmountsOffered[incentive] = incentiveAmountsOffered[i];
+            offer.initialIncentiveAmountOffered[incentive] = incentiveAmountsOffered[i] * offer.gdaParams.initialDiscountMultiplier;
             offer.incentiveToProtocolFeeAmount[incentive] = protocolFeesToBePaid[i];
             offer.incentiveToFrontendFeeAmount[incentive] = frontendFeesToBePaid[i];
         }
@@ -585,21 +588,14 @@ contract RecipeMarketHub is RecipeMarketHubBase {
             revert CannotPlaceZeroQuantityOffer();
         }
 
-        uint256 incentiveAmount = GradualDutchAuction._calculateIncentiveAmount(
-            offer.gdaParams.initialPrice, offer.gdaParams.decayRate, offer.gdaParams.emissionRate, offer.gdaParams.lastAuctionStartTime, fillAmount
+        uint256 incentiveMultiplier = GradualDutchAuction._calculateIncentiveMultiplier(
+            offer.gdaParams.decayRate, offer.gdaParams.emissionRate, offer.gdaParams.lastAuctionStartTime, fillAmount
         );
 
         offer.gdaParams.lastAuctionStartTime = SafeCastLib.toInt256(block.timestamp);
 
-        address incentiveTokenAddress = offer.incentivesOffered[0];
-        uint256 remainingIncentives = offer.incentiveAmountsOffered[incentiveTokenAddress];
-        if (incentiveAmount > remainingIncentives) {
-            incentiveAmount = remainingIncentives;
-        }
-
         // Update the offer's remaining quantity before interacting with external contracts
         offer.remainingQuantity -= fillAmount;
-        offer.incentiveAmountsOffered[incentiveTokenAddress] -= incentiveAmount;
 
         WeirollWallet wallet;
         {
@@ -634,15 +630,11 @@ contract RecipeMarketHub is RecipeMarketHubBase {
             address incentive = offer.incentivesOffered[i];
 
             // Calculate fees to take based on percentage of fill
-            // protocolFeesPaid[i] = offer.incentiveToProtocolFeeAmount[incentive].mulWadDown(fillPercentage);
-            // frontendFeesPaid[i] = offer.incentiveToFrontendFeeAmount[incentive].mulWadDown(fillPercentage);
-
-            protocolFeesPaid[i] = incentiveAmount.mulWadDown(protocolFee);
-            frontendFeesPaid[i] = incentiveAmount.mulWadDown(market.frontendFee);
+            protocolFeesPaid[i] = offer.incentiveToProtocolFeeAmount[incentive].mulWadDown(fillPercentage);
+            frontendFeesPaid[i] = offer.incentiveToFrontendFeeAmount[incentive].mulWadDown(fillPercentage);
 
             // Calculate incentives to give based on percentage of fill
-            // incentiveAmountsPaid[i] = offer.incentiveAmountsOffered[incentive].mulWadDown(fillPercentage);
-            incentiveAmountsPaid[i] = incentiveAmount - protocolFeesPaid[i] - frontendFeesPaid[i];
+            incentiveAmountsPaid[i] = offer.initialIncentiveAmountOffered[incentive].mulWadDown(incentiveMultiplier).mulWadDown(fillPercentage);
 
             if (market.rewardStyle == RewardStyle.Upfront) {
                 // Push incentives to AP and account fees on fill in an upfront market
@@ -671,7 +663,7 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
 
-        emit IPOfferFilled(offerHash, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
+        emit IPGdaOfferFilled(offerHash, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
     }
 
     /// @dev Fill multiple AP offers
