@@ -12,7 +12,6 @@ import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { FixedPointMathLib as SoladyMath } from "lib/solady/src/utils/FixedPointMathLib.sol";
 import { IWrappedVault } from "src/interfaces/IWrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
-import { Initializable } from "lib/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol";
 
 /// @title WrappedVault
 /// @author Jack Corddry, CopyPaste, Shivaansh Kapoor
@@ -152,8 +151,6 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
         DEPOSIT_ASSET.approve(vault, type(uint256).max);
     }
 
-    constructor() { }
-
     /// @param rewardsToken The new reward token / points program to be used as incentives
     function addRewardsToken(address rewardsToken) public payable onlyOwner {
         // Check if max rewards offered limit has been reached
@@ -255,7 +252,7 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
 
         uint256 remainingRewards = rewardsInterval.rate * (rewardsInterval.end - newStart);
         uint256 rate = (rewardsAdded - frontendFeeTaken - protocolFeeTaken + remainingRewards) / (newEnd - newStart);
-        rewardsAdded = (rate - rewardsInterval.rate) * (newEnd - newStart) + frontendFeeTaken + protocolFeeTaken;
+        rewardsAdded = rate * (newEnd - newStart) - remainingRewards + frontendFeeTaken + protocolFeeTaken;
 
         if (rate < rewardsInterval.rate) revert RateCannotDecrease();
 
