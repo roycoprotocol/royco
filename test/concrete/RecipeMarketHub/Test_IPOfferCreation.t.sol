@@ -54,7 +54,9 @@ contract Test_IPOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
         // MockERC20 should track calls to `transferFrom`
         vm.expectCall(
             address(mockIncentiveToken),
-            abi.encodeWithSelector(ERC20.transferFrom.selector, ALICE_ADDRESS, address(recipeMarketHub), protocolFeeAmount + frontendFeeAmount + incentiveAmount)
+            abi.encodeWithSelector(
+                ERC20.transferFrom.selector, ALICE_ADDRESS, address(recipeMarketHub), protocolFeeAmount + frontendFeeAmount + incentiveAmount
+            )
         );
 
         // Create the IP offer

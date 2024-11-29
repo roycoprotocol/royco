@@ -19,3 +19,6 @@
 [submodule "lib/enso-weiroll"]
 	path = lib/enso-weiroll
 	url = https://github.com/EnsoFinance/enso-weiroll
+[submodule "lib/prb-math"]
+	path = lib/prb-math
+	url = https://github.com/paulrberg/prb-math

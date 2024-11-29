@@ -11,6 +11,7 @@ import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
 import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
+import { GradualDutchAuction } from "src/gda/GDA.sol";
 
 contract MockRecipeMarketHub is RecipeMarketHub {
     constructor(
@@ -34,6 +35,19 @@ contract MockRecipeMarketHub is RecipeMarketHub {
     // Getters to access nested mappings
     function getIncentiveAmountsOfferedForIPOffer(bytes32 offerHash, address tokenAddress) external view returns (uint256) {
         return offerHashToIPOffer[offerHash].incentiveAmountsOffered[tokenAddress];
+    }
+
+    function getIncentiveAmountsOfferedForIPGdaOffer(bytes32 offerHash, address tokenAddress, uint256 fillAmount) external view returns (uint256) {
+        uint256 totalIncentivesOffered = offerHashToIPGdaOffer[offerHash].incentiveAmountsOffered[tokenAddress];
+        uint256 incentiveMultiplier = GradualDutchAuction._calculateIncentiveMultiplier(
+            offerHashToIPGdaOffer[offerHash].gdaParams.decayRate,
+            offerHashToIPGdaOffer[offerHash].gdaParams.emissionRate,
+            offerHashToIPGdaOffer[offerHash].gdaParams.lastAuctionStartTime,
+            fillAmount
+        );
+
+        uint256 incentivesOffered = offerHashToIPGdaOffer[offerHash].initialIncentiveAmountOffered[tokenAddress];
+        return incentivesOffered * incentiveMultiplier;
     }
 
     function getIncentiveToProtocolFeeAmountForIPOffer(bytes32 offerHash, address tokenAddress) external view returns (uint256) {

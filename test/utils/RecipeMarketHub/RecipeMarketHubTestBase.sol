@@ -8,8 +8,14 @@ import "../../../src/PointsFactory.sol";
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 
+import { SafeCastLib } from "solady/utils/SafeCastLib.sol";
+import { div } from "prb-math/sd59x18/Math.sol";
+import { wrap, unwrap } from "prb-math/sd59x18/Casting.sol";
+
 import { RoycoTestBase } from "../RoycoTestBase.sol";
 import { RecipeUtils } from "./RecipeUtils.sol";
+
+import { GradualDutchAuction } from "src/gda/GDA.sol";
 
 contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
     using FixedPointMathLib for uint256;
@@ -47,7 +53,13 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
         marketHash = recipeMarketHub.createMarket(address(mockLiquidityToken), lockupTime, frontendFee, NULL_RECIPE, NULL_RECIPE, rewardStyle);
     }
 
-    function createMarket(RecipeMarketHubBase.Recipe memory _depositRecipe, RecipeMarketHubBase.Recipe memory _withdrawRecipe) public returns (bytes32 marketHash) {
+    function createMarket(
+        RecipeMarketHubBase.Recipe memory _depositRecipe,
+        RecipeMarketHubBase.Recipe memory _withdrawRecipe
+    )
+        public
+        returns (bytes32 marketHash)
+    {
         // Generate random market parameters within valid constraints
         uint256 lockupTime = 1 hours + (uint256(keccak256(abi.encodePacked(block.timestamp))) % 29 days); // Lockup time between 1 hour and 30 days
         uint256 frontendFee = (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 1e17) + initialMinimumFrontendFee;
@@ -83,6 +95,39 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
         );
     }
 
+    function createIPGdaOffer_WithTokens(
+        bytes32 _targetMarketHash,
+        uint256 _quantity,
+        address _ipAddress
+    )
+        public
+        prankModifier(_ipAddress)
+        returns (bytes32 offerHash)
+    {
+        address[] memory tokensOffered = new address[](1);
+        tokensOffered[0] = address(mockIncentiveToken);
+        uint256[] memory incentiveAmountsOffered = new uint256[](1);
+        incentiveAmountsOffered[0] = 1000e18;
+
+        RecipeMarketHubBase.GDAParams memory gdaParams;
+        gdaParams.initialDiscountMultiplier = 10 * 1e18 / 100;
+        gdaParams.decayRate = unwrap(div(wrap(SafeCastLib.toInt256(1)), wrap(SafeCastLib.toInt256(2))));
+        gdaParams.emissionRate = SafeCastLib.toInt256(1);
+        gdaParams.lastAuctionStartTime = 0;
+
+        mockIncentiveToken.mint(_ipAddress, 1000e18);
+        mockIncentiveToken.approve(address(recipeMarketHub), 1000e18);
+
+        offerHash = recipeMarketHub.createIPGdaOffer(
+            _targetMarketHash, // Referencing the created market
+            _quantity, // Total input token amount
+            block.timestamp + 30 days, // Expiry time
+            tokensOffered, // Incentive tokens offered
+            incentiveAmountsOffered, // Incentive amounts offered
+            gdaParams
+        );
+    }
+
     function createIPOffer_WithTokens(
         bytes32 _targetMarketHash,
         uint256 _quantity,
@@ -110,6 +155,40 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
         );
     }
 
+    function createIPGdaOffer_WithTokens(
+        bytes32 _targetMarketHash,
+        uint256 _quantity,
+        uint256 _expiry,
+        address _ipAddress
+    )
+        public
+        prankModifier(_ipAddress)
+        returns (bytes32 offerHash)
+    {
+        address[] memory tokensOffered = new address[](1);
+        tokensOffered[0] = address(mockIncentiveToken);
+        uint256[] memory incentiveAmountsOffered = new uint256[](1);
+        incentiveAmountsOffered[0] = 1000e18;
+
+        RecipeMarketHubBase.GDAParams memory gdaParams;
+        gdaParams.initialDiscountMultiplier = 10 * 1e18 / 100;
+        gdaParams.decayRate = unwrap(div(wrap(SafeCastLib.toInt256(1)), wrap(SafeCastLib.toInt256(2))));
+        gdaParams.emissionRate = SafeCastLib.toInt256(1);
+        gdaParams.lastAuctionStartTime = 0;
+
+        mockIncentiveToken.mint(_ipAddress, 1000e18);
+        mockIncentiveToken.approve(address(recipeMarketHub), 1000e18);
+
+        offerHash = recipeMarketHub.createIPGdaOffer(
+            _targetMarketHash, // Referencing the created market
+            _quantity, // Total input token amount
+            _expiry, // Expiry time
+            tokensOffered, // Incentive tokens offered
+            incentiveAmountsOffered, // Incentive amounts offered
+            gdaParams
+        );
+    }
+
     function createAPOffer_ForTokens(
         bytes32 _targetMarketHash,
         address _fundingVault,
@@ -134,7 +213,9 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        offer = RecipeMarketHubBase.APOffer(recipeMarketHub.numAPOffers()-1, _targetMarketHash, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        offer = RecipeMarketHubBase.APOffer(
+            recipeMarketHub.numAPOffers() - 1, _targetMarketHash, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested
+        );
     }
 
     function createAPOffer_ForTokens(
@@ -162,7 +243,9 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
 
-        offer = RecipeMarketHubBase.APOffer(recipeMarketHub.numAPOffers()-1, _targetMarketHash, _apAddress, _fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested);
+        offer = RecipeMarketHubBase.APOffer(
+            recipeMarketHub.numAPOffers() - 1, _targetMarketHash, _apAddress, _fundingVault, _quantity, _expiry, tokensRequested, tokenAmountsRequested
+        );
     }
 
     function createAPOffer_ForPoints(
@@ -203,7 +286,9 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
             tokenAmountsRequested // Incentive amounts requested
         );
         vm.stopPrank();
-        offer = RecipeMarketHubBase.APOffer(recipeMarketHub.numAPOffers()-1, _targetMarketHash, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested);
+        offer = RecipeMarketHubBase.APOffer(
+            recipeMarketHub.numAPOffers() - 1, _targetMarketHash, _apAddress, _fundingVault, _quantity, 30 days, tokensRequested, tokenAmountsRequested
+        );
     }
 
     function createIPOffer_WithPoints(
@@ -240,6 +325,47 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
         );
     }
 
+    function createIPGdaOffer_WithPoints(
+        bytes32 _targetMarketHash,
+        uint256 _quantity,
+        address _ipAddress
+    )
+        public
+        prankModifier(_ipAddress)
+        returns (bytes32 offerHash, Points points)
+    {
+        address[] memory tokensOffered = new address[](1);
+        uint256[] memory incentiveAmountsOffered = new uint256[](1);
+
+        string memory name = "POINTS";
+        string memory symbol = "PTS";
+
+        // Create a new Points program
+        points = PointsFactory(recipeMarketHub.POINTS_FACTORY()).createPointsProgram(name, symbol, 18, _ipAddress);
+
+        // Allow _ipAddress to mint points in the Points program
+        points.addAllowedIP(_ipAddress);
+
+        // Add the Points program to the tokensOffered array
+        tokensOffered[0] = address(points);
+        incentiveAmountsOffered[0] = 1000e18;
+
+        RecipeMarketHubBase.GDAParams memory gdaParams;
+        gdaParams.initialDiscountMultiplier = 10 * 1e18 / 100;
+        gdaParams.decayRate = unwrap(div(wrap(SafeCastLib.toInt256(1)), wrap(SafeCastLib.toInt256(2))));
+        gdaParams.emissionRate = SafeCastLib.toInt256(1);
+        gdaParams.lastAuctionStartTime = 0;
+
+        offerHash = recipeMarketHub.createIPGdaOffer(
+            _targetMarketHash, // Referencing the created market
+            _quantity, // Total input token amount
+            block.timestamp + 30 days, // Expiry time
+            tokensOffered, // Incentive tokens offered
+            incentiveAmountsOffered, // Incentive amounts offered
+            gdaParams
+        );
+    }
+
     function calculateIPOfferExpectedIncentiveAndFrontendFee(
         bytes32 offerHash,
         uint256 offerAmount,
@@ -255,6 +381,23 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
         protocolFeeAmount = recipeMarketHub.getIncentiveToProtocolFeeAmountForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
         frontendFeeAmount = recipeMarketHub.getIncentiveToFrontendFeeAmountForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
         incentiveAmount = recipeMarketHub.getIncentiveAmountsOfferedForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
+    }
+
+    function calculateIPGdaOfferExpectedIncentiveAndFrontendFee(
+        bytes32 offerHash,
+        uint256 offerAmount,
+        uint256 fillAmount,
+        address tokenOffered
+    )
+        internal
+        view
+        returns (uint256 fillPercentage, uint256 protocolFeeAmount, uint256 frontendFeeAmount, uint256 incentiveAmount)
+    {
+        fillPercentage = fillAmount.divWadDown(offerAmount);
+        // Fees are taken as a percentage of the promised amounts
+        protocolFeeAmount = recipeMarketHub.getIncentiveToProtocolFeeAmountForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
+        frontendFeeAmount = recipeMarketHub.getIncentiveToFrontendFeeAmountForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
+        incentiveAmount = recipeMarketHub.getIncentiveAmountsOfferedForIPGdaOffer(offerHash, tokenOffered, fillAmount).mulWadDown(fillPercentage);
     }
 
     function calculateAPOfferExpectedIncentiveAndFrontendFee(

@@ -137,7 +137,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     }
 
     struct GDAParams {
-        uint256 initialDiscountMultiplier; // 1e18 is 100%, 90 * 1e18 / 100 is 90%  must be less than 1e18
+        uint256 initialDiscountMultiplier; // 1e18 is 100%, 90 * 1e18 / 100 is 10% discount, must be less than 1e18
         int256 decayRate;
         int256 emissionRate;
         int256 lastAuctionStartTime;
