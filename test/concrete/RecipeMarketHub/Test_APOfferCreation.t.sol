@@ -28,6 +28,7 @@ contract Test_APOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
         emit RecipeMarketHubBase.APOfferCreated(
             0, // Expected offer ID (starts at 0)
             marketHash, // Market ID
+            ALICE_ADDRESS,
             address(0), // No funding vault
             quantity,
             tokensRequested, // Tokens requested

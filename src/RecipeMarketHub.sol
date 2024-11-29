@@ -144,7 +144,7 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         offerHashToRemainingQuantity[offerHash] = quantity;
 
         /// @dev APOffer events are stored in events and do not exist onchain outside of the offerHashToRemainingQuantity mapping
-        emit APOfferCreated(numAPOffers, targetMarketHash, fundingVault, quantity, incentivesRequested, incentiveAmountsRequested, expiry);
+        emit APOfferCreated(numAPOffers, targetMarketHash, msg.sender, fundingVault, quantity, incentivesRequested, incentiveAmountsRequested, expiry);
 
         // Increment the number of AP offers created
         numAPOffers++;
@@ -269,7 +269,16 @@ contract RecipeMarketHub is RecipeMarketHubBase {
 
         // Emit IP offer creation event
         emit IPOfferCreated(
-            numIPOffers, offerHash, targetMarketHash, quantity, incentivesOffered, incentiveAmountsOffered, protocolFeesToBePaid, frontendFeesToBePaid, expiry
+            numIPOffers,
+            offerHash,
+            targetMarketHash,
+            msg.sender,
+            quantity,
+            incentivesOffered,
+            incentiveAmountsOffered,
+            protocolFeesToBePaid,
+            frontendFeesToBePaid,
+            expiry
         );
 
         // Increment the number of IP offers created
@@ -368,11 +377,10 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         uint256[] memory protocolFeesPaid = new uint256[](numIncentives);
         uint256[] memory frontendFeesPaid = new uint256[](numIncentives);
 
-        // Calculate the percentage of the offer the AP is filling
-        uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
-
         // Perform incentive accounting on a per incentive basis
         for (uint256 i = 0; i < numIncentives; ++i) {
+            // Calculate the percentage of the offer the AP is filling
+            uint256 fillPercentage = fillAmount.divWadDown(offer.quantity);
             // Incentive address
             address incentive = offer.incentivesOffered[i];
 
@@ -410,7 +418,7 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
 
-        emit IPOfferFilled(offerHash, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
+        emit IPOfferFilled(offerHash, msg.sender, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
     }
 
     /// @dev Fill multiple AP offers
@@ -535,7 +543,7 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         // Execute deposit recipe
         wallet.executeWeiroll(market.depositRecipe.weirollCommands, market.depositRecipe.weirollState);
 
-        emit APOfferFilled(offer.offerID, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
+        emit APOfferFilled(offer.offerID, msg.sender, fillAmount, address(wallet), incentiveAmountsPaid, protocolFeesPaid, frontendFeesPaid);
     }
 
     /// @notice Cancel an AP offer, setting the remaining quantity available to fill to 0

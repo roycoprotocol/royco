@@ -23,7 +23,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     address public immutable POINTS_FACTORY;
 
     /// @notice The minimum percent you can fill an AP offer with, to prevent griefing attacks
-    uint256 public constant MIN_FILL_PERCENT = 0.10e18; // == 10%
+    uint256 public constant MIN_FILL_PERCENT = 0.1e18; // == 10%
 
     /// @dev The minimum quantity of tokens for an offer
     uint256 internal constant MINIMUM_QUANTITY = 1e6;
@@ -148,6 +148,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
 
     /// @param offerID Set to numAPOffers (zero-indexed) - ordered separately for AP and IP offers
     /// @param marketHash The hash of the weiroll market which the AP offer is for
+    /// @param ap The address of the AP that created this offer.
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param quantity The total amount of input tokens to be deposited
     /// @param incentiveAddresses The requested rewards
@@ -156,6 +157,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     event APOfferCreated(
         uint256 indexed offerID,
         bytes32 indexed marketHash,
+        address indexed ap,
         address fundingVault,
         uint256 quantity,
         address[] incentiveAddresses,
@@ -166,6 +168,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     /// @param offerID Set to numIPOffers (zero-indexed) - ordered separately for AP and IP offers
     /// @param offerHash Set to the hash of the offer (used to identify IP offers)
     /// @param marketHash The hash of the weiroll market which the IP offer is for
+    /// @param ip The address of the IP that created this offer.
     /// @param quantity The total amount of input tokens to be deposited
     /// @param incentivesOffered The offered rewards
     /// @param incentiveAmounts The offered rewards per input token
@@ -173,9 +176,10 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     /// @param frontendFeeAmounts The offered rewards frontend fee per input token
     /// @param expiry The timestamp after which the offer is considered expired
     event IPOfferCreated(
-        uint256 indexed offerID,
+        uint256 offerID,
         bytes32 indexed offerHash,
         bytes32 indexed marketHash,
+        address indexed ip,
         uint256 quantity,
         address[] incentivesOffered,
         uint256[] incentiveAmounts,
@@ -185,6 +189,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     );
 
     /// @param offerHash Hash of the offer (used to identify IP offers)
+    /// @param ap The address of the AP that filled this offer.
     /// @param fillAmount The amount of the offer that was filled in the market input token
     /// @param weirollWallet The address of the weiroll wallet containing the AP's funds, created on fill, used to execute the recipes
     /// @param incentiveAmounts The amount of incentives allocated to the AP on fill (claimable as per the market's reward type)
@@ -192,6 +197,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     /// @param frontendFeeAmounts The rewards frontend fee per incentive on fill (claimable as per the market's reward type)
     event IPOfferFilled(
         bytes32 indexed offerHash,
+        address indexed ap,
         uint256 fillAmount,
         address weirollWallet,
         uint256[] incentiveAmounts,
@@ -200,6 +206,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     );
 
     /// @param offerID The ID of the AP offer filled
+    /// @param ip The address of the IP that filled this offer.
     /// @param fillAmount The amount of the offer that was filled in the market input token
     /// @param weirollWallet The address of the weiroll wallet containing the AP's funds, created on fill, used to execute the recipes
     /// @param incentiveAmounts The amount of incentives allocated to the AP on fill (claimable as per the market's reward type)
@@ -207,6 +214,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
     /// @param frontendFeeAmounts The amount taken as the frontend fee per incentive on fill (claimable as per the market's reward type)
     event APOfferFilled(
         uint256 indexed offerID,
+        address indexed ip,
         uint256 fillAmount,
         address weirollWallet,
         uint256[] incentiveAmounts,

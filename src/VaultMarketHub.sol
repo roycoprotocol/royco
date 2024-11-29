@@ -37,10 +37,10 @@ contract VaultMarketHub is Ownable2Step, ReentrancyGuardTransient {
 
     /// @notice The minimum time a campaign must run for before someone can be allocated into it
     uint256 public constant MIN_CAMPAIGN_DURATION = 1 weeks;
-    
+
     /// @notice whether offer fills are paused
     bool public offersPaused;
-    
+
     /// @dev The minimum quantity of tokens for an offer
     uint256 internal constant MINIMUM_QUANTITY = 1e6;
 
@@ -49,6 +49,7 @@ contract VaultMarketHub is Ownable2Step, ReentrancyGuardTransient {
 
     /// @param offerID Set to numOffers - 1 on offer creation (zero-indexed)
     /// @param marketID The ID of the market to place the offer in
+    /// @param ap The address that created this AP offer
     /// @param fundingVault The address of the vault where the input tokens will be withdrawn from
     /// @param quantity The total amount of the base asset to be withdrawn from the funding vault
     /// @param incentivesRequested The incentives requested by the AP in offer to fill the offer
@@ -57,6 +58,7 @@ contract VaultMarketHub is Ownable2Step, ReentrancyGuardTransient {
     event APOfferCreated(
         uint256 indexed offerID,
         address indexed marketID,
+        address indexed ap,
         address fundingVault,
         uint256 quantity,
         address[] incentivesRequested,
@@ -154,7 +156,7 @@ contract VaultMarketHub is Ownable2Step, ReentrancyGuardTransient {
         }
 
         // Emit the offer creation event, used for matching offers
-        emit APOfferCreated(numOffers, targetVault, fundingVault, quantity, incentivesRequested, incentivesRatesRequested, expiry);
+        emit APOfferCreated(numOffers, targetVault, msg.sender, fundingVault, quantity, incentivesRequested, incentivesRatesRequested, expiry);
         // Set the quantity of the offer
         APOffer memory offer = APOffer(numOffers, targetVault, msg.sender, fundingVault, expiry, incentivesRequested, incentivesRatesRequested);
         offerHashToRemainingQuantity[getOfferHash(offer)] = quantity;
@@ -211,7 +213,7 @@ contract VaultMarketHub is Ownable2Step, ReentrancyGuardTransient {
         } else {
             // Get pre-withdraw token balance of VaultMarketHub
             uint256 preWithdrawTokenBalance = targetAsset.balanceOf(address(this));
-            
+
             // Withdraw from the funding vault to the VaultMarketHub
             ERC4626(offer.fundingVault).withdraw(fillAmount, address(this), offer.ap);
 
@@ -225,7 +227,7 @@ contract VaultMarketHub is Ownable2Step, ReentrancyGuardTransient {
         }
 
         for (uint256 i; i < offer.incentivesRatesRequested.length; ++i) {
-            (, uint32 end, ) = WrappedVault(offer.targetVault).rewardToInterval(offer.incentivesRequested[i]);
+            (, uint32 end,) = WrappedVault(offer.targetVault).rewardToInterval(offer.incentivesRequested[i]);
             if (end < MIN_CAMPAIGN_DURATION + block.timestamp) {
                 revert OfferConditionsNotMet();
             }

@@ -65,6 +65,7 @@ contract TestFuzz_IPOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
             0, // Expected offer ID (starts at 0)
             recipeMarketHub.getOfferHash(0, marketHash, _creator, _expiry, _quantity, incentivesOffered, incentiveAmount),
             marketHash, // Market ID
+            _creator,
             _quantity, // Total quantity
             incentivesOffered, // Tokens offered
             incentiveAmountsOffered, // Amounts offered
@@ -170,6 +171,7 @@ contract TestFuzz_IPOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
             0, // Expected offer ID (starts at 0)
             recipeMarketHub.getOfferHash(0, marketHash, _creator, _expiry, _quantity, incentivesOffered, incentiveAmount),
             marketHash, // Market ID
+            _creator,
             _quantity, // Total quantity
             incentivesOffered, // Tokens offered
             incentiveAmountsOffered, // Amounts offered
@@ -295,6 +297,7 @@ contract TestFuzz_IPOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
             0, // Expected offer ID (starts at 0)
             recipeMarketHub.getOfferHash(0, marketHash, _creator, _expiry, _quantity, incentivesOffered, incentiveAmount),
             marketHash, // Market ID
+            _creator,
             _quantity, // Total quantity
             incentivesOffered, // Tokens offered
             incentiveAmountsOffered, // Amounts offered
