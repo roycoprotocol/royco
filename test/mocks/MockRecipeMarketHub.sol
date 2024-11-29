@@ -37,8 +37,11 @@ contract MockRecipeMarketHub is RecipeMarketHub {
         return offerHashToIPOffer[offerHash].incentiveAmountsOffered[tokenAddress];
     }
 
+    function getMaxIncentiveAmountsOfferedForIPGdaOffer(bytes32 offerHash, address tokenAddress) external view returns (uint256) {
+        return offerHashToIPGdaOffer[offerHash].incentiveAmountsOffered[tokenAddress];
+    }
+
     function getIncentiveAmountsOfferedForIPGdaOffer(bytes32 offerHash, address tokenAddress, uint256 fillAmount) external view returns (uint256) {
-        uint256 totalIncentivesOffered = offerHashToIPGdaOffer[offerHash].incentiveAmountsOffered[tokenAddress];
         uint256 incentiveMultiplier = GradualDutchAuction._calculateIncentiveMultiplier(
             offerHashToIPGdaOffer[offerHash].gdaParams.decayRate,
             offerHashToIPGdaOffer[offerHash].gdaParams.emissionRate,
@@ -46,7 +49,7 @@ contract MockRecipeMarketHub is RecipeMarketHub {
             fillAmount
         );
 
-        uint256 incentivesOffered = offerHashToIPGdaOffer[offerHash].initialIncentiveAmountOffered[tokenAddress];
+        uint256 incentivesOffered = offerHashToIPGdaOffer[offerHash].initialIncentiveAmountsOffered[tokenAddress];
         return incentivesOffered * incentiveMultiplier;
     }
 
@@ -54,8 +57,16 @@ contract MockRecipeMarketHub is RecipeMarketHub {
         return offerHashToIPOffer[offerHash].incentiveToProtocolFeeAmount[tokenAddress];
     }
 
+    function getIncentiveToProtocolFeeAmountForIPGdaOffer(bytes32 offerHash, address tokenAddress) external view returns (uint256) {
+        return offerHashToIPGdaOffer[offerHash].incentiveToProtocolFeeAmount[tokenAddress];
+    }
+
     function getIncentiveToFrontendFeeAmountForIPOffer(bytes32 offerHash, address tokenAddress) external view returns (uint256) {
         return offerHashToIPOffer[offerHash].incentiveToFrontendFeeAmount[tokenAddress];
+    }
+
+    function getIncentiveToFrontendFeeAmountForIPGdaOffer(bytes32 offerHash, address tokenAddress) external view returns (uint256) {
+        return offerHashToIPGdaOffer[offerHash].incentiveToFrontendFeeAmount[tokenAddress];
     }
 
     // Single getter function that returns the entire LockedRewardParams struct as a tuple

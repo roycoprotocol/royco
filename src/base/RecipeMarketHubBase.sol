@@ -129,7 +129,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
         uint256 quantity;
         uint256 remainingQuantity;
         address[] incentivesOffered;
-        mapping(address => uint256) initialIncentiveAmountOffered; // amounts to be allocated to APs when auction starts (per incentive)
+        mapping(address => uint256) initialIncentiveAmountsOffered; // amounts to be allocated to APs when auction starts (per incentive)
         mapping(address => uint256) incentiveAmountsOffered; // amounts to be allocated to APs (per incentive)
         mapping(address => uint256) incentiveToProtocolFeeAmount; // amounts to be allocated to protocolFeeClaimant (per incentive)
         mapping(address => uint256) incentiveToFrontendFeeAmount; // amounts to be allocated to frontend provider (per incentive)
@@ -223,7 +223,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
         uint256 expiry
     );
 
-    event IPOfferGdaCreated(
+    event IPGdaOfferCreated(
         uint256 indexed offerID,
         bytes32 indexed offerHash,
         bytes32 indexed marketHash,

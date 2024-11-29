@@ -400,13 +400,13 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         for (uint256 i = 0; i < incentivesOffered.length; ++i) {
             address incentive = incentivesOffered[i];
             offer.incentiveAmountsOffered[incentive] = incentiveAmountsOffered[i];
-            offer.initialIncentiveAmountOffered[incentive] = incentiveAmountsOffered[i] * offer.gdaParams.initialDiscountMultiplier;
+            offer.initialIncentiveAmountsOffered[incentive] = incentiveAmountsOffered[i] * offer.gdaParams.initialDiscountMultiplier;
             offer.incentiveToProtocolFeeAmount[incentive] = protocolFeesToBePaid[i];
             offer.incentiveToFrontendFeeAmount[incentive] = frontendFeesToBePaid[i];
         }
 
         // Emit IP offer creation event
-        emit IPOfferGdaCreated(
+        emit IPGdaOfferCreated(
             numIPOffers,
             offerHash,
             targetMarketHash,
@@ -634,7 +634,7 @@ contract RecipeMarketHub is RecipeMarketHubBase {
             frontendFeesPaid[i] = offer.incentiveToFrontendFeeAmount[incentive].mulWadDown(fillPercentage);
 
             // Calculate incentives to give based on percentage of fill
-            incentiveAmountsPaid[i] = offer.initialIncentiveAmountOffered[incentive].mulWadDown(incentiveMultiplier).mulWadDown(fillPercentage);
+            incentiveAmountsPaid[i] = offer.initialIncentiveAmountsOffered[incentive].mulWadDown(incentiveMultiplier).mulWadDown(fillPercentage);
 
             if (market.rewardStyle == RewardStyle.Upfront) {
                 // Push incentives to AP and account fees on fill in an upfront market
