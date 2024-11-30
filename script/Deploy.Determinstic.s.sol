@@ -34,13 +34,15 @@ address constant PROTOCOL_FEE_RECIPIENT = 0x85De42e5697D16b853eA24259C42290DaCe3
 uint256 constant PROTOCOL_FEE = 0;
 uint256 constant MINIMUM_FRONTEND_FEE = 0.005e18;
 
+address constant _OLD_WRAPPED_VAULT_IMPLEMENTATION_DO_NOT_USE_APART_FROM_WVF_DEPLOYMENT = 0xd13868133A5A51F78Ea3a1a903986DaED38fE5B6;
+
 // Expected Deployment Addresses
 address constant EXPECTED_POINTS_FACTORY_ADDRESS = 0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50;
-address constant EXPECTED_WRAPPED_VAULT_ADDRESS = 0xd13868133A5A51F78Ea3a1a903986DaED38fE5B6;
+address constant EXPECTED_WRAPPED_VAULT_ADDRESS = 0x3C44C20377E252567D283Dc7746D1beA67Eb3E66;
 address constant EXPECTED_WRAPPED_VAULT_FACTORY_ADDRESS = 0x75E502644284eDf34421f9c355D75DB79e343Bca;
 address constant EXPECTED_WEIROLL_WALLET_ADDRESS = 0x40a1c08084671E9A799B73853E82308225309Dc0;
-address constant EXPECTED_VAULT_MARKET_HUB_ADDRESS = 0x52341389BE638A5B8083d2B70a421f9D4C87EBcd;
-address constant EXPECTED_RECIPE_MARKET_HUB_ADDRESS = 0x76953A612c256fc497bBb49ed14147f24C4feB71;
+address constant EXPECTED_VAULT_MARKET_HUB_ADDRESS = 0xa97eCc6Bfda40baf2fdd096dD33e88bd8e769280;
+address constant EXPECTED_RECIPE_MARKET_HUB_ADDRESS = 0x783251f103555068c1E9D755f69458f39eD937c0;
 
 bytes32 constant WRAPPED_VAULT_FACTORY_IMPL_SLOT = bytes32(uint256(2));
 
@@ -222,11 +224,20 @@ contract DeployDeterministic is Script {
         console2.log("Deploying WrappedVaultFactory");
         bytes memory wrappedVaultFactoryCreationCode = abi.encodePacked(
             vm.getCode("WrappedVaultFactory"),
-            abi.encode(wrappedVault, PROTOCOL_FEE_RECIPIENT, PROTOCOL_FEE, MINIMUM_FRONTEND_FEE, ROYCO_OWNER, address(pointsFactory))
+            abi.encode(
+                _OLD_WRAPPED_VAULT_IMPLEMENTATION_DO_NOT_USE_APART_FROM_WVF_DEPLOYMENT,
+                PROTOCOL_FEE_RECIPIENT,
+                PROTOCOL_FEE,
+                MINIMUM_FRONTEND_FEE,
+                ROYCO_OWNER,
+                address(pointsFactory)
+            )
         );
         WrappedVaultFactory wrappedVaultFactory = WrappedVaultFactory(_deployWithSanityChecks(WRAPPED_VAULT_FACTORY_SALT, wrappedVaultFactoryCreationCode));
         console2.log("Verifying WrappedVaultFactory deployment");
-        _verifyWrappedVaultFactoryDeployment(wrappedVaultFactory, pointsFactory, wrappedVault);
+        _verifyWrappedVaultFactoryDeployment(
+            wrappedVaultFactory, pointsFactory, WrappedVault(_OLD_WRAPPED_VAULT_IMPLEMENTATION_DO_NOT_USE_APART_FROM_WVF_DEPLOYMENT)
+        );
         console2.log("WrappedVaultFactory deployed at: ", address(wrappedVaultFactory), "\n");
 
         // Deploy WeirollWallet
