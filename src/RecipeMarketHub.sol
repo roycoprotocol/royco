@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { console } from "lib/forge-std/src/console.sol";
 import { RecipeMarketHubBase, RewardStyle, WeirollWallet } from "src/base/RecipeMarketHubBase.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
@@ -405,9 +404,6 @@ contract RecipeMarketHub is RecipeMarketHubBase {
             offer.initialIncentiveAmountsOffered[incentive] = incentiveAmountsOffered[i] * offer.gdaParams.initialDiscountMultiplier / 1e18;
             offer.incentiveToProtocolFeeAmount[incentive] = protocolFeesToBePaid[i];
             offer.incentiveToFrontendFeeAmount[incentive] = frontendFeesToBePaid[i];
-            console.log("gdaParams.initialDiscountMultiplier:", offer.gdaParams.initialDiscountMultiplier);
-            console.log("initial incentives amounts offered:", offer.initialIncentiveAmountsOffered[incentive]);
-            console.log("incentive amounts offered", offer.incentiveAmountsOffered[incentive]);
         }
 
         // Emit IP offer creation event

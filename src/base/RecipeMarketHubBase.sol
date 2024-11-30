@@ -136,8 +136,11 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
         GDAParams gdaParams;
     }
 
+    /// @custom: field initialDiscountMultiplier Discount multiplier for initial incentive amounts offered to AP
+    /// @custom: field decayRate Parameter that controls incentive rate decay, stored as a 59x18 fixed precision number
+    /// @custom: field emissionRate Controls how much incentives are now up in tokens per second, stored as a 59x18 fixed precision number
     struct GDAParams {
-        uint256 initialDiscountMultiplier; // 1e18 is 100%, 90 * 1e18 / 100 is 10% discount, must be less than 1e18
+        uint256 initialDiscountMultiplier; // 1e18 is 0%, 90 * 1e18 / 100 is 10% discount, must be less than 1e18
         int256 decayRate;
         int256 emissionRate;
         int256 lastAuctionStartTime;

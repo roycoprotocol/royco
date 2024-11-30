@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { console } from "lib/forge-std/src/console.sol";
 import { RecipeMarketHub } from "src/RecipeMarketHub.sol";
 import { RecipeMarketHubBase, RewardStyle, WeirollWallet } from "src/base/RecipeMarketHubBase.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
@@ -55,13 +54,6 @@ contract MockRecipeMarketHub is RecipeMarketHub {
         );
 
         uint256 initialIncentivesOffered = offerHashToIPGdaOffer[offerHash].initialIncentiveAmountsOffered[tokenAddress];
-
-        console.log("=================================================");
-        console.log("incentive multiplier:", incentiveMultiplier);
-        console.log("initialIncentivesOffered:", initialIncentivesOffered);
-        console.log("incentiveOffered in case of gda:", initialIncentivesOffered * incentiveMultiplier / 1e18);
-        console.log("incentiveOffered incase of linear:", offerHashToIPGdaOffer[offerHash].incentiveAmountsOffered[tokenAddress]);
-        console.log("=================================================");
 
         return initialIncentivesOffered * incentiveMultiplier / 1e18;
     }

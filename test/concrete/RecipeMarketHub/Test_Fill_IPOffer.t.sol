@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "lib/forge-std/src/console.sol";
-
 import "src/base/RecipeMarketHubBase.sol";
 import "src/WrappedVault.sol";
 
@@ -32,19 +30,11 @@ contract Test_Fill_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
     function test_DirectFill_Upfront_IPOffer_ForTokens() external {
         uint256 frontendFee = recipeMarketHub.minimumFrontendFee();
         bytes32 marketHash = recipeMarketHub.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
-        console.log("===========RecipeMarket Created===========");
-        console.log("inputToken:", address(mockLiquidityToken));
-        console.log("Market created:", vm.toString(marketHash));
-
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP offer
         bytes32 offerHash = createIPOffer_WithTokens(marketHash, offerAmount, IP_ADDRESS);
-        console.log("===========IP GDA Offer Created===========");
-        console.log("marketHash:", vm.toString(marketHash));
-        console.log("offerAmount:", offerAmount);
-        console.log("IP address:", AP_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
@@ -101,19 +91,12 @@ contract Test_Fill_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         vm.warp(vm.getBlockTimestamp() + 100_000);
         uint256 frontendFee = recipeMarketHub.minimumFrontendFee();
         bytes32 marketHash = recipeMarketHub.createMarket(address(mockLiquidityToken), 30 days, frontendFee, NULL_RECIPE, NULL_RECIPE, RewardStyle.Upfront);
-        console.log("===========RecipeMarket Created===========");
-        console.log("inputToken:", address(mockLiquidityToken));
-        console.log("Market created:", vm.toString(marketHash));
 
         uint256 offerAmount = 100_000e18; // Offer amount requested
         uint256 fillAmount = 1000e18; // Fill amount
 
         // Create a fillable IP offer
         bytes32 offerHash = createIPGdaOffer_WithTokens(marketHash, offerAmount, IP_ADDRESS);
-        console.log("===========IP Offer Created===========");
-        console.log("marketHash:", vm.toString(marketHash));
-        console.log("offerAmount:", offerAmount);
-        console.log("IP address:", AP_ADDRESS);
 
         // Mint liquidity tokens to the AP to fill the offer
         mockLiquidityToken.mint(AP_ADDRESS, fillAmount);
@@ -132,7 +115,7 @@ contract Test_Fill_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         emit ERC20.Transfer(AP_ADDRESS, address(0), fillAmount);
 
         vm.expectEmit(false, false, false, false, address(recipeMarketHub));
-        emit RecipeMarketHubBase.IPOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
+        emit RecipeMarketHubBase.IPGdaOfferFilled(0, 0, address(0), new uint256[](0), new uint256[](0), new uint256[](0));
 
         // Record the logs to capture Transfer events to get Weiroll wallet address
         vm.recordLogs();
@@ -141,7 +124,7 @@ contract Test_Fill_IPOffer_RecipeMarketHub is RecipeMarketHubTestBase {
         recipeMarketHub.fillIPGdaOffers(offerHash, fillAmount, address(0), FRONTEND_FEE_RECIPIENT);
         vm.stopPrank();
 
-        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity) = recipeMarketHub.offerHashToIPOffer(offerHash);
+        (,,,, uint256 resultingQuantity, uint256 resultingRemainingQuantity,) = recipeMarketHub.offerHashToIPGdaOffer(offerHash);
         assertEq(resultingRemainingQuantity, resultingQuantity - fillAmount);
 
         // Extract the Weiroll wallet address (the 'to' address from the second Transfer event)
