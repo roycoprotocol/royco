@@ -5,6 +5,7 @@ import "../../../src/WeirollWallet.sol";
 import "test/mocks/MockRecipeMarketHub.sol";
 import "../../../src/PointsFactory.sol";
 
+import { console } from "lib/forge-std/src/console.sol";
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { MockERC4626 } from "test/mocks/MockERC4626.sol";
 
@@ -117,6 +118,8 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
 
         mockIncentiveToken.mint(_ipAddress, 1000e18);
         mockIncentiveToken.approve(address(recipeMarketHub), 1000e18);
+
+        console.log("calling IPGdaOffer -> initialDiscountMultiplier:", gdaParams.initialDiscountMultiplier);
 
         offerHash = recipeMarketHub.createIPGdaOffer(
             _targetMarketHash, // Referencing the created market
@@ -395,8 +398,8 @@ contract RecipeMarketHubTestBase is RoycoTestBase, RecipeUtils {
     {
         fillPercentage = fillAmount.divWadDown(offerAmount);
         // Fees are taken as a percentage of the promised amounts
-        protocolFeeAmount = recipeMarketHub.getIncentiveToProtocolFeeAmountForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
-        frontendFeeAmount = recipeMarketHub.getIncentiveToFrontendFeeAmountForIPOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
+        protocolFeeAmount = recipeMarketHub.getIncentiveToProtocolFeeAmountForIPGdaOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
+        frontendFeeAmount = recipeMarketHub.getIncentiveToFrontendFeeAmountForIPGdaOffer(offerHash, tokenOffered).mulWadDown(fillPercentage);
         incentiveAmount = recipeMarketHub.getIncentiveAmountsOfferedForIPGdaOffer(offerHash, tokenOffered, fillAmount).mulWadDown(fillPercentage);
     }
 

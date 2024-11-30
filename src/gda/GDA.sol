@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { console } from "lib/forge-std/src/console.sol";
+
 import { RecipeMarketHubBase, RewardStyle, WeirollWallet } from "src/base/RecipeMarketHubBase.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
@@ -25,11 +27,12 @@ library GradualDutchAuction {
         view
         returns (uint256)
     {
+        int256 maxIntValue = type(int256).max; // 2**255 - 1
+        int256 maxAllowed = 135e18;
         int256 quantity = SafeCastLib.toInt256(numTokens);
         int256 timeSinceLastAuctionStart = SafeCastLib.toInt256(block.timestamp) - lastAuctionStartTime;
-
         int256 num1 = FixedPointMathLib.rawSDivWad(1e18, decayRate);
-        int256 exponent = FixedPointMathLib.expWad(_mulDiv(decayRate, quantity, emissionRate)) - 1e18;
+        int256 exponent = FixedPointMathLib.expWad(_mulDiv(decayRate, quantity, emissionRate) * maxAllowed / maxIntValue) - 1;
         int256 den = FixedPointMathLib.expWad(decayRate * timeSinceLastAuctionStart / 1e18);
 
         int256 totalIncentiveMultiplier = (num1 * exponent) / den;

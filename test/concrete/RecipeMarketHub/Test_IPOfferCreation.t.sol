@@ -99,7 +99,9 @@ contract Test_IPOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
         address[] memory tokensOffered = new address[](1);
         tokensOffered[0] = address(mockIncentiveToken);
         uint256[] memory incentiveAmountsOffered = new uint256[](1);
+        uint256[] memory initialIncentiveAmountsOffered = new uint256[](1);
         incentiveAmountsOffered[0] = 1000e18;
+        initialIncentiveAmountsOffered[0] = 10 * 1000e18 / 100;
         mockIncentiveToken.mint(ALICE_ADDRESS, 1000e18);
         mockIncentiveToken.approve(address(recipeMarketHub), 1000e18);
 
@@ -107,7 +109,7 @@ contract Test_IPOfferCreation_RecipeMarketHub is RecipeMarketHubTestBase {
         uint256 expiry = block.timestamp + 1 days; // Offer expires in 1 day
 
         RecipeMarketHubBase.GDAParams memory gdaParams;
-        gdaParams.initialDiscountMultiplier = 10 * 1e18 / 100; // starting incentive rate is 10% of total budget
+        gdaParams.initialDiscountMultiplier = 10 * 1e18 / 100; // starting incentive rate is 10% of total budget, 90% discount
         gdaParams.decayRate = unwrap(div(wrap(SafeCastLib.toInt256(1)), wrap(SafeCastLib.toInt256(2))));
         gdaParams.emissionRate = SafeCastLib.toInt256(1);
         gdaParams.lastAuctionStartTime = 0;

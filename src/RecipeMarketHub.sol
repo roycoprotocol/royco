@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import { console } from "lib/forge-std/src/console.sol";
 import { RecipeMarketHubBase, RewardStyle, WeirollWallet } from "src/base/RecipeMarketHubBase.sol";
 import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
@@ -395,14 +396,18 @@ contract RecipeMarketHub is RecipeMarketHubBase {
         offer.gdaParams.decayRate = gdaParams.decayRate;
         offer.gdaParams.emissionRate = gdaParams.emissionRate;
         offer.gdaParams.lastAuctionStartTime = SafeCastLib.toInt256(block.timestamp);
+        offer.gdaParams.initialDiscountMultiplier = gdaParams.initialDiscountMultiplier;
 
         // Set incentives and fees in the offer mapping
         for (uint256 i = 0; i < incentivesOffered.length; ++i) {
             address incentive = incentivesOffered[i];
             offer.incentiveAmountsOffered[incentive] = incentiveAmountsOffered[i];
-            offer.initialIncentiveAmountsOffered[incentive] = incentiveAmountsOffered[i] * offer.gdaParams.initialDiscountMultiplier;
+            offer.initialIncentiveAmountsOffered[incentive] = incentiveAmountsOffered[i] * offer.gdaParams.initialDiscountMultiplier / 1e18;
             offer.incentiveToProtocolFeeAmount[incentive] = protocolFeesToBePaid[i];
             offer.incentiveToFrontendFeeAmount[incentive] = frontendFeesToBePaid[i];
+            console.log("gdaParams.initialDiscountMultiplier:", offer.gdaParams.initialDiscountMultiplier);
+            console.log("initial incentives amounts offered:", offer.initialIncentiveAmountsOffered[incentive]);
+            console.log("incentive amounts offered", offer.incentiveAmountsOffered[incentive]);
         }
 
         // Emit IP offer creation event
@@ -416,7 +421,7 @@ contract RecipeMarketHub is RecipeMarketHubBase {
             protocolFeesToBePaid,
             frontendFeesToBePaid,
             expiry,
-            gdaParams
+            offer.gdaParams
         );
 
         // Increment the number of IP offers created
