@@ -297,7 +297,7 @@ abstract contract RecipeMarketHubBase is Owned, ReentrancyGuardTransient {
 
     /// @notice Modifier to check if the weiroll wallet is unlocked
     modifier weirollIsUnlocked(address weirollWallet) {
-        if (WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
+        if (!WeirollWallet(payable(weirollWallet)).forfeited() && WeirollWallet(payable(weirollWallet)).lockedUntil() > block.timestamp) {
             revert WalletLocked();
         }
         _;
