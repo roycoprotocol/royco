@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Points } from "src/Points.sol";
-import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { Points } from "./Points.sol";
+import { Ownable2Step, Ownable } from "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 /// @title PointsFactory
 /// @author CopyPaste, Jack Corddry, Shivaansh Kapoor

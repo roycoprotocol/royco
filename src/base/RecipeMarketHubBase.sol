@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
-import { WeirollWallet } from "src/WeirollWallet.sol";
-import { ReentrancyGuardTransient } from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
-import { Owned } from "lib/solmate/src/auth/Owned.sol";
+import { ERC20 } from "../../lib/solmate/src/tokens/ERC20.sol";
+import { WeirollWallet } from "../WeirollWallet.sol";
+import { ReentrancyGuardTransient } from "../../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
+import { Owned } from "../../lib/solmate/src/auth/Owned.sol";
 
 enum RewardStyle {
     Upfront,

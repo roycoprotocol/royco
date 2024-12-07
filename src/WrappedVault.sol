@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { ERC20 } from "lib/solmate/src/tokens/ERC20.sol";
+import { ERC20 } from "../lib/solmate/src/tokens/ERC20.sol";
 import { InitializableERC20 } from "src/periphery/InitializableERC20.sol";
 import { SafeCast } from "src/libraries/SafeCast.sol";
-import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
-import { Ownable } from "lib/solady/src/auth/Ownable.sol";
+import { SafeTransferLib } from "../lib/solmate/src/utils/SafeTransferLib.sol";
+import { Ownable } from "../lib/solady/src/auth/Ownable.sol";
 import { Points } from "src/Points.sol";
 import { PointsFactory } from "src/PointsFactory.sol";
-import { FixedPointMathLib } from "lib/solmate/src/utils/FixedPointMathLib.sol";
-import { FixedPointMathLib as SoladyMath } from "lib/solady/src/utils/FixedPointMathLib.sol";
+import { FixedPointMathLib } from "../lib/solmate/src/utils/FixedPointMathLib.sol";
+import { FixedPointMathLib as SoladyMath } from "../lib/solady/src/utils/FixedPointMathLib.sol";
 import { IWrappedVault } from "src/interfaces/IWrappedVault.sol";
 import { WrappedVaultFactory } from "src/WrappedVaultFactory.sol";
 

@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import { ERC20 } from "../lib/solmate/src/tokens/ERC20.sol";
 import { ERC4626 } from "../lib/solmate/src/tokens/ERC4626.sol";
 import { WrappedVault } from "src/WrappedVault.sol";
-import { SafeTransferLib } from "lib/solmate/src/utils/SafeTransferLib.sol";
-import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
-import { ReentrancyGuardTransient } from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
+import { SafeTransferLib } from "../lib/solmate/src/utils/SafeTransferLib.sol";
+import { Ownable2Step, Ownable } from "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { ReentrancyGuardTransient } from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @title VaultMarketHub
 /// @author Jack Corddry, CopyPaste, Shivaansh Kapoor

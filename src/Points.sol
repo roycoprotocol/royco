@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { PointsFactory } from "src/PointsFactory.sol";
-import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { PointsFactory } from "./PointsFactory.sol";
+import { Ownable2Step, Ownable } from "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 /// @title Points
 /// @author CopyPaste, Jack Corddry, Shivaansh Kapoor
@@ -35,6 +35,7 @@ contract Points is Ownable2Step {
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
     /// @dev Maps a vault to if the vault is allowed to call this contract
+
     mapping(address => bool) public isAllowedVault;
 
     /// @dev The PointsFactory used to create this program
