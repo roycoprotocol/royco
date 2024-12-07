@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { VM } from "../lib/enso-weiroll/contracts/VM.sol";
 import { Clone } from "../lib/clones-with-immutable-args/src/Clone.sol";
-import { IERC1271 } from "src/interfaces/IERC1271.sol";
+import { IERC1271 } from "./interfaces/IERC1271.sol";
 import { ECDSA } from "../lib/solady/src/utils/ECDSA.sol";
 
 /// @title WeirollWallet
