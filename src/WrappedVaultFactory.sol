@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
-import { Ownable2Step, Ownable } from "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
-import { ERC4626 } from "lib/solmate/src/tokens/ERC4626.sol";
-import { LibString } from "lib/solmate/src/utils/LibString.sol";
-import { Clones } from "lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
-import { WrappedVault } from "src/WrappedVault.sol";
+import { Ownable2Step, Ownable } from "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import { ERC4626 } from "../lib/solmate/src/tokens/ERC4626.sol";
+import { LibString } from "../lib/solmate/src/utils/LibString.sol";
+import { Clones } from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
+import { WrappedVault } from "./WrappedVault.sol";
 
 /// @title WrappedVaultFactory
 /// @author CopyPaste, Jack Corddry, Shivaansh Kapoor
