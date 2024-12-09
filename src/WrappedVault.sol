@@ -148,7 +148,7 @@ contract WrappedVault is Ownable, InitializableERC20, IWrappedVault {
 
         _mint(address(0), 10_000); // Burn 10,000 wei to stop 'first share' front running attacks on depositors
 
-        DEPOSIT_ASSET.approve(vault, type(uint256).max);
+        DEPOSIT_ASSET.safeApprove(vault, type(uint256).max);
     }
 
     /// @param rewardsToken The new reward token / points program to be used as incentives
