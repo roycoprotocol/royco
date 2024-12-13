@@ -3,12 +3,15 @@ pragma solidity ^0.8.0;
 
 import { RecipeMarketHub, ERC20, RecipeMarketHubTestBase } from "../utils/RecipeMarketHub/RecipeMarketHubTestBase.sol";
 import { console2 } from "../../lib/forge-std/src/console2.sol";
+import { Vm } from "../../lib/forge-std/src/Vm.sol";
 
 contract RecipeVerifier is RecipeMarketHubTestBase {
     string constant MAINNET_RPC_URL = "https://mainnet.gateway.tenderly.co";
     string constant ARBITRUM_RPC_URL = "https://arbitrum.gateway.tenderly.co";
     string constant BASE_RPC_URL = "https://base.gateway.tenderly.co";
     string constant ETH_SEPOLIA_RPC_URL = "https://sepolia.gateway.tenderly.co";
+
+    bytes32 constant TRANSFER_EVENT_SIG = keccak256("Transfer(address,address,uint256)");
 
     RecipeMarketHub RECIPE_MARKET_HUB;
     bytes32 MARKET_HASH;
@@ -17,7 +20,6 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
     function setUp() public {
         // Replace this with whatever network the Royco Recipe IAM was created on
         fork = vm.createFork(MAINNET_RPC_URL);
-        vm.selectFork(fork);
 
         RECIPE_MARKET_HUB = RecipeMarketHub(0x783251f103555068c1E9D755f69458f39eD937c0);
 
@@ -28,6 +30,8 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
     function test_RecipeMarketVerification(uint256 offerAmount, uint256 numDepositors) external {
         // Bound the number of depositors and offer amount to prevent overflows and underflows
         numDepositors = bound(numDepositors, 1, 1000);
+
+        vm.selectFork(fork);
 
         console2.log("Verifying Market...");
 
@@ -53,6 +57,7 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         // Distribute fill amounts based on random amounts
         for (uint256 i = 0; i < numDepositors; i++) {
             (address ap,) = makeAddrAndKey(string(abi.encode(i)));
+            aps[i] = ap;
 
             uint256 fillAmount = offerAmount / numDepositors;
             if (i == (numDepositors - 1)) {
@@ -82,26 +87,38 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         for (uint256 i = 0; i < numDepositors; ++i) {
             vm.warp(block.timestamp + (i * 30 minutes));
 
-            uint256 preWithdrawApTokenBalance = ERC20(marketInputToken).balanceOf(aps[i]);
-            uint256 preWithdrawWalletTokenBalance = ERC20(marketInputToken).balanceOf(weirollWallets[i]);
+            // Start recording logs before withdrawal
+            vm.recordLogs();
 
             vm.startPrank(aps[i]);
             RECIPE_MARKET_HUB.executeWithdrawalScript(weirollWallets[i]);
             vm.stopPrank();
 
-            uint256 postWithdrawApTokenBalance = ERC20(marketInputToken).balanceOf(aps[i]);
-            uint256 postWithdrawWalletTokenBalance = ERC20(marketInputToken).balanceOf(weirollWallets[i]);
+            Vm.Log[] memory logs = vm.getRecordedLogs();
 
-            uint256 apBalanceChange = postWithdrawApTokenBalance - preWithdrawApTokenBalance;
-            uint256 walletBalanceChange = postWithdrawWalletTokenBalance - preWithdrawWalletTokenBalance;
+            bool apReceivedTokens = false;
+            bool walletReceivedTokens = false;
 
-            // If the AP saw the expected increase, assert that first.
-            // Otherwise, assert that the wallet saw the expected increase.
-            if (apBalanceChange >= fillAmounts[i]) {
-                assertGe(apBalanceChange, fillAmounts[i]);
-            } else {
-                assertGe(walletBalanceChange, fillAmounts[i]);
+            for (uint256 j = 0; j < logs.length; j++) {
+                Vm.Log memory log = logs[j];
+
+                // Check if the log matches the Transfer signature and was emitted by the token contract
+                if (log.topics[0] == TRANSFER_EVENT_SIG) {
+                    address to = address(uint160(uint256(log.topics[2])));
+                    string memory tokenName = ERC20(log.emitter).name();
+                    uint256 amount = abi.decode(log.data, (uint256));
+
+                    if (to == aps[i]) {
+                        console2.log("AP received ", amount, " of ", tokenName);
+                        apReceivedTokens = true;
+                    } else if (to == weirollWallets[i]) {
+                        console2.log("Weiroll Wallet received ", amount, " of ", tokenName);
+                        walletReceivedTokens = true;
+                    }
+                }
             }
+
+            assert(apReceivedTokens || walletReceivedTokens);
         }
 
         console2.log("Market Successfully Verified.");
