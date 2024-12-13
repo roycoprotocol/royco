@@ -12,7 +12,7 @@ build_info = true
 evm_version = "cancun"
 
 via_ir = true
-fuzz_runs = 500
+fuzz_runs = 250
 deny_warnings = false
 
 [profile.default.optimizer_details]

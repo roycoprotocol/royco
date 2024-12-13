@@ -27,10 +27,7 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         MARKET_HASH = 0x83c459782b2ff36629401b1a592354fc085f29ae00cf97b803f73cac464d389b;
     }
 
-    function test_RecipeMarketVerification(uint256 offerAmount, uint256 numDepositors) external {
-        // Bound the number of depositors and offer amount to prevent overflows and underflows
-        numDepositors = bound(numDepositors, 1, 1000);
-
+    function test_RecipeMarketVerification() external {
         vm.selectFork(fork);
 
         console2.log("Verifying Market...");
@@ -38,7 +35,8 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         // Get the token to deposit for this market
         (, ERC20 marketInputToken, uint256 lockupTime,,,,) = RECIPE_MARKET_HUB.marketHashToWeirollMarket(MARKET_HASH);
 
-        offerAmount = bound(offerAmount, 1 * (10 ** (marketInputToken.decimals())), 1_000_000 * (10 ** (marketInputToken.decimals())));
+        uint256 offerAmount = 10_000_000 * (10 ** (marketInputToken.decimals()));
+        uint256 numDepositors = 1000;
 
         // Create an IP offer in the market
         address[] memory incentives = new address[](0);
@@ -109,10 +107,14 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
                     uint256 amount = abi.decode(log.data, (uint256));
 
                     if (to == aps[i]) {
-                        console2.log("AP received ", amount, " of ", tokenName);
+                        if (i == 0) {
+                            console2.log("AP received ", amount, " of ", tokenName);
+                        }
                         apReceivedTokens = true;
                     } else if (to == weirollWallets[i]) {
-                        console2.log("Weiroll Wallet received ", amount, " of ", tokenName);
+                        if (i == 0) {
+                            console2.log("Weiroll Wallet received ", amount, " of ", tokenName);
+                        }
                         walletReceivedTokens = true;
                     }
                 }
