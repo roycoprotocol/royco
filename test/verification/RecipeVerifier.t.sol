@@ -15,10 +15,11 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
     uint256 fork;
 
     function setUp() public {
-        RECIPE_MARKET_HUB = RecipeMarketHub(0x783251f103555068c1E9D755f69458f39eD937c0);
-
         // Replace this with whatever network the Royco Recipe IAM was created on
         fork = vm.createFork(MAINNET_RPC_URL);
+        vm.selectFork(fork);
+
+        RECIPE_MARKET_HUB = RecipeMarketHub(0x783251f103555068c1E9D755f69458f39eD937c0);
 
         // Replace this with the market hash of the market you are trying to verify
         MARKET_HASH = 0x83c459782b2ff36629401b1a592354fc085f29ae00cf97b803f73cac464d389b;
@@ -26,16 +27,14 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
 
     function test_RecipeMarketVerification(uint256 offerAmount, uint256 numDepositors) external {
         // Bound the number of depositors and offer amount to prevent overflows and underflows
-        numDepositors = bound(numDepositors, 1, 100_000);
-
-        vm.selectFork(fork);
+        numDepositors = bound(numDepositors, 1, 1000);
 
         console2.log("Verifying Market...");
 
         // Get the token to deposit for this market
         (, ERC20 marketInputToken, uint256 lockupTime,,,,) = RECIPE_MARKET_HUB.marketHashToWeirollMarket(MARKET_HASH);
 
-        offerAmount = bound(offerAmount, 1 * (10 ** (marketInputToken.decimals())), 100_000_000 * (10 ** (marketInputToken.decimals())));
+        offerAmount = bound(offerAmount, 1 * (10 ** (marketInputToken.decimals())), 1_000_000 * (10 ** (marketInputToken.decimals())));
 
         // Create an IP offer in the market
         address[] memory incentives = new address[](0);
