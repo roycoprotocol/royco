@@ -35,8 +35,8 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         // Get the token to deposit for this market
         (, ERC20 marketInputToken, uint256 lockupTime,,,,) = RECIPE_MARKET_HUB.marketHashToWeirollMarket(MARKET_HASH);
 
-        uint256 offerAmount = 10_000_000 * (10 ** (marketInputToken.decimals()));
-        uint256 numDepositors = 1000;
+        uint256 offerAmount = 5_000_000 * (10 ** (marketInputToken.decimals()));
+        uint256 numDepositors = 100;
 
         // Create an IP offer in the market
         address[] memory incentives = new address[](0);
