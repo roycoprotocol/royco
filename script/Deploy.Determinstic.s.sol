@@ -22,7 +22,7 @@ address constant CREATE2_FACTORY_ADDRESS = 0x4e59b44847b379578588920cA78FbF26c0B
 
 // Deployment Salts
 string constant POINTS_FACTORY_SALT = "ROYCO_POINTS_FACTORY_458371a243a7299e99f3fbfb67799eaaf734ccaf";
-string constant WRAPPED_VAULT_SALT = "ROYCO_WRAPPED_VAULT_5414c04eeefec8db6047b9508f5c07245a5e7c81";
+string constant WRAPPED_VAULT_SALT = "ROYCO_WRAPPED_VAULT_627001f37bde0b6f93a8a618530963e24ea2b9af";
 string constant WRAPPED_VAULT_FACTORY_SALT = "ROYCO_WRAPPED_VAULT_FACTORY_5414c04eeefec8db6047b9508f5c07245a5e7c81";
 string constant WEIROLL_WALLET_SALT = "ROYCO_WEIROLL_WALLET_458371a243a7299e99f3fbfb67799eaaf734ccaf";
 string constant VAULT_MARKET_HUB_SALT = "ROYCO_VAULT_MARKET_HUB_458371a243a7299e99f3fbfb67799eaaf734ccaf";
@@ -38,7 +38,7 @@ address constant _OLD_WRAPPED_VAULT_IMPLEMENTATION_DO_NOT_USE_APART_FROM_WVF_DEP
 
 // Expected Deployment Addresses
 address constant EXPECTED_POINTS_FACTORY_ADDRESS = 0x19112AdBDAfB465ddF0b57eCC07E68110Ad09c50;
-address constant EXPECTED_WRAPPED_VAULT_ADDRESS = 0x3C44C20377E252567D283Dc7746D1beA67Eb3E66;
+address constant EXPECTED_WRAPPED_VAULT_ADDRESS = 0xb0a3960B115E0999F33e8AfD4a11f16e04e2bf33;
 address constant EXPECTED_WRAPPED_VAULT_FACTORY_ADDRESS = 0x75E502644284eDf34421f9c355D75DB79e343Bca;
 address constant EXPECTED_WEIROLL_WALLET_ADDRESS = 0x40a1c08084671E9A799B73853E82308225309Dc0;
 address constant EXPECTED_VAULT_MARKET_HUB_ADDRESS = 0xa97eCc6Bfda40baf2fdd096dD33e88bd8e769280;
@@ -117,12 +117,12 @@ contract DeployDeterministic is Script {
         }
     }
 
-    function _deployWithSanityChecks(string memory _salt, bytes memory _creationCode) internal returns (address) {
+    function _deployWithSanityChecks(string memory _salt, bytes memory _creationCode) internal returns (address, bool isAlreadyDeployed) {
         address expectedAddress = _generateDeterminsticAddress(_salt, _creationCode);
 
         if (address(expectedAddress).code.length != 0) {
             console2.log("contract already deployed at: ", expectedAddress);
-            return expectedAddress;
+            return (expectedAddress, true);
         }
 
         address addr = _deploy(_salt, _creationCode);
@@ -135,7 +135,7 @@ contract DeployDeterministic is Script {
             revert AddressDoesNotContainBytecode(addr);
         }
 
-        return addr;
+        return (addr, false);
     }
 
     function _verifyPointsFactoryDeployment(PointsFactory _pointsFactory) internal view {
@@ -226,17 +226,23 @@ contract DeployDeterministic is Script {
         // Deploy PointsFactory
         console2.log("Deploying PointsFactory");
         bytes memory pointsFactoryCreationCode = abi.encodePacked(vm.getCode("PointsFactory"), abi.encode(ROYCO_OWNER));
-        PointsFactory pointsFactory = PointsFactory(_deployWithSanityChecks(POINTS_FACTORY_SALT, pointsFactoryCreationCode));
-        console2.log("Verifying PointsFactory deployment");
-        _verifyPointsFactoryDeployment(pointsFactory);
+        (address deployedContractAddress, bool isAlreadyDeployed) = _deployWithSanityChecks(POINTS_FACTORY_SALT, pointsFactoryCreationCode);
+        PointsFactory pointsFactory = PointsFactory(deployedContractAddress);
+        if (!isAlreadyDeployed) {
+            console2.log("Verifying PointsFactory deployment");
+            _verifyPointsFactoryDeployment(pointsFactory);
+        }
         console2.log("PointsFactory deployed at: ", address(pointsFactory), "\n");
 
         // Deploy WrappedVault
         console2.log("Deploying WrappedVault");
         bytes memory wrappedVaultCreationCode = abi.encodePacked(vm.getCode("WrappedVault"));
-        WrappedVault wrappedVault = WrappedVault(_deployWithSanityChecks("WRAPPED_VAULT_SALT", wrappedVaultCreationCode));
-        console2.log("Verifying WrappedVault deployment");
-        _verifyWrappedVaultDeployment(wrappedVault);
+        (deployedContractAddress, isAlreadyDeployed) = _deployWithSanityChecks(WRAPPED_VAULT_SALT, wrappedVaultCreationCode);
+        WrappedVault wrappedVault = WrappedVault(deployedContractAddress);
+        if (!isAlreadyDeployed) {
+            console2.log("Verifying WrappedVault deployment");
+            _verifyWrappedVaultDeployment(wrappedVault);
+        }
         console2.log("WrappedVault deployed at: ", address(wrappedVault), "\n");
 
         // Deploy WrappedVaultFactory
@@ -254,26 +260,36 @@ contract DeployDeterministic is Script {
         );
         console2.log("Deploying old WrappedVault implementation");
         _deployOldWrappedVaultImplementation();
-        WrappedVaultFactory wrappedVaultFactory = WrappedVaultFactory(_deployWithSanityChecks(WRAPPED_VAULT_FACTORY_SALT, wrappedVaultFactoryCreationCode));
-        console2.log("Verifying WrappedVaultFactory deployment");
-        _verifyWrappedVaultFactoryDeployment(
-            wrappedVaultFactory, pointsFactory, WrappedVault(_OLD_WRAPPED_VAULT_IMPLEMENTATION_DO_NOT_USE_APART_FROM_WVF_DEPLOYMENT)
-        );
+        (deployedContractAddress, isAlreadyDeployed) = _deployWithSanityChecks(WRAPPED_VAULT_FACTORY_SALT, wrappedVaultFactoryCreationCode);
+        WrappedVaultFactory wrappedVaultFactory = WrappedVaultFactory(deployedContractAddress);
+        if (!isAlreadyDeployed) {
+            console2.log("Verifying WrappedVaultFactory deployment");
+            _verifyWrappedVaultFactoryDeployment(
+                wrappedVaultFactory, pointsFactory, WrappedVault(_OLD_WRAPPED_VAULT_IMPLEMENTATION_DO_NOT_USE_APART_FROM_WVF_DEPLOYMENT)
+            );
+        }
         console2.log("WrappedVaultFactory deployed at: ", address(wrappedVaultFactory), "\n");
 
         // Deploy WeirollWallet
         console2.log("Deploying WeirollWallet");
         bytes memory weirollWalletCreationCode = abi.encodePacked(vm.getCode("WeirollWallet"));
-        WeirollWallet weirollWallet = WeirollWallet(payable(_deployWithSanityChecks(WEIROLL_WALLET_SALT, weirollWalletCreationCode)));
-        _verifyWeirollWalletDeployment(weirollWallet);
+        (deployedContractAddress, isAlreadyDeployed) = _deployWithSanityChecks(WEIROLL_WALLET_SALT, weirollWalletCreationCode);
+        WeirollWallet weirollWallet = WeirollWallet(payable(deployedContractAddress));
+        if (!isAlreadyDeployed) {
+            console2.log("Verifying WeirollWallet deployment");
+            _verifyWeirollWalletDeployment(weirollWallet);
+        }
         console2.log("WeirollWallet deployed at: ", address(weirollWallet), "\n");
 
         // Deploy VaultMarketHub
         console2.log("Deploying VaultMarketHub");
         bytes memory vaultMarketHubCreationCode = abi.encodePacked(vm.getCode("VaultMarketHub"), abi.encode(ROYCO_OWNER));
-        VaultMarketHub vaultMarketHub = VaultMarketHub(_deployWithSanityChecks(VAULT_MARKET_HUB_SALT, vaultMarketHubCreationCode));
-        console2.log("Verifying VaultMarketHub deployment");
-        _verifyVaultMarketHubDeployment(vaultMarketHub);
+        (deployedContractAddress, isAlreadyDeployed) = _deployWithSanityChecks(VAULT_MARKET_HUB_SALT, vaultMarketHubCreationCode);
+        VaultMarketHub vaultMarketHub = VaultMarketHub(deployedContractAddress);
+        if (!isAlreadyDeployed) {
+            console2.log("Verifying VaultMarketHub deployment");
+            _verifyVaultMarketHubDeployment(vaultMarketHub);
+        }
         console2.log("VaultMarketHub deployed at: ", address(vaultMarketHub), "\n");
 
         // Deploy RecipeMarketHub
@@ -281,9 +297,12 @@ contract DeployDeterministic is Script {
         bytes memory recipeMarketHubCreationCode = abi.encodePacked(
             vm.getCode("RecipeMarketHub"), abi.encode(address(weirollWallet), PROTOCOL_FEE, MINIMUM_FRONTEND_FEE, ROYCO_OWNER, address(pointsFactory))
         );
-        RecipeMarketHub recipeMarketHub = RecipeMarketHub(_deployWithSanityChecks(RECIPE_MARKET_HUB_SALT, recipeMarketHubCreationCode));
-        console2.log("Verifying RecipeMarketHub deployment");
-        _verifyRecipeMarketHubDeployment(recipeMarketHub, weirollWallet, pointsFactory);
+        (deployedContractAddress, isAlreadyDeployed) = _deployWithSanityChecks(RECIPE_MARKET_HUB_SALT, recipeMarketHubCreationCode);
+        RecipeMarketHub recipeMarketHub = RecipeMarketHub(deployedContractAddress);
+        if (!isAlreadyDeployed) {
+            console2.log("Verifying RecipeMarketHub deployment");
+            _verifyRecipeMarketHubDeployment(recipeMarketHub, weirollWallet, pointsFactory);
+        }
         console2.log("RecipeMarketHub deployed at: ", address(recipeMarketHub), "\n");
 
         vm.stopBroadcast();
