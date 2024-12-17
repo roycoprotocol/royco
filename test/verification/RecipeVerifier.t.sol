@@ -27,7 +27,7 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         RECIPE_MARKET_HUB = RecipeMarketHub(0x783251f103555068c1E9D755f69458f39eD937c0);
 
         // Replace with the market hash of the market you want to verify
-        MARKET_HASH = 0x021B96A61753074DCB33CC139E873058ECB3B9591FE9E8A7A59A58E9AA8CFEBC;
+        MARKET_HASH = 0xea47034ba4ba711a3c9b3d87c84149e7666040e2a31389e8594778feddb28ce2;
     }
 
     function getRoleOrAddress(address candidate, address ap, address wallet, address hub) internal pure returns (string memory) {
@@ -96,9 +96,6 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
 
             Vm.Log[] memory depositLogs = vm.getRecordedLogs();
 
-            // The Weiroll wallet address is the second indexed topic in the first log (market creation logic)
-            weirollWallets[i] = address(uint160(uint256(depositLogs[0].topics[2])));
-
             // Process each Transfer event log for deposit
             for (uint256 j = 0; j < depositLogs.length; j++) {
                 Vm.Log memory log = depositLogs[j];
@@ -106,6 +103,11 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
                 if (log.topics[0] == TRANSFER_EVENT_SIG) {
                     address from = address(uint160(uint256(log.topics[1])));
                     address to = address(uint160(uint256(log.topics[2])));
+
+                    if (from == ap) {
+                        // The Weiroll wallet address is the second indexed topic in the first log (market creation logic)
+                        weirollWallets[i] = to;
+                    }
 
                     bool isERC20Transfer = (log.data.length > 0);
                     uint256 tokenIdOrAmount = isERC20Transfer
