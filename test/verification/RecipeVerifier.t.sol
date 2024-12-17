@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import { RecipeMarketHub, ERC20, RecipeMarketHubTestBase } from "../utils/RecipeMarketHub/RecipeMarketHubTestBase.sol";
+import { RecipeMarketHub, ERC20, RecipeMarketHubTestBase, SafeTransferLib } from "../utils/RecipeMarketHub/RecipeMarketHubTestBase.sol";
 import { console2 } from "../../lib/forge-std/src/console2.sol";
 import { Vm } from "../../lib/forge-std/src/Vm.sol";
 
 contract RecipeVerifier is RecipeMarketHubTestBase {
+    using SafeTransferLib for ERC20;
+
     string constant MAINNET_RPC_URL = "https://mainnet.gateway.tenderly.co";
     string constant ARBITRUM_RPC_URL = "https://arbitrum.gateway.tenderly.co";
     string constant BASE_RPC_URL = "https://base.gateway.tenderly.co";
@@ -25,7 +27,7 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         RECIPE_MARKET_HUB = RecipeMarketHub(0x783251f103555068c1E9D755f69458f39eD937c0);
 
         // Replace with the market hash of the market you want to verify
-        MARKET_HASH = 0x83c459782b2ff36629401b1a592354fc085f29ae00cf97b803f73cac464d389b;
+        MARKET_HASH = 0x021B96A61753074DCB33CC139E873058ECB3B9591FE9E8A7A59A58E9AA8CFEBC;
     }
 
     function getRoleOrAddress(address candidate, address ap, address wallet, address hub) internal pure returns (string memory) {
@@ -45,7 +47,7 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         (, ERC20 marketInputToken, uint256 lockupTime,,,,) = RECIPE_MARKET_HUB.marketHashToWeirollMarket(MARKET_HASH);
 
         // Tune this amount for total offer amount
-        uint256 offerAmount = 10_000 * (10 ** (marketInputToken.decimals()));
+        uint256 offerAmount = 50_000 * (10 ** (marketInputToken.decimals()));
         // Tune this to simulate this amount of APs filling the offer
         uint256 numDepositors = 1;
 
@@ -68,7 +70,7 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         console2.log("-----------------------------------------------------");
 
         // -------------------------
-        // Deposit Phase (Filling the Offer)
+        // Deposit Phase
         // -------------------------
         for (uint256 i = 0; i < numDepositors; i++) {
             (address ap,) = makeAddrAndKey(string(abi.encode(i)));
@@ -83,7 +85,7 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
             // Fund the AP and handle approval
             deal(address(marketInputToken), ap, fillAmount);
             vm.startPrank(ap);
-            marketInputToken.approve(address(RECIPE_MARKET_HUB), fillAmount);
+            marketInputToken.safeApprove(address(RECIPE_MARKET_HUB), fillAmount);
 
             depositorFillAmounts[0] = fillAmount;
             // Record the logs to capture Transfer events during deposit
@@ -94,7 +96,7 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
 
             Vm.Log[] memory depositLogs = vm.getRecordedLogs();
 
-            // Extract the Weiroll wallet address
+            // The Weiroll wallet address is the second indexed topic in the first log (market creation logic)
             weirollWallets[i] = address(uint160(uint256(depositLogs[0].topics[2])));
 
             // Process each Transfer event log for deposit
@@ -104,24 +106,22 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
                 if (log.topics[0] == TRANSFER_EVENT_SIG) {
                     address from = address(uint160(uint256(log.topics[1])));
                     address to = address(uint160(uint256(log.topics[2])));
-                    uint256 amount = abi.decode(log.data, (uint256));
+
+                    bool isERC20Transfer = (log.data.length > 0);
+                    uint256 tokenIdOrAmount = isERC20Transfer
+                        ? abi.decode(log.data, (uint256)) // ERC20: amount in data
+                        : uint256(log.topics[3]); // NFT: tokenId in topics[3]
 
                     if (i == 0) {
-                        string memory tokenName;
-                        try ERC20(log.emitter).name() returns (string memory name) {
-                            tokenName = name;
-                        } catch {
-                            tokenName = "<Unknown Token>";
-                        }
-
                         // Identify roles or addresses
                         string memory fromEntity = getRoleOrAddress(from, aps[i], weirollWallets[i], address(RECIPE_MARKET_HUB));
                         string memory toEntity = getRoleOrAddress(to, aps[i], weirollWallets[i], address(RECIPE_MARKET_HUB));
 
-                        // Single sentence log for deposit
-                        console2.log(
-                            string(abi.encodePacked(fromEntity, " sent ", _uintToString(amount), " ", tokenName, " to ", toEntity, " during deposit."))
-                        );
+                        (string memory tokenName, bool isERC20Token) = _getTokenNameAndType(log.emitter);
+                        string memory amountDescription =
+                            isERC20Token ? _uintToString(tokenIdOrAmount) : string(abi.encodePacked("tokenId #", _uintToString(tokenIdOrAmount)));
+
+                        console2.log(string(abi.encodePacked(fromEntity, " sent ", amountDescription, " ", tokenName, " to ", toEntity, " during deposit.")));
                     }
                 }
             }
@@ -161,24 +161,19 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
                 if (log.topics[0] == TRANSFER_EVENT_SIG) {
                     address from = address(uint160(uint256(log.topics[1])));
                     address to = address(uint160(uint256(log.topics[2])));
-                    uint256 amount = abi.decode(log.data, (uint256));
+
+                    bool isERC20Transfer = (log.data.length > 0);
+                    uint256 tokenIdOrAmount = isERC20Transfer ? abi.decode(log.data, (uint256)) : uint256(log.topics[3]);
 
                     if (i == 0) {
-                        string memory tokenName;
-                        try ERC20(log.emitter).name() returns (string memory name) {
-                            tokenName = name;
-                        } catch {
-                            tokenName = "<Unknown Token>";
-                        }
-
-                        // Identify roles or addresses
                         string memory fromEntity = getRoleOrAddress(from, aps[i], weirollWallets[i], address(RECIPE_MARKET_HUB));
                         string memory toEntity = getRoleOrAddress(to, aps[i], weirollWallets[i], address(RECIPE_MARKET_HUB));
 
-                        // Single sentence log for withdrawal
-                        console2.log(
-                            string(abi.encodePacked(fromEntity, " sent ", _uintToString(amount), " ", tokenName, " to ", toEntity, " during withdrawal."))
-                        );
+                        (string memory tokenName, bool isERC20Token) = _getTokenNameAndType(log.emitter);
+                        string memory amountDescription =
+                            isERC20Token ? _uintToString(tokenIdOrAmount) : string(abi.encodePacked("Token ID #", _uintToString(tokenIdOrAmount)));
+
+                        console2.log(string(abi.encodePacked(fromEntity, " sent ", amountDescription, " ", tokenName, " to ", toEntity, " during withdrawal.")));
                     }
 
                     if (to == aps[i]) {
@@ -194,6 +189,30 @@ contract RecipeVerifier is RecipeMarketHubTestBase {
         }
         console2.log("-----------------------------------------------------");
         console2.log("Market Successfully Verified.");
+    }
+
+    // Attempt to determine if the contract is ERC20 or NFT by calling decimals() and name()
+    function _getTokenNameAndType(address token) internal view returns (string memory tokenName, bool isERC20) {
+        // Try getting ERC20 name and decimals
+        try ERC20(token).decimals() returns (uint8) {
+            // If this works, assume ERC20
+            isERC20 = true;
+            try ERC20(token).name() returns (string memory name) {
+                tokenName = name;
+            } catch {
+                tokenName = "<Unknown ERC20>";
+            }
+        } catch {
+            // If decimals() fails, assume NFT
+            isERC20 = false;
+            // Try to get a name if it's a known NFT interface
+            // If not, fallback
+            try ERC20(token).name() returns (string memory nftName) {
+                tokenName = nftName;
+            } catch {
+                tokenName = "<Unknown NFT>";
+            }
+        }
     }
 
     // Utility function to convert uint to string
