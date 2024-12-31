@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 
 // Usage: source .env && forge script ./script/Deploy.Deterministic.s.sol --rpc-url=$SEPOLIA_RPC_URL --broadcast --etherscan-api-key=$ETHERSCAN_API_KEY --verify
+// - Ethereum: forge script script/Deploy.Determinstic.s.sol -vvv --verify --broadcast --rpc-url https://rpc.ankr.com/eth
+// - Arbitrum: forge script script/Deploy.Determinstic.s.sol --rpc-url https://arb1.arbitrum.io/rpc -vvv --broadcast --verify
+// - Base: forge script script/Deploy.Determinstic.s.sol --rpc-url https://mainnet.base.org --broadcast --verify
+// - Plume: forge script script/Deploy.Determinstic.s.sol --verify --rpc-url https://98865.rpc.thirdweb.com/ --verifier blockscout --verifier-url
+// https://phoenix-explorer.plumenetwork.xyz/api\? -vvvvv --broadcast -g 2000
+// - Corn: forge script ./script/Deploy.Determinstic.s.sol --rpc-url https://maizenet-rpc.usecorn.com/ --verifier blockscout --verifier-url
+// https://maizenet-explorer.usecorn.com/api/ --broadcast --verify
+// - Berachain Bartio: forge script ./script/Deploy.Determinstic.s.sol --rpc-url  https://bartio.rpc.berachain.com/ --verifier-url
+// https://api.routescan.io/v2/network/testnet/evm/80084/etherscan/api --broadcast --verify
+// - Berachain Cartio: forge script ./script/Deploy.Determinstic.s.sol --rpc-url https://teddilion-eth-cartio.berachain.com --verifier-url
+// https://api.routescan.io/v2/network/testnet/evm/80000/etherscan/api --broadcast --verify
 
 pragma solidity ^0.8.0;
 
