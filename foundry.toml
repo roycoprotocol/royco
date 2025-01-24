@@ -39,3 +39,4 @@ ignore = ["libs/*", "*.t.sol"]
 80084 = { key = "${EXPLORER_KEY_80084}", url = "https://api.routescan.io/v2/network/testnet/evm/80084/etherscan/api" }
 80000 = { key = "${EXPLORER_KEY_80084}", url = "https://api.routescan.io/v2/network/testnet/evm/80000/etherscan/api" }
 146 = { key = "${EXPLORER_KEY_146}", url = "https://api.sonicscan.org/api" }
+80094 = { key = "verifyContract", url = "https://api.routescan.io/v2/network/mainnet/evm/80094/etherscan" }
