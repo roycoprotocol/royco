@@ -1,4 +1,20 @@
-# Royco: The Incentivized Action Market Protocol [![Tests](https://github.com/roycoprotocol/royco/actions/workflows/test.yml/badge.svg)](https://github.com/roycoprotocol/royco/actions/workflows/test.yml)
+# Royco Protocol V1 · Incentivized Action Markets (Legacy)
+**The original, first-generation Royco Protocol. No longer maintained; superseded by Royco Dawn**
+
+[![Tests](https://github.com/roycoprotocol/royco/actions/workflows/test.yml/badge.svg)](https://github.com/roycoprotocol/royco/actions/workflows/test.yml)
+
+> [!IMPORTANT]
+> **This repository is Royco V1 (legacy).** The Incentivized Action Market (IAM)
+> contracts documented below remain live and non-custodial, but are no longer the focus of active development.
+>
+> **The current version of Royco Protocol is [Royco Dawn](https://docs.royco.org)**,
+> a non-custodial **risk-tranching protocol** that splits any yield source (a lending
+> market, a staking deposit, or a tokenized RWA) into two tranches:
+> - **Senior:** earns yield with smart-contract-enforced downside coverage.
+> - **Junior:** earns higher yield by serving as first-loss capital and receiving a risk premium paid by Senior in return.
+>
+> ➡️ Current docs: **[docs.royco.org](https://docs.royco.org)** · **[royco.org](https://royco.org)** · [Royco Dawn contracts (https://github.com/roycoprotocol/royco-dawn)
+
 ![Royco Banner](./roycobanner.png)
 
 Royco Protocol allows anyone to create a market to incentivize any onchain transaction or series of transactions–we call these markets Incentivized Action Markets (IAMs).
