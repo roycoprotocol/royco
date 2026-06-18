@@ -1,10 +1,10 @@
-# Royco Protocol V1 · Incentivized Action Markets (Legacy)
-**The original, first-generation Royco Protocol. No longer maintained; superseded by Royco Dawn**
+# Royco IAM: Incentivized Action Marketplace (Legacy)
+** No longer maintained**
 
 [![Tests](https://github.com/roycoprotocol/royco/actions/workflows/test.yml/badge.svg)](https://github.com/roycoprotocol/royco/actions/workflows/test.yml)
 
 > [!IMPORTANT]
-> **This repository is Royco V1 (legacy).** The Incentivized Action Market (IAM)
+> **This repository is a legacy project.** The Incentivized Action Market (IAM)
 > contracts documented below remain live and non-custodial, but are no longer the focus of active development.
 >
 > **The current version of Royco Protocol is [Royco Dawn](https://docs.royco.org)**,
